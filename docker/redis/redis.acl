@@ -1,0 +1,10 @@
+# Redis ACL 配置文件
+
+# 默认用户
+user default on nopass ~* &* +@all
+
+# 管理员用户
+user admin on >admin_password_here ~* &* +@all
+
+# 应用程序用户 (只读权限)
+user app_user on >app_password_here ~* &* -@dangerous +@read +@string +@list +@set +@sortedset +@hash +@bitmap +@hyperloglog
