@@ -1,0 +1,126 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1</storyId>
+    <title>项目基础设施初始化</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-15</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/1-1-project-infra-init.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>开发团队</asA>
+    <iWant>建立完整的项目基础设施和开发环境配置</iWant>
+    <soThat>为后续开发提供稳定的技术基础和规范的开发流程</soThat>
+    <tasks>
+- Task 1.1.1: 完善Nuxt项目配置 (AC: 1)
+  - 配置PrimeVue 4.x和Aura主题集成
+  - 集成Tailwind CSS 3.x和响应式设计
+  - 设置TypeScript严格模式和类型检查
+  - 配置开发环境热重载和调试工具
+- Task 1.1.2: 数据库和缓存配置 (AC: 3, 4)
+  - 配置Prisma连接MySQL数据库
+  - 创建用户和会议室基础数据模型
+  - 配置Redis连接和缓存策略
+  - 设置环境变量管理和密钥配置
+- Task 1.1.3: 开发工具配置 (AC: 6)
+  - 配置ESLint和Prettier代码规范
+  - 设置Git hooks（pre-commit, pre-push）
+  - 配置TypeScript编译选项和路径映射
+  - 设置Vitest测试框架和基础测试结构
+- Task 1.1.4: Docker和部署配置 (AC: 5)
+  - 创建Dockerfile和docker-compose.yml
+  - 配置开发、测试、生产环境
+  - 设置Nginx反向代理配置
+  - 创建部署脚本和CI/CD基础配置
+- Task 1.1.5: API基础设施 (AC: 2, 7)
+  - 建立统一响应格式（success, error, page）
+  - 配置API中间件（CORS, rate limiting, logging）
+  - 设置错误处理机制和状态码规范
+  - 创建基础路由结构和API版本控制
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. 前端项目基于Nuxt 4 + PrimeVue + Tailwind CSS完成初始化，支持响应式设计和主题切换
+2. 后端API服务基于Nuxt Server + Nitro完成配置，建立统一的API响应格式和错误处理机制
+3. 数据库配置完成(MySQL开发环境 + Prisma ORM)，创建基础数据模型和迁移文件
+4. Redis缓存服务配置完成，建立会话管理和数据缓存机制
+5. Docker容器化配置就绪，支持开发和生产环境部署，包含docker-compose配置
+6. 代码质量工具配置完成(ESLint, Prettier, TypeScript)，建立代码规范和Git hooks
+7. API统一响应格式建立，定义标准的成功和错误响应结构
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="Product Requirements Document" section="Full-stack Web Application Specific Requirements" snippet="智能会议室管理系统是一个基于现代Web技术栈的企业级解决方案，旨在通过数字化转型优化企业会议室资源配置，提升会议体验和管理效率。技术栈：前端：Nuxt 3 + PrimeVue + Tailwind CSS，后端：Nuxt Server + Nitro，数据库：SQLite (开发) / MySQL (生产) + Prisma ORM"/>
+      <doc path="docs/architecture.md" title="技术架构文档" section="技术架构" snippet="采用Nuxt 4全栈一体化架构，使用PrimeVue 4.x Styled Mode和Aura主题，MySQL 8.0 + Prisma 5.x ORM，Redis 7.x缓存。API采用RESTful设计，统一响应格式：{ code, message, data, timestamp }。Docker容器化部署，Nginx反向代理。"/>
+      <doc path="docs/epics.md" title="Epic分解文档" section="Epic 1: 基础设施与用户认证" snippet="Epic 1包含4个故事：1.1项目基础设施初始化、1.2企业单点登录集成、1.3角色权限管理系统、1.4操作审计日志系统。Story 1.1作为第一个故事，为整个项目建立基础技术设施。"/>
+      <doc path="docs/sprint-artifacts/tech-spec-epic-1.md" title="Epic 1技术规范" section="Acceptance Criteria" snippet="AC-1.1: 前端项目基于Nuxt 4 + PrimeVue + Tailwind CSS完成初始化，后端API服务基于Nuxt Server + Nitro完成配置，数据库配置完成，Redis缓存服务配置完成，Docker容器化配置就绪，代码质量工具配置完成，API统一响应格式建立。"/>
+    </docs>
+    <code>
+      <file path="package.json" kind="configuration" symbol="dependencies" lines="12-22" reason="现有的前端依赖包，包含Nuxt 4.2.1、PrimeVue 4.4.1和Prisma 6.19.0"/>
+      <file path="nuxt.config.ts" kind="configuration" symbol="defineNuxtConfig" lines="2-5" reason="基础Nuxt配置，需要扩展以支持PrimeVue、Tailwind CSS和API配置"/>
+      <file path="prisma/schema.prisma" kind="schema" symbol="models" lines="16-471" reason="完整的数据库模型定义，包含用户、会议室、预约等核心业务模型"/>
+      <file path="prisma.config.ts" kind="configuration" symbol="defineConfig" lines="3-12" reason="Prisma配置，当前使用SQLite，需要支持MySQL和Redis"/>
+      <file path="app/app.vue" kind="component" symbol="template" lines="1-6" reason="根组件，需要替换为实际的应用布局和PrimeVue集成"/>
+    </code>
+    <dependencies>
+      <ecosystem name="Node.js">
+        <package name="nuxt" version="^4.2.1" usage="前端框架"/>
+        <package name="primevue" version="^4.4.1" usage="UI组件库"/>
+        <package name="@primevue/themes" version="^4.4.1" usage="主题系统"/>
+        <package name="@prisma/client" version="^6.19.0" usage="数据库ORM客户端"/>
+        <package name="prisma" version="^6.19.0" usage="数据库ORM开发工具"/>
+        <package name="vue" version="^3.5.24" usage="Vue核心库"/>
+        <package name="vue-router" version="^4.6.3" usage="路由管理"/>
+      </ecosystem>
+      <ecosystem name="Database">
+        <package name="sqlite" version="builtin" usage="开发环境数据库"/>
+        <package name="postgresql" version="planned" usage="生产环境数据库"/>
+        <package name="redis" version="planned" usage="缓存和会话存储"/>
+      </ecosystem>
+      <ecosystem name="Development Tools">
+        <package name="eslint" version="planned" usage="代码质量检查"/>
+        <package name="prettier" version="planned" usage="代码格式化"/>
+        <package name="typescript" version="builtin" usage="类型系统"/>
+        <package name="vitest" version="planned" usage="单元测试框架"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint name="架构模式" rule="必须遵循Nuxt 4全栈架构模式，优先使用Server Components"/>
+    <constraint name="API设计" rule="API采用RESTful设计，统一响应格式：{ code, message, data, timestamp }"/>
+    <constraint name="数据库设计" rule="数据库连接使用连接池，支持读写分离，建立必要索引"/>
+    <constraint name="缓存策略" rule="Redis用于会话存储和查询结果缓存，TTL配置合理"/>
+    <constraint name="安全要求" rule="环境变量管理敏感配置，API响应不暴露内部错误信息"/>
+    <constraint name="性能要求" rule="页面首次加载时间 &lt; 3秒，API响应时间 &lt; 500ms"/>
+    <constraint name="代码质量" rule="必须配置ESLint和Prettier，建立Git hooks确保代码质量"/>
+    <constraint name="部署要求" rule="Docker多阶段构建，生产环境镜像优化"/>
+    <constraint name="项目结构" rule="必须遵循统一的项目结构规范：app/, server/, prisma/, docker/, tests/"/>
+  </constraints>
+
+  <interfaces>
+    <interface name="API统一响应格式" kind="REST endpoint" signature="{ code: number, message: string, data: any, timestamp: string }" path="server/middleware/response.ts"/>
+    <interface name="数据库连接接口" kind="Prisma Client" signature="PrismaClient" path="app/generated/prisma/client.ts"/>
+    <interface name="环境配置接口" kind="Configuration" signature="DATABASE_URL, REDIS_URL, JWT_SECRET等" path=".env"/>
+    <interface name="PrimeVue主题接口" kind="Theme Configuration" signature="PrimeVue.configure({ theme: 'aura' })" path="plugins/primevue.client.ts"/>
+    <interface name="Tailwind CSS配置接口" kind="CSS Framework" signature="tailwind.config.js" path="tailwind.config.js"/>
+    <interface name="错误处理中间件" kind="Middleware" signature="function errorHandler(error: Error, req: Request, res: Response)" path="server/middleware/error.ts"/>
+    <interface name="CORS中间件" kind="Middleware" signature="function corsMiddleware(req: Request, res: Response, next: NextFunction)" path="server/middleware/cors.ts"/>
+  </interfaces>
+
+  <tests>
+    <standards>测试采用Vitest + Vue Test Utils进行单元测试，Supertest进行API测试，Playwright进行E2E测试。测试覆盖率目标 > 80%，遵循AAA模式（Arrange-Act-Assert），使用描述性测试名称，mock外部依赖。</standards>
+    <locations>tests/unit/ - 单元测试，tests/api/ - API测试，tests/e2e/ - 端到端测试，tests/__mocks__/ - mock文件</locations>
+    <ideas>
+      <test idea="配置文件测试" ac="1,2,3,4,5,6">验证Nuxt、PrimeVue、Tailwind CSS、Prisma、Redis等配置文件正确加载和解析</test>
+      <test idea="数据库连接测试" ac="3">验证Prisma数据库连接正常，基础CRUD操作可用</test>
+      <test idea="Redis缓存测试" ac="4">验证Redis连接和基本缓存操作功能</test>
+      <test idea="构建测试" ac="1,5">验证项目在开发环境和生产环境下正常构建和部署</test>
+      <test idea="代码质量测试" ac="6">验证ESLint和Prettier配置生效，代码符合规范</test>
+    </ideas>
+  </tests>
+</story-context>

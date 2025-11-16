@@ -1,0 +1,42 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Database files
+prisma/migrations
+*.db
+*.sqlite
+
+# Prisma generated files
+node_modules/.prisma
+/app/generated/prisma
+
+# Docker volumes
+mysql_data
+redis_data
+
+# Logs
+logs
+*.log

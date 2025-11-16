@@ -1,0 +1,97 @@
+version: "3.8"
+
+services:
+  # MySQL 8.0 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: meeting-manage-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: meeting_manage
+      MYSQL_USER: meeting_user
+      MYSQL_PASSWORD: meeting_pass
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - meeting-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis 7.x 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: meeting-manage-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/etc/redis/redis.conf
+    networks:
+      - meeting-network
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # 应用程序 (开发模式)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: meeting-manage-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://meeting_user:meeting_pass@mysql:3306/meeting_manage
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-key-change-in-production-2025
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.nuxt
+    depends_on:
+      mysql:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - meeting-network
+    command: npm run dev
+
+  # 数据库管理工具 (可选)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: meeting-manage-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: password
+      PMA_ARBITRARY: 1
+    depends_on:
+      - mysql
+    networks:
+      - meeting-network
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  meeting-network:
+    driver: bridge

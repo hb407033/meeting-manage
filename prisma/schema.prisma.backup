@@ -1,0 +1,463 @@
+// 智能会议室管理系统 - 数据模型定义
+// 基于2024年市场调研的智能会议室管理功能需求
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  // 开发阶段用 sqlite 最快，生产可用 postgresql
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// 用户管理
+model User {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  name        String
+  avatar      String?
+  phone       String?
+  department  String?
+  role        UserRole    @default(USER)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // 关联关系
+  reservations Reservation[]
+  checkIns     CheckIn[]
+  deviceUsages DeviceUsage[]
+  approvals    Approval[]
+
+  @@map("users")
+}
+
+// 用户角色枚举
+enum UserRole {
+  ADMIN        // 系统管理员
+  MANAGER      // 部门经理
+  USER         // 普通用户
+  VISITOR      // 访客
+}
+
+// 组织架构
+model Organization {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  parentId    String?
+  level       Int         @default(1)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // 自关联树形结构
+  parent      Organization? @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children    Organization[] @relation("OrgHierarchy")
+
+  // 关联用户
+  users       User[]
+  rooms       MeetingRoom[]
+
+  @@map("organizations")
+}
+
+// 会议室信息
+model MeetingRoom {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  capacity        Int             // 最大容纳人数
+  minCapacity     Int?            // 最小建议人数
+  area            Float?          // 面积（平方米）
+  floor           String?         // 楼层
+  building        String?         // 建筑物
+  timezone        String?         // 时区
+
+  // 设施配置
+  hasProjector    Boolean         @default(false)
+  hasWhiteboard   Boolean         @default(false)
+  hasVideoConf    Boolean         @default(false)
+  hasAudioSystem  Boolean         @default(false)
+  hasAirCondition Boolean         @default(true)
+  hasWifi         Boolean         @default(true)
+  hasPower        Boolean         @default(true)
+  hasWindows      Boolean         @default(false)
+  isAccessible    Boolean         @default(false)  // 无障碍设施
+
+  // 智能设备配置
+  smartDevices    SmartDevice[]
+
+  // 状态管理
+  status          RoomStatus      @default(AVAILABLE)
+  isActive        Boolean         @default(true)
+
+  // 预约规则
+  minBookingHours Int             @default(1)      // 最少预约小时数
+  maxBookingHours Int             @default(8)      // 最长预约小时数
+  advanceBookingDays Int?         @default(30)     // 提前预约天数
+  autoReleaseMinutes Int?         @default(15)     // 超时自动释放（分钟）
+  requiresApproval Boolean        @default(false)  // 是否需要审批
+
+  // 关联关系
+  organizationId  String?
+  organization    Organization?   @relation(fields: [organizationId], references: [id])
+
+  reservations    Reservation[]
+  checkIns        CheckIn[]
+  deviceUsages    DeviceUsage[]
+  schedules       RoomSchedule[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("meeting_rooms")
+}
+
+// 会议室状态枚举
+enum RoomStatus {
+  AVAILABLE      // 可用
+  OCCUPIED       // 使用中
+  MAINTENANCE    // 维护中
+  RESERVED       // 已预约
+  OUT_OF_SERVICE // 故障
+}
+
+// 智能设备
+model SmartDevice {
+  id            String        @id @default(cuid())
+  name          String
+  type          DeviceType
+  model         String?
+  manufacturer  String?
+  serialNumber  String?       @unique
+  macAddress    String?       @unique
+  ipAddress     String?
+
+  // 设备状态
+  status        DeviceStatus  @default(OFFLINE)
+  isOnline      Boolean       @default(false)
+  batteryLevel  Int?          // 电池电量 0-100
+
+  // 位置信息
+  roomId        String?
+  room          MeetingRoom?  @relation(fields: [roomId], references: [id])
+  location      String?       // 具体位置描述
+
+  // 配置信息
+  configuration Json?         // 设备配置信息
+
+  // 维护信息
+  lastMaintenanceAt DateTime?
+  nextMaintenanceAt DateTime?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // 使用记录
+  usages        DeviceUsage[]
+
+  @@map("smart_devices")
+}
+
+// 设备类型枚举
+enum DeviceType {
+  PROJECTOR         // 投影仪
+  DISPLAY           // 显示屏
+  CAMERA            // 摄像头
+  MICROPHONE        // 麦克风
+  SPEAKER           // 音响
+  WHITEBOARD        // 智能白板
+  THERMOSTAT        // 温控器
+  LIGHT_SENSOR      // 光线传感器
+  MOTION_SENSOR     // 运动传感器
+  DOOR_LOCK         // 门锁
+  ACCESS_CONTROL    // 门禁控制器
+  AIR_QUALITY       // 空气质量监测器
+  SMART_SWITCH      // 智能开关
+  TABLET            // 控制平板
+}
+
+// 设备状态枚举
+enum DeviceStatus {
+  ONLINE            // 在线
+  OFFLINE           // 离线
+  ERROR             // 故障
+  MAINTENANCE       // 维护中
+  LOW_BATTERY       // 低电量
+}
+
+// 预约记录
+model Reservation {
+  id              String          @id @default(cuid())
+  title           String
+  description     String?
+
+  // 时间信息
+  startTime       DateTime
+  endTime         DateTime
+  timezone        String?
+
+  // 预约状态
+  status          ReservationStatus @default(PENDING)
+
+  // 参会信息
+  organizerId     String
+  organizer       User            @relation(fields: [organizerId], references: [id])
+  attendeeCount   Int             @default(1)
+  attendees       Json?           // 参会人员列表
+
+  // 会议室信息
+  roomId          String
+  room            MeetingRoom     @relation(fields: [roomId], references: [id])
+
+  // 会议类型
+  meetingType     MeetingType     @default(REGULAR)
+  isConfidential  Boolean         @default(false)
+  isRecurring     Boolean         @default(false)
+  recurringRule   Json?           // 周期性预约规则
+
+  // 设备需求
+  equipmentNeeds  Json?           // 设备需求清单
+
+  // 服务需求
+  catering        Boolean         @default(false)
+  cateringDetails Json?           // 餐饮服务详情
+  itSupport       Boolean         @default(false)
+  cleaning        Boolean         @default(false)
+
+  // 审批流程
+  requiresApproval Boolean        @default(false)
+  approvalStatus  ApprovalStatus  @default(PENDING)
+  approvers       Json?           // 审批人员列表
+  approvals       Approval[]
+
+  // 视频会议配置
+  isVideoMeeting  Boolean         @default(false)
+  videoPlatform   VideoPlatform?
+  meetingLink     String?
+  meetingId       String?
+  password        String?
+
+  // 费用信息
+  estimatedCost   Float?
+  actualCost      Float?
+  costCenter      String?
+
+  // 签到信息
+  checkIns        CheckIn[]
+
+  // 系统字段
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  createdBy       String
+  updatedBy       String?
+
+  // 取消信息
+  canceledAt      DateTime?
+  cancelReason    String?
+  canceledBy      String?
+
+  @@map("reservations")
+}
+
+// 预约状态枚举
+enum ReservationStatus {
+  PENDING         // 待确认
+  CONFIRMED       // 已确认
+  APPROVED        // 已批准
+  REJECTED        // 已拒绝
+  CANCELED        // 已取消
+  COMPLETED       // 已完成
+  NO_SHOW         // 未出席
+}
+
+// 会议类型枚举
+enum MeetingType {
+  REGULAR         // 常规会议
+  VIDEO_CONF      // 视频会议
+  TRAINING        // 培训
+  PRESENTATION    // 演示
+  WORKSHOP        // 工作坊
+  INTERVIEW       // 面试
+  CLIENT_MEETING  // 客户会议
+  ALL_HANDS       // 全体会议
+}
+
+// 视频会议平台枚举
+enum VideoPlatform {
+  TEAMS           // Microsoft Teams
+  ZOOM            // Zoom
+  MEET            // Google Meet
+  FEISHU          // 飞书
+  DINGTALK        // 钉钉
+  TENCENT         // 腾讯会议
+  CUSTOM          // 自定义平台
+}
+
+// 审批状态枚举
+enum ApprovalStatus {
+  PENDING         // 待审批
+  APPROVED        // 已批准
+  REJECTED        // 已拒绝
+}
+
+// 审批记录
+model Approval {
+  id            String          @id @default(cuid())
+  reservationId String
+  reservation   Reservation     @relation(fields: [reservationId], references: [id])
+
+  approverId    String
+  approver      User            @relation(fields: [approverId], references: [id])
+
+  status        ApprovalStatus  @default(PENDING)
+  comments      String?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("approvals")
+}
+
+// 签到记录
+model CheckIn {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation  @relation(fields: [reservationId], references: [id])
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+
+  checkInType   CheckInType
+  checkInTime   DateTime    @default(now())
+  checkOutTime  DateTime?
+
+  // 签到方式
+  method        CheckInMethod
+  deviceInfo    String?     // 签到设备信息
+  location      String?     // 签到位置
+
+  // 人脸识别
+  faceImage     String?     // 人脸图片路径
+  confidence    Float?      // 识别置信度
+
+  @@map("check_ins")
+}
+
+// 签到类型枚举
+enum CheckInType {
+  CHECK_IN       // 签到
+  CHECK_OUT      // 签退
+}
+
+// 签到方式枚举
+enum CheckInMethod {
+  FACE_RECOGNITION  // 人脸识别
+  QR_CODE          // 二维码
+  NFC              // NFC
+  MANUAL           // 手动
+  BIOMETRIC        // 生物识别
+}
+
+// 设备使用记录
+model DeviceUsage {
+  id            String      @id @default(cuid())
+  deviceId      String
+  device        SmartDevice @relation(fields: [deviceId], references: [id])
+
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+
+  roomId        String?
+  room          MeetingRoom? @relation(fields: [roomId], references: [id])
+
+  usageType     UsageType
+  startTime     DateTime    @default(now())
+  endTime       DateTime?
+  duration      Int?        // 使用时长（分钟）
+
+  // 状态信息
+  status        String?     // 设备使用状态
+  errorInfo     String?     // 错误信息
+
+  // 资源消耗
+  powerConsumption Float?   // 功耗（千瓦时）
+
+  @@map("device_usages")
+}
+
+// 使用类型枚举
+enum UsageType {
+  MEETING        // 会议使用
+  MAINTENANCE    // 维护使用
+  TESTING        // 测试使用
+  CLEANING       // 清洁使用
+}
+
+// 会议室使用计划
+model RoomSchedule {
+  id            String      @id @default(cuid())
+  roomId        String
+  room          MeetingRoom @relation(fields: [roomId], references: [id])
+
+  title         String
+  description   String?
+
+  startTime     DateTime
+  endTime       DateTime
+
+  scheduleType  ScheduleType @default(RECURRING)
+  recurringRule Json?       // 周期性规则
+
+  isActive      Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("room_schedules")
+}
+
+// 计划类型枚举
+enum ScheduleType {
+  RECURRING     // 周期性
+  BLOCKED       // 不可用时段
+  MAINTENANCE   // 维护时段
+}
+
+// 系统配置
+model SystemConfig {
+  id            String      @id @default(cuid())
+  key           String      @unique
+  value         Json
+  description   String?
+  category      String?
+  isActive      Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("system_configs")
+}
+
+// 操作日志
+model AuditLog {
+  id            String      @id @default(cuid())
+  userId        String?
+  action        String
+  resourceType  String
+  resourceId    String?
+  oldValues     Json?
+  newValues     Json?
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt     DateTime    @default(now())
+
+  @@map("audit_logs")
+}

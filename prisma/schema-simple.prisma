@@ -1,0 +1,146 @@
+// 智能会议室管理系统 - 简化数据模型
+// 用于演示数据库和缓存配置
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// 用户管理
+model User {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  name        String
+  password    String      // 密码哈希
+  avatar      String?
+  phone       String?
+  department  String?
+  role        UserRole    @default(USER)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // 关联关系
+  reservations Reservation[]
+
+  @@map("users")
+}
+
+// 用户角色枚举
+enum UserRole {
+  ADMIN        // 系统管理员
+  MANAGER      // 部门经理
+  USER         // 普通用户
+  VISITOR      // 访客
+}
+
+// 会议室信息
+model MeetingRoom {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  capacity        Int             // 最大容纳人数
+  location        String?         // 位置
+
+  // 设施配置
+  hasProjector    Boolean         @default(false)
+  hasWhiteboard   Boolean         @default(false)
+  hasVideoConf    Boolean         @default(false)
+  hasAirCondition Boolean         @default(true)
+  hasWifi         Boolean         @default(true)
+
+  // 状态管理
+  status          RoomStatus      @default(AVAILABLE)
+
+  // 预约规则
+  requiresApproval Boolean        @default(false)
+
+  reservations    Reservation[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("meeting_rooms")
+}
+
+// 会议室状态枚举
+enum RoomStatus {
+  AVAILABLE      // 可用
+  OCCUPIED       // 使用中
+  MAINTENANCE    // 维护中
+  RESERVED       // 已预约
+}
+
+// 预约记录
+model Reservation {
+  id              String          @id @default(cuid())
+  title           String
+  description     String?
+
+  // 时间信息
+  startTime       DateTime
+  endTime         DateTime
+
+  // 预约状态
+  status          ReservationStatus @default(PENDING)
+
+  // 参会信息
+  organizerId     String
+  organizer       User            @relation(fields: [organizerId], references: [id])
+  attendeeCount   Int             @default(1)
+
+  // 会议室信息
+  roomId          String
+  room            MeetingRoom     @relation(fields: [roomId], references: [id])
+
+  // 系统字段
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("reservations")
+}
+
+// 预约状态枚举
+enum ReservationStatus {
+  PENDING         // 待确认
+  CONFIRMED       // 已确认
+  CANCELED        // 已取消
+  COMPLETED       // 已完成
+}
+
+// 系统配置
+model SystemConfig {
+  id            String      @id @default(cuid())
+  key           String      @unique
+  value         Json
+  description   String?
+  category      String?
+  isActive      Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("system_configs")
+}
+
+// 操作日志
+model AuditLog {
+  id            String      @id @default(cuid())
+  userId        String?
+  action        String
+  resourceType  String
+  resourceId    String?
+  details       Json?
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt     DateTime    @default(now())
+
+  @@map("audit_logs")
+}

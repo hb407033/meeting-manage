@@ -1,0 +1,275 @@
+import { PrismaClient } from '@prisma/client'
+import { canUserAccessOrganization, getUserOrganizationPath } from '~~/server/services/organization-service'
+
+const prisma = new PrismaClient()
+
+export interface OrganizationIsolationOptions {
+  paramName?: string // URL参数名，默认为 'organizationId'
+  allowAdmin?: boolean // 是否允许管理员绕过检查，默认 true
+  allowManager?: boolean // 是否允许部门经理访问子组织，默认 true
+  checkBody?: boolean // 是否检查请求体中的组织ID，默认 false
+}
+
+/**
+ * 组织架构数据隔离中间件
+ * 确保用户只能访问其所属组织及其子组织的数据
+ */
+export function createOrganizationIsolationMiddleware(options: OrganizationIsolationOptions = {}) {
+  return async function organizationIsolationMiddleware(event: any) {
+    const {
+      paramName = 'organizationId',
+      allowAdmin = true,
+      allowManager = true,
+      checkBody = false
+    } = options
+
+    const user = event.context.user
+
+    if (!user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: '未认证，请先登录'
+      })
+    }
+
+    // 获取目标组织ID
+    let targetOrganizationId = event.context.params?.[paramName] ||
+                            getQuery(event)[paramName]
+
+    // 如果需要检查请求体
+    if (checkBody && !targetOrganizationId) {
+      try {
+        const body = await readBody(event)
+        targetOrganizationId = body[paramName] || body.organizationId
+      } catch {
+        // 忽略读取body的错误
+      }
+    }
+
+    // 如果没有指定组织ID，则跳过检查
+    if (!targetOrganizationId) {
+      return
+    }
+
+    // 检查用户是否有权访问目标组织
+    const hasAccess = await canUserAccessOrganization(user.id, targetOrganizationId)
+
+    if (!hasAccess) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: '权限不足，无法访问该组织的数据'
+      })
+    }
+
+    // 将用户可访问的组织ID列表添加到上下文中
+    const accessibleOrgIds = await getUserOrganizationPath(user.id)
+    event.context.accessibleOrganizations = accessibleOrgIds
+  }
+}
+
+/**
+ * 组织架构所有者检查中间件
+ * 确保用户只能操作自己组织的资源
+ */
+export function createOrganizationOwnerMiddleware(options: OrganizationIsolationOptions = {}) {
+  return async function organizationOwnerMiddleware(event: any) {
+    const user = event.context.user
+
+    if (!user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: '未认证，请先登录'
+      })
+    }
+
+    // 获取资源的组织ID
+    const resourceOrgId = await getResourceOrganizationId(event)
+
+    if (!resourceOrgId) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: '资源缺少组织信息'
+      })
+    }
+
+    // 检查用户是否有权访问该组织的资源
+    const hasAccess = await canUserAccessOrganization(user.id, resourceOrgId)
+
+    if (!hasAccess) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: '权限不足，无法操作该组织的资源'
+      })
+    }
+  }
+}
+
+/**
+ * 获取资源的组织ID
+ * 这个函数需要根据具体的业务逻辑来实现
+ */
+async function getResourceOrganizationId(event: any): Promise<string | null> {
+  const resourceId = event.context.params?.id ||
+                   getQuery(event)?.id ||
+                   event.node.req.headers['x-resource-id']
+
+  if (!resourceId) {
+    return null
+  }
+
+  // 根据不同的资源类型查询组织ID
+  const resourceType = getResourceType(event)
+
+  switch (resourceType) {
+    case 'user':
+      const user = await prisma.user.findUnique({
+        where: { id: resourceId },
+        select: { organizationId: true }
+      })
+      return user?.organizationId || null
+
+    case 'reservation':
+      const reservation = await prisma.reservation.findUnique({
+        where: { id: resourceId },
+        include: {
+          organizer: {
+            select: { organizationId: true }
+          }
+        }
+      })
+      return reservation?.organizer?.organizationId || null
+
+    case 'meetingRoom':
+      const meetingRoom = await prisma.meetingRoom.findUnique({
+        where: { id: resourceId },
+        select: { organizationId: true }
+      })
+      return meetingRoom?.organizationId || null
+
+    default:
+      return null
+  }
+}
+
+/**
+ * 获取资源类型
+ */
+function getResourceType(event: any): string {
+  const path = event.node.req.url || ''
+
+  if (path.includes('/users/')) return 'user'
+  if (path.includes('/reservations/')) return 'reservation'
+  if (path.includes('/meeting-rooms/')) return 'meetingRoom'
+
+  return 'unknown'
+}
+
+/**
+ * 便捷的组织隔离中间件
+ */
+export const requireOrganizationAccess = createOrganizationIsolationMiddleware()
+
+export const requireOrganizationOwnership = createOrganizationOwnerMiddleware()
+
+/**
+ * 管理员或组织所有者检查中间件
+ */
+export function requireAdminOrOrganizationOwner() {
+  return async function adminOrOrgOwnerMiddleware(event: any) {
+    const user = event.context.user
+
+    if (!user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: '未认证，请先登录'
+      })
+    }
+
+    // 检查是否是管理员
+    const isAdmin = await prisma.userRole.findFirst({
+      where: {
+        userId: user.id,
+        role: {
+          code: 'ADMIN',
+          isActive: true
+        }
+      }
+    })
+
+    if (isAdmin) {
+      return // 管理员可以直接访问
+    }
+
+    // 非管理员需要检查组织所有权
+    await createOrganizationOwnerMiddleware()(event)
+  }
+}
+
+/**
+ * 部门经理权限检查中间件
+ */
+export function requireManagerAccess() {
+  return async function managerAccessMiddleware(event: any) {
+    const user = event.context.user
+
+    if (!user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: '未认证，请先登录'
+      })
+    }
+
+    // 检查是否是管理员或部门经理
+    const hasManagerRole = await prisma.userRole.findFirst({
+      where: {
+        userId: user.id,
+        role: {
+          code: { in: ['ADMIN', 'MANAGER'] },
+          isActive: true
+        }
+      }
+    })
+
+    if (!hasManagerRole) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: '需要管理员或部门经理权限'
+      })
+    }
+
+    // 应用组织隔离
+    await createOrganizationIsolationMiddleware()(event)
+  }
+}
+
+/**
+ * 创建数据查询过滤器
+ * 用于在Prisma查询中应用组织数据隔离
+ */
+export function createOrganizationQueryFilter(event: any) {
+  const user = event.context.user
+  const accessibleOrgs = event.context.accessibleOrganizations
+
+  if (!user) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: '未认证，请先登录'
+    })
+  }
+
+  // 如果是管理员，返回null表示不进行组织过滤
+  const isAdmin = accessibleOrgs?.length === 0 || user.role === 'ADMIN'
+  if (isAdmin) {
+    return null
+  }
+
+  // 返回组织过滤器
+  return {
+    organizationId: {
+      in: accessibleOrgs || []
+    }
+  }
+}
+
+// 默认导出主要的组织隔离中间件
+export default createOrganizationIsolationMiddleware

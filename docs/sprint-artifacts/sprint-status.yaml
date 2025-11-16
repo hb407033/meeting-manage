@@ -1,0 +1,95 @@
+# generated: 2025-11-15
+# project: meeting-manage
+# project_key: meeting-manage
+# tracking_system: file-system
+# story_location: {project-root}/docs/sprint-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic exists in epic file but not contexted
+#   - contexted: Epic tech context created (required before drafting stories)
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
+#   - ready-for-dev: Draft approved and story context created
+#   - in-progress: Developer actively working on implementation
+#   - review: Under SM review (via code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epics should be 'contexted' before stories can be 'drafted'
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
+
+generated: 2025-11-15
+project: meeting-manage
+project_key: meeting-manage
+tracking_system: file-system
+story_location: {project-root}/docs/sprint-artifacts
+
+development_status:
+  # Epic 1: 基础设施与用户认证
+  epic-1: contexted
+  1-1-project-infra-init: done
+  1-2-enterprise-sso-integration: backlog
+  1-3-role-permission-management: in-progress
+  1-4-operation-audit-log-system: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: 会议室核心管理
+  epic-2: backlog
+  2-1-room-basic-data-management: backlog
+  2-2-room-search-and-filter: backlog
+  2-3-room-detail-display: backlog
+  2-4-room-rules-configuration: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: 预约系统核心
+  epic-3: backlog
+  3-1-calendar-view-and-availability-query: backlog
+  3-2-quick-reservation-feature: backlog
+  3-3-detailed-reservation-configuration: backlog
+  3-4-reservation-conflict-detection-and-resolution: backlog
+  3-5-recurring-reservation-management: backlog
+  3-6-reservation-status-tracking-and-notification: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: 签到与验证系统
+  epic-4: backlog
+  4-1-qr-code-check-in-system: backlog
+  4-2-facial-recognition-check-in: backlog
+  4-3-check-in-and-check-out-management: backlog
+  4-4-attendance-statistics-analysis: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: 智能设备集成
+  epic-5: backlog
+  5-1-iot-device-registration-and-management: backlog
+  5-2-smart-device-remote-control: backlog
+  5-3-environmental-data-collection: backlog
+  5-4-device-abnormal-alert: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: 数据分析洞察
+  epic-6: backlog
+  6-1-room-usage-rate-analysis: backlog
+  6-2-user-behavior-analysis: backlog
+  6-3-device-usage-analysis: backlog
+  6-4-visualization-report-and-export: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: 系统配置与管理
+  epic-7: backlog
+  7-1-system-parameter-configuration: backlog
+  7-2-role-permission-assignment-management: backlog
+  7-3-notification-system-configuration: backlog
+  7-4-enterprise-brand-customization: backlog
+  epic-7-retrospective: optional

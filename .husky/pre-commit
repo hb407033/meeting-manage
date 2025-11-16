@@ -1,0 +1,2 @@
+# Pre-commit hook for lint-staged
+npx lint-staged

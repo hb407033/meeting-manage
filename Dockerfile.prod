@@ -1,0 +1,94 @@
+# 多阶段构建 - 构建阶段
+FROM node:20-alpine AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装系统依赖
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    curl
+
+# 复制package文件
+COPY package*.json ./
+COPY pnpm-lock.yaml ./
+
+# 安装pnpm
+RUN npm install -g pnpm
+
+# 安装依赖
+RUN pnpm install --frozen-lockfile --prod=false
+
+# 复制源代码
+COPY . .
+
+# 生成Prisma客户端
+RUN pnpm run db:generate
+
+# 构建应用
+RUN pnpm run build
+
+# 清理开发依赖并重新安装生产依赖
+RUN pnpm prune --prod
+
+# 生产阶段
+FROM node:20-alpine AS production
+
+# 安装系统依赖
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    tzdata \
+    ca-certificates
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 创建非root用户
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制package文件
+COPY package*.json ./
+
+# 安装pnpm
+RUN npm install -g pnpm
+
+# 只安装生产依赖
+RUN pnpm install --frozen-lockfile --prod
+
+# 复制构建产物
+COPY --from=builder /app/.output ./.output
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/nuxt.config.ts ./
+COPY --from=builder /app/server ./server
+
+# 创建日志目录
+RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app
+
+# 设置权限
+RUN chown -R nodejs:nodejs /app
+
+# 切换到非root用户
+USER nodejs
+
+# 暴露端口
+EXPOSE 3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# 使用dumb-init作为PID 1
+ENTRYPOINT ["dumb-init", "--"]
+
+# 启动应用
+CMD ["node", ".output/server/index.mjs"]

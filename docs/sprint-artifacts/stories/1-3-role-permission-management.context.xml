@@ -1,0 +1,120 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>3</storyId>
+    <title>角色权限管理系统</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-15</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/1-3-role-permission-management.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>系统管理员</asA>
+    <iWant>配置基于角色的用户权限管理</iWant>
+    <soThat>确保不同用户只能访问其权限范围内的功能和数据</soThat>
+    <tasks>- [ ] Task 1.3.1: 设计权限数据模型和数据库结构 (AC: 2, 3)
+  - [ ] 设计User, Role, Permission关联表结构
+  - [ ] 实现role inheritance角色继承机制
+  - [ ] 创建role_permissions, user_roles关联表
+  - [ ] 编写Prisma schema定义和迁移文件
+  - [ ] 创建基础权限数据种子文件
+
+- [ ] Task 1.3.2: 实现权限验证核心功能 (AC: 4, 6)
+  - [ ] 创建hasPermission(), hasRole()权限验证函数
+  - [ ] 实现middleware/permission.ts API级权限检查中间件
+  - [ ] 配置Redis缓存用户权限，提高性能
+  - [ ] 实现权限变更实时更新机制
+  - [ ] 编写权限验证单元测试
+
+- [ ] Task 1.3.3: 实现组织架构数据隔离 (AC: 5)
+  - [ ] 设计组织架构数据模型
+  - [ ] 实现基于组织架构的数据过滤器
+  - [ ] 创建数据隔离中间件
+  - [ ] 确保用户只能访问自己组织的数据
+  - [ ] 测试数据隔离功能
+
+- [ ] Task 1.3.4: 创建权限管理API (AC: 7, 8)
+  - [ ] 实现server/api/v1/admin/permissions权限管理API
+  - [ ] 创建角色分配和权限管理端点
+  - [ ] 实现权限变更审计日志记录
+  - [ ] 添加API权限检查和安全防护
+  - [ ] 编写API集成测试
+
+- [ ] Task 1.3.5: 开发权限管理前端界面 (AC: 8)
+  - [ ] 创建PermissionManagement.vue权限管理界面
+  - [ ] 实现RoleSelector.vue角色选择器组件
+  - [ ] 设计PermissionTree.vue权限树形展示组件
+  - [ ] 建立AdminLayout.vue管理后台专用布局
+  - [ ] 实现UserRoleAssignment.vue用户角色分配表单
+
+- [ ] Task 1.3.6: 集成权限控制到现有组件 (AC: 4)
+  - [ ] 配置权限控制的组件显示 (v-if="hasPermission()")
+  - [ ] 设计权限不足的提示组件
+  - [ ] 实现权限申请流程
+  - [ ] 更新现有页面添加权限检查
+  - [ ] 测试权限控制功能</tasks>
+  </story>
+
+  <acceptanceCriteria>1. **Given** 企业用户已通过认证, **When** 用户访问系统功能, **Then** 系统根据用户角色提供相应的功能权限
+2. 实现三级角色权限系统：系统管理员、部门经理、普通用户
+3. 基于角色的访问控制(RBAC)模型建立，支持角色继承
+4. 细粒度权限控制实现，支持菜单、按钮、API级别的权限控制
+5. 企业组织架构数据隔离，确保用户只能访问自己组织的数据
+6. 权限缓存机制实现，提高权限验证的性能
+7. 权限变更实时生效，支持动态权限更新
+8. 权限管理界面实现，允许管理员分配和管理用户角色</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/architecture.md" title="Architecture Decision Document" section="技术架构" snippet="智能会议室管理系统是一个基于 Nuxt 4 全栈架构的企业级解决方案，采用MySQL数据库、Redis缓存、Prisma ORM和PrimeVue UI组件库"/>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Story 1.3" snippet="实现三级角色权限系统：系统管理员、部门经理、普通用户。基于角色的访问控制(RBAC)模型建立，支持角色继承"/>
+      <doc path="docs/PRD.md" title="Product Requirements Document" section="成功标准" snippet="系统支持 > 1000并发用户，预约冲突减少 > 80%，错误率 < 0.1%，完整的IoT设备集成"/>
+      <doc path="docs/ux-design-specification.md" title="UX Design Specification" section="设计系统" snippet="选择PrimeVue Styled Mode + Aura主题 + 企业定制，支持权限控制的组件显示"/>
+    </docs>
+    <code>
+      <artifact path="prisma/schema.prisma" kind="schema" symbol="User, UserRole" lines="16-41" reason="现有用户模型和角色枚举，包含基础的三级权限系统"/>
+      <artifact path="package.json" kind="config" symbol="dependencies" lines="32-43" reason="项目依赖，包含Prisma、Redis、PrimeVue等核心组件"/>
+      <artifact path="tests/setup.ts" kind="test" symbol="setup" lines="1-50" reason="测试环境配置，为权限系统测试提供基础"/>
+      <artifact path="tests/unit/configuration.test.ts" kind="test" symbol="config tests" lines="1-100" reason="现有配置测试模式，可用于权限配置测试参考"/>
+    </code>
+    <dependencies>
+      <ecosystem name="Node.js">
+        <package name="@prisma/client" version="6.19.0" purpose="数据库ORM，用于用户和权限数据管理"/>
+        <package name="ioredis" version="5.8.2" purpose="Redis客户端，用于权限缓存和会话管理"/>
+        <package name="bcryptjs" version="3.0.3" purpose="密码哈希，用于用户认证安全"/>
+        <package name="primevue" version="4.4.1" purpose="UI组件库，用于权限管理界面"/>
+        <package name="@nuxtjs/tailwindcss" version="6.14.0" purpose="CSS框架，用于样式管理"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">基于Nuxt 4全栈架构，优先使用Server Components</constraint>
+    <constraint type="api">API采用RESTful设计，统一响应格式：{ code, message, data, timestamp }</constraint>
+    <constraint type="database">使用Prisma Schema建立User, Role, Permission关联表，支持role inheritance</constraint>
+    <constraint type="security">环境变量管理敏感配置，API响应不暴露内部错误信息</constraint>
+    <constraint type="performance">API响应时间 < 500ms，Redis缓存权限验证结果</constraint>
+    <constraint type="testing">建立完整的测试套件，包含单元测试、集成测试和权限测试</constraint>
+    <constraint type="pattern">权限系统设计为独立模块，便于后续与SSO集成</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="hasPermission()" kind="function" signature="hasPermission(permission: string): boolean" path="composables/permissions.ts"/>
+    <interface name="hasRole()" kind="function" signature="hasRole(role: UserRole): boolean" path="composables/permissions.ts"/>
+    <interface name="middleware/permission.ts" kind="middleware" signature="权限检查中间件，API级权限控制" path="server/middleware/permission.ts"/>
+    <interface name="admin/permissions API" kind="REST endpoint" signature="GET/POST/PUT/DELETE /api/v1/admin/permissions" path="server/api/v1/admin/permissions.ts"/>
+    <interface name="user-roles API" kind="REST endpoint" signature="GET/POST /api/v1/admin/user-roles" path="server/api/v1/admin/user-roles.ts"/>
+  </interfaces>
+  <tests>
+    <standards>使用Vitest测试框架，遵循AAA模式(Arrange, Act, Assert)，包含单元测试、集成测试和E2E测试。权限系统需要测试角色继承、权限验证、数据隔离和API安全。</standards>
+    <locations>tests/unit/permissions.test.ts (权限验证单元测试), tests/integration/rbac.test.ts (RBAC集成测试), tests/e2e/permission-workflow.test.ts (权限工作流E2E测试)</locations>
+    <ideas>
+      <test idea="测试hasPermission()函数返回正确的权限状态" ac="4"/>
+      <test idea="测试角色继承机制(ADMIN继承所有权限)" ac="3"/>
+      <test idea="测试组织架构数据隔离功能" ac="5"/>
+      <test idea="测试权限缓存机制的性能提升" ac="6"/>
+      <test idea="测试权限管理API的安全防护" ac="7"/>
+      <test idea="测试前端权限控制组件的显示/隐藏" ac="8"/>
+    </ideas>
+  </tests>
+</story-context>

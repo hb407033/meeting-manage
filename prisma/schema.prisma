@@ -1,0 +1,271 @@
+// 智能会议室管理系统 - 简化数据模型
+// 用于演示数据库和缓存配置
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// 用户管理
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  name          String
+  password      String      // 密码哈希
+  avatar        String?
+  phone         String?
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // 组织架构
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  // 权限关联
+  userRoles      UserRole[]
+
+  // 关联关系
+  reservations   Reservation[]
+  auditLogs      AuditLog[]
+  permissionRequests PermissionRequest[]
+  reviewedRequests PermissionRequest[] @relation("RequestReviewer")
+
+  @@map("users")
+}
+
+// 组织架构
+model Organization {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  code        String?     @unique  // 组织编码
+  parentId    String?
+  level       Int         @default(0)  // 组织层级
+  path        String?     // 层级路径，便于查询
+  isActive    Boolean     @default(true)
+
+  users       User[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("organizations")
+}
+
+// 角色
+model Role {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  code        String?     @unique  // 角色编码
+  description String?
+  level       Int         @default(0)  // 角色层级，数值越大权限越高
+  isSystem    Boolean     @default(false)  // 是否系统内置角色
+  isActive    Boolean     @default(true)
+
+  // 权限关联
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("roles")
+}
+
+// 权限
+model Permission {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  code        String?     @unique  // 权限编码，如 "user:create", "room:read"
+  resource    String?     // 资源类型，如 "user", "room", "reservation"
+  action      String?     // 操作类型，如 "create", "read", "update", "delete"
+  description String?
+  module      String?     // 模块分组
+  isActive    Boolean     @default(true)
+
+  // 权限关联
+  roles       RolePermission[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("permissions")
+}
+
+// 用户角色关联表
+model UserRole {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId      String
+  role        Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy  String?     // 分配人ID
+  assignedAt  DateTime    @default(now())
+  expiresAt   DateTime?   // 过期时间
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+// 角色权限关联表
+model RolePermission {
+  id          String      @id @default(cuid())
+  roleId      String
+  role        Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// 用户角色枚举（保留用于向后兼容）
+enum UserRoleLegacy {
+  ADMIN        // 系统管理员
+  MANAGER      // 部门经理
+  USER         // 普通用户
+  VISITOR      // 访客
+}
+
+// 会议室信息
+model MeetingRoom {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  capacity        Int             // 最大容纳人数
+  location        String?         // 位置
+
+  // 设施配置
+  hasProjector    Boolean         @default(false)
+  hasWhiteboard   Boolean         @default(false)
+  hasVideoConf    Boolean         @default(false)
+  hasAirCondition Boolean         @default(true)
+  hasWifi         Boolean         @default(true)
+
+  // 状态管理
+  status          RoomStatus      @default(AVAILABLE)
+
+  // 预约规则
+  requiresApproval Boolean        @default(false)
+
+  reservations    Reservation[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("meeting_rooms")
+}
+
+// 会议室状态枚举
+enum RoomStatus {
+  AVAILABLE      // 可用
+  OCCUPIED       // 使用中
+  MAINTENANCE    // 维护中
+  RESERVED       // 已预约
+}
+
+// 预约记录
+model Reservation {
+  id              String          @id @default(cuid())
+  title           String
+  description     String?
+
+  // 时间信息
+  startTime       DateTime
+  endTime         DateTime
+
+  // 预约状态
+  status          ReservationStatus @default(PENDING)
+
+  // 参会信息
+  organizerId     String
+  organizer       User            @relation(fields: [organizerId], references: [id])
+  attendeeCount   Int             @default(1)
+
+  // 会议室信息
+  roomId          String
+  room            MeetingRoom     @relation(fields: [roomId], references: [id])
+
+  // 系统字段
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("reservations")
+}
+
+// 预约状态枚举
+enum ReservationStatus {
+  PENDING         // 待确认
+  CONFIRMED       // 已确认
+  CANCELED        // 已取消
+  COMPLETED       // 已完成
+}
+
+// 系统配置
+model SystemConfig {
+  id            String      @id @default(cuid())
+  key           String      @unique
+  value         Json
+  description   String?
+  category      String?
+  isActive      Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("system_configs")
+}
+
+// 权限申请
+model PermissionRequest {
+  id            String      @id @default(cuid())
+  requestedBy   String
+  requester     User        @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
+  permissions   String[]    // 申请的权限代码列表
+  roles         String[]    // 申请的角色代码列表
+  reason        String
+  duration      String?     // 使用期限
+  urgency       String      @default("normal") // 紧急程度
+  attachments   Json?       // 附件列表
+  userAgent     String?
+  requestPath   String?     // 申请时所在路径
+  expiresAt     DateTime?   // 申请期望的到期时间
+
+  // 审批相关字段
+  status        String      @default("pending") // pending, approved, rejected, expired
+  reviewedBy    String?
+  reviewer      User?       @relation("RequestReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewedAt    DateTime?
+  reviewReason  String?     // 审批原因
+  reviewComment String?     // 审批评论
+
+  requestedAt   DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("permission_requests")
+}
+
+// 操作日志
+model AuditLog {
+  id            String      @id @default(cuid())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action        String
+  resourceType  String
+  resourceId    String?
+  details       Json?
+  ipAddress     String?
+  userAgent     String?
+  timestamp     DateTime    @default(now())
+
+  @@map("audit_logs")
+}

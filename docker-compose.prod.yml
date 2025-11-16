@@ -1,0 +1,208 @@
+version: '3.8'
+
+services:
+  # MySQL 8.0 数据库 (生产环境)
+  mysql:
+    image: mysql:8.0
+    container_name: meeting-manage-mysql-prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_DATABASE: meeting_manage
+      MYSQL_USER: meeting_user
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+      - ./docker/mysql/prod.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - meeting-prod-network
+    command: --default-authentication-plugin=mysql_native_password
+    secrets:
+      - mysql_root_password
+      - mysql_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis 7.x 缓存服务 (生产环境)
+  redis:
+    image: redis:7-alpine
+    container_name: meeting-manage-redis-prod
+    restart: always
+    volumes:
+      - redis_prod_data:/data
+      - ./docker/redis/prod.conf:/etc/redis/redis.conf
+      - ./docker/redis/redis.acl:/etc/redis/redis.acl
+    networks:
+      - meeting-prod-network
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "--acl", "cat", "on", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: meeting-manage-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - app_build:/usr/share/nginx/html:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - meeting-prod-network
+
+  # 应用程序 (生产环境)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: meeting-manage-app-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://meeting_user:${MYSQL_PASSWORD}@mysql:3306/meeting_manage
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      APP_BASE_URL: https://your-domain.com
+      CORS_ORIGIN: https://your-domain.com
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    volumes:
+      - app_logs:/app/logs
+      - /app/node_modules
+      - prisma_cache:/app/.nuxt/prisma
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - meeting-prod-network
+    secrets:
+      - jwt_secret
+      - redis_password
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 数据库备份服务
+  backup:
+    image: mysql:8.0
+    container_name: meeting-manage-backup
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_DATABASE: meeting_manage
+    volumes:
+      - backup_data:/backup
+      - ./scripts/backup.sh:/backup.sh
+    depends_on:
+      - mysql
+    networks:
+      - meeting-prod-network
+    secrets:
+      - mysql_root_password
+    command: >
+      sh -c "
+      while true; do
+        echo '开始备份...'
+        /backup.sh
+        echo '备份完成'
+        sleep 86400
+      done
+      "
+
+  # 日志收集和监控 (可选)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: meeting-manage-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - meeting-prod-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: meeting-manage-grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - meeting-prod-network
+    secrets:
+      - grafana_password
+
+volumes:
+  mysql_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+  app_build:
+    driver: local
+  nginx_logs:
+    driver: local
+  app_logs:
+    driver: local
+  prisma_cache:
+    driver: local
+  backup_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  meeting-prod-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+secrets:
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt
+  mysql_password:
+    file: ./secrets/mysql_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  grafana_password:
+    file: ./secrets/grafana_password.txt

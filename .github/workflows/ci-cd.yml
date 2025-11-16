@@ -1,0 +1,258 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 代码质量检查
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 安装pnpm
+        run: npm install -g pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 生成Prisma客户端
+        run: pnpm run db:generate
+
+      - name: 代码格式检查
+        run: pnpm run format:check
+
+      - name: ESLint检查
+        run: pnpm run lint:check
+
+      - name: TypeScript类型检查
+        run: pnpm run type-check
+
+      - name: 运行测试
+        run: pnpm run test
+
+      - name: 测试覆盖率
+        run: pnpm run test:coverage
+
+      - name: 上传覆盖率报告
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+  # 安全扫描
+  security-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 安装pnpm
+        run: npm install -g pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 运行安全审计
+        run: pnpm audit --audit-level moderate
+
+      - name: 依赖漏洞扫描
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 上传Trivy扫描结果
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # 构建Docker镜像
+  build:
+    needs: [lint-and-test, security-scan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录到容器注册表
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 提取元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 构建和推送Docker镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 镜像漏洞扫描
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+
+      - name: 上传镜像扫描结果
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+  # 部署到测试环境
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 部署到测试环境
+        run: |
+          echo "部署到测试环境..."
+          # 这里可以调用部署脚本或使用Ansible等工具
+          # ./scripts/deploy.sh staging ${{ github.sha }}
+
+      - name: 运行冒烟测试
+        run: |
+          echo "运行冒烟测试..."
+          # curl -f https://staging.your-domain.com/api/health
+
+  # 部署到生产环境
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 部署到生产环境
+        run: |
+          echo "部署到生产环境..."
+          # 这里可以调用部署脚本或使用Ansible等工具
+          # ./scripts/deploy.sh production ${{ github.sha }}
+
+      - name: 运行冒烟测试
+        run: |
+          echo "运行冒烟测试..."
+          # curl -f https://your-domain.com/api/health
+
+      - name: 发送部署通知
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+
+  # 数据库迁移（生产环境）
+  migrate-production:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: 执行数据库迁移
+        run: |
+          echo "执行生产数据库迁移..."
+          # docker-compose -f docker-compose.prod.yml exec app \
+          #     npm run db:migrate:prod
+
+      - name: 验证迁移结果
+        run: |
+          echo "验证迁移结果..."
+          # 检查数据库版本和表结构
+
+  # 性能测试
+  performance-test:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 安装Artillery
+        run: npm install -g artillery
+
+      - name: 运行性能测试
+        run: |
+          artillery run tests/performance/load-test.yml \
+            --target https://staging.your-domain.com
+
+      - name: 上传性能测试报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: artillery-report.html

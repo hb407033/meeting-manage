@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能会议室管理系统 - 颜色主题预览</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2c3e50;
+            font-weight: 300;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .theme-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .theme-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .theme-description {
+            margin-bottom: 25px;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .color-swatch {
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.05);
+        }
+
+        .color-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .color-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .color-hex {
+            font-size: 11px;
+            font-family: monospace;
+            color: #888;
+        }
+
+        .components-section {
+            margin-top: 30px;
+        }
+
+        .components-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .component-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .input:focus {
+            outline: none;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin: 0 5px;
+        }
+
+        /* Theme 1: Professional Blue */
+        .theme-1 .theme-title { color: #1e40af; }
+        .theme-1 .color-primary { background: #1e40af; }
+        .theme-1 .color-secondary { background: #3b82f6; }
+        .theme-1 .color-success { background: #059669; }
+        .theme-1 .color-warning { background: #d97706; }
+        .theme-1 .color-error { background: #dc2626; }
+        .theme-1 .color-neutral { background: #6b7280; }
+
+        .theme-1 .btn-primary {
+            background: #1e40af;
+            color: white;
+        }
+        .theme-1 .btn-primary:hover {
+            background: #1e3a8a;
+        }
+
+        .theme-1 .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .theme-1 .input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .theme-1 .status-success {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .theme-1 .status-occupied {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* Theme 2: Modern Tech */
+        .theme-2 .theme-title { color: #7c3aed; }
+        .theme-2 .color-primary { background: #7c3aed; }
+        .theme-2 .color-secondary { background: #a78bfa; }
+        .theme-2 .color-success { background: #10b981; }
+        .theme-2 .color-warning { background: #f59e0b; }
+        .theme-2 .color-error { background: #ef4444; }
+        .theme-2 .color-neutral { background: #64748b; }
+
+        .theme-2 .btn-primary {
+            background: #7c3aed;
+            color: white;
+        }
+        .theme-2 .btn-primary:hover {
+            background: #6d28d9;
+        }
+
+        .theme-2 .btn-secondary {
+            background: #faf5ff;
+            color: #7c3aed;
+            border: 1px solid #e9d5ff;
+        }
+
+        .theme-2 .input:focus {
+            border-color: #a78bfa;
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+        }
+
+        .theme-2 .status-success {
+            background: #d1fae5;
+            color: #10b981;
+        }
+
+        .theme-2 .status-occupied {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        /* Theme 3: Clean Minimal */
+        .theme-3 .theme-title { color: #059669; }
+        .theme-3 .color-primary { background: #059669; }
+        .theme-3 .color-secondary { background: #10b981; }
+        .theme-3 .color-success { background: #064e3b; }
+        .theme-3 .color-warning { background: #ea580c; }
+        .theme-3 .color-error { background: #b91c1c; }
+        .theme-3 .color-neutral { background: #6b7280; }
+
+        .theme-3 .btn-primary {
+            background: #059669;
+            color: white;
+        }
+        .theme-3 .btn-primary:hover {
+            background: #047857;
+        }
+
+        .theme-3 .btn-secondary {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #d1fae5;
+        }
+
+        .theme-3 .input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .theme-3 .status-success {
+            background: #ecfdf5;
+            color: #059669;
+        }
+
+        .theme-3 .status-occupied {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        /* Theme 4: Enterprise Gray */
+        .theme-4 .theme-title { color: #111827; }
+        .theme-4 .color-primary { background: #111827; }
+        .theme-4 .color-secondary { background: #374151; }
+        .theme-4 .color-success { background: #059669; }
+        .theme-4 .color-warning { background: #d97706; }
+        .theme-4 .color-error { background: #dc2626; }
+        .theme-4 .color-neutral { background: #9ca3af; }
+
+        .theme-4 .btn-primary {
+            background: #111827;
+            color: white;
+        }
+        .theme-4 .btn-primary:hover {
+            background: #000000;
+        }
+
+        .theme-4 .btn-secondary {
+            background: #f9fafb;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+        }
+
+        .theme-4 .input:focus {
+            border-color: #374151;
+            box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.1);
+        }
+
+        .theme-4 .status-success {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .theme-4 .status-occupied {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .room-status-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .room-card {
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>智能会议室管理系统 - 颜色主题选择</h1>
+
+        <div class="theme-grid">
+            <!-- Theme 1: Professional Blue -->
+            <div class="theme-section theme-1">
+                <div class="theme-title">1. 专业商务蓝</div>
+                <div class="theme-description">
+                    <strong>情感体验：</strong>可靠、专业、高效<br>
+                    <strong>适用场景：</strong>大型企业、政府机构、金融行业<br>
+                    <strong>视觉特点：</strong>传统企业级色彩，传递信任和稳定性
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch">
+                        <div class="color-circle color-primary"></div>
+                        <div class="color-label">主色调</div>
+                        <div class="color-hex">#1e40af</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-secondary"></div>
+                        <div class="color-label">辅助色</div>
+                        <div class="color-hex">#3b82f6</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-success"></div>
+                        <div class="color-label">成功色</div>
+                        <div class="color-hex">#059669</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-warning"></div>
+                        <div class="color-label">警告色</div>
+                        <div class="color-hex">#d97706</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-error"></div>
+                        <div class="color-label">错误色</div>
+                        <div class="color-hex">#dc2626</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-neutral"></div>
+                        <div class="color-label">中性色</div>
+                        <div class="color-hex">#6b7280</div>
+                    </div>
+                </div>
+
+                <div class="components-section">
+                    <div class="components-title">UI组件示例</div>
+                    <div class="component-row">
+                        <button class="btn btn-primary">预约会议室</button>
+                        <button class="btn btn-secondary">查看详情</button>
+                    </div>
+                    <div class="component-row">
+                        <input type="text" class="input" placeholder="搜索会议室...">
+                        <input type="text" class="input" placeholder="会议主题">
+                    </div>
+                    <div class="component-row">
+                        <span class="status-badge status-success">可预约</span>
+                        <span class="status-badge status-occupied">已占用</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 2: Modern Tech -->
+            <div class="theme-section theme-2">
+                <div class="theme-title">2. 科技紫</div>
+                <div class="theme-description">
+                    <strong>情感体验：</strong>创新、现代、智能化<br>
+                    <strong>适用场景：</strong>科技公司、创新企业、互联网公司<br>
+                    <strong>视觉特点：</strong>现代科技感，突出系统的智能特性
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch">
+                        <div class="color-circle color-primary"></div>
+                        <div class="color-label">主色调</div>
+                        <div class="color-hex">#7c3aed</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-secondary"></div>
+                        <div class="color-label">辅助色</div>
+                        <div class="color-hex">#a78bfa</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-success"></div>
+                        <div class="color-label">成功色</div>
+                        <div class="color-hex">#10b981</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-warning"></div>
+                        <div class="color-label">警告色</div>
+                        <div class="color-hex">#f59e0b</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-error"></div>
+                        <div class="color-label">错误色</div>
+                        <div class="color-hex">#ef4444</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-neutral"></div>
+                        <div class="color-label">中性色</div>
+                        <div class="color-hex">#64748b</div>
+                    </div>
+                </div>
+
+                <div class="components-section">
+                    <div class="components-title">UI组件示例</div>
+                    <div class="component-row">
+                        <button class="btn btn-primary">预约会议室</button>
+                        <button class="btn btn-secondary">查看详情</button>
+                    </div>
+                    <div class="component-row">
+                        <input type="text" class="input" placeholder="搜索会议室...">
+                        <input type="text" class="input" placeholder="会议主题">
+                    </div>
+                    <div class="component-row">
+                        <span class="status-badge status-success">可预约</span>
+                        <span class="status-badge status-occupied">已占用</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 3: Clean Minimal -->
+            <div class="theme-section theme-3">
+                <div class="theme-title">3. 清新绿</div>
+                <div class="theme-description">
+                    <strong>情感体验：</strong>清爽、高效、环保<br>
+                    <strong>适用场景：</strong>环保企业、创意公司、教育机构<br>
+                    <strong>视觉特点：</strong>清新简洁，强调"省心"的使用体验
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch">
+                        <div class="color-circle color-primary"></div>
+                        <div class="color-label">主色调</div>
+                        <div class="color-hex">#059669</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-secondary"></div>
+                        <div class="color-label">辅助色</div>
+                        <div class="color-hex">#10b981</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-success"></div>
+                        <div class="color-label">成功色</div>
+                        <div class="color-hex">#064e3b</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-warning"></div>
+                        <div class="color-label">警告色</div>
+                        <div class="color-hex">#ea580c</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-error"></div>
+                        <div class="color-label">错误色</div>
+                        <div class="color-hex">#b91c1c</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-neutral"></div>
+                        <div class="color-label">中性色</div>
+                        <div class="color-hex">#6b7280</div>
+                    </div>
+                </div>
+
+                <div class="components-section">
+                    <div class="components-title">UI组件示例</div>
+                    <div class="component-row">
+                        <button class="btn btn-primary">预约会议室</button>
+                        <button class="btn btn-secondary">查看详情</button>
+                    </div>
+                    <div class="component-row">
+                        <input type="text" class="input" placeholder="搜索会议室...">
+                        <input type="text" class="input" placeholder="会议主题">
+                    </div>
+                    <div class="component-row">
+                        <span class="status-badge status-success">可预约</span>
+                        <span class="status-badge status-occupied">已占用</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 4: Enterprise Gray -->
+            <div class="theme-section theme-4">
+                <div class="theme-title">4. 企业灰</div>
+                <div class="theme-description">
+                    <strong>情感体验：</strong>严谨、稳重、权威<br>
+                    <strong>适用场景：</strong>传统企业、制造业、咨询公司<br>
+                    <strong>视觉特点：</strong>极简主义，强调功能和专业性
+                </div>
+
+                <div class="color-palette">
+                    <div class="color-swatch">
+                        <div class="color-circle color-primary"></div>
+                        <div class="color-label">主色调</div>
+                        <div class="color-hex">#111827</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-secondary"></div>
+                        <div class="color-label">辅助色</div>
+                        <div class="color-hex">#374151</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-success"></div>
+                        <div class="color-label">成功色</div>
+                        <div class="color-hex">#059669</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-warning"></div>
+                        <div class="color-label">警告色</div>
+                        <div class="color-hex">#d97706</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-error"></div>
+                        <div class="color-label">错误色</div>
+                        <div class="color-hex">#dc2626</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-circle color-neutral"></div>
+                        <div class="color-label">中性色</div>
+                        <div class="color-hex">#9ca3af</div>
+                    </div>
+                </div>
+
+                <div class="components-section">
+                    <div class="components-title">UI组件示例</div>
+                    <div class="component-row">
+                        <button class="btn btn-primary">预约会议室</button>
+                        <button class="btn btn-secondary">查看详情</button>
+                    </div>
+                    <div class="component-row">
+                        <input type="text" class="input" placeholder="搜索会议室...">
+                        <input type="text" class="input" placeholder="会议主题">
+                    </div>
+                    <div class="component-row">
+                        <span class="status-badge status-success">可预约</span>
+                        <span class="status-badge status-occupied">已占用</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实际应用场景展示 -->
+        <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <h2 style="margin-bottom: 20px; color: #333;">会议室状态展示对比</h2>
+            <div class="theme-grid">
+                <!-- Theme 1 Room Cards -->
+                <div>
+                    <h3 style="color: #1e40af; margin-bottom: 15px;">专业商务蓝</h3>
+                    <div class="room-status-demo">
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 A</div>
+                            <div style="margin-bottom: 8px;">容纳: 8人</div>
+                            <span class="status-badge status-success">可预约</span>
+                        </div>
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 B</div>
+                            <div style="margin-bottom: 8px;">容纳: 12人</div>
+                            <span class="status-badge status-occupied">已占用</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme 2 Room Cards -->
+                <div>
+                    <h3 style="color: #7c3aed; margin-bottom: 15px;">科技紫</h3>
+                    <div class="room-status-demo">
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 A</div>
+                            <div style="margin-bottom: 8px;">容纳: 8人</div>
+                            <span class="status-badge status-success">可预约</span>
+                        </div>
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 B</div>
+                            <div style="margin-bottom: 8px;">容纳: 12人</div>
+                            <span class="status-badge status-occupied">已占用</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme 3 Room Cards -->
+                <div>
+                    <h3 style="color: #059669; margin-bottom: 15px;">清新绿</h3>
+                    <div class="room-status-demo">
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 A</div>
+                            <div style="margin-bottom: 8px;">容纳: 8人</div>
+                            <span class="status-badge status-success">可预约</span>
+                        </div>
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 B</div>
+                            <div style="margin-bottom: 8px;">容纳: 12人</div>
+                            <span class="status-badge status-occupied">已占用</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme 4 Room Cards -->
+                <div>
+                    <h3 style="color: #111827; margin-bottom: 15px;">企业灰</h3>
+                    <div class="room-status-demo">
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 A</div>
+                            <div style="margin-bottom: 8px;">容纳: 8人</div>
+                            <span class="status-badge status-success">可预约</span>
+                        </div>
+                        <div class="room-card">
+                            <div style="font-weight: 600; margin-bottom: 8px;">会议室 B</div>
+                            <div style="margin-bottom: 8px;">容纳: 12人</div>
+                            <span class="status-badge status-occupied">已占用</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 为颜色添加复制功能
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', function() {
+                const hex = this.querySelector('.color-hex').textContent;
+                navigator.clipboard.writeText(hex).then(() => {
+                    const label = this.querySelector('.color-label');
+                    const originalText = label.textContent;
+                    label.textContent = '已复制!';
+                    setTimeout(() => {
+                        label.textContent = originalText;
+                    }, 1000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
