@@ -230,6 +230,48 @@ As a 系统管理员,
 I want 记录和审计所有用户操作日志,
 So that 确保系统安全合规，提供操作追溯能力.
 
+### Story 1.5: Docker基础设施重组
+
+As a 开发团队,
+I want 将所有Docker相关文件重组到专门的/docker目录中,
+so that 简化项目根目录结构，提高Docker配置的组织性和可维护性.
+
+**Acceptance Criteria:**
+
+**Given** 项目根目录中散布着多个Docker相关文件
+**When** 执行Docker基础设施重组
+**Then** 所有Docker文件都被整理到专门的/docker目录中
+
+**And** Dockerfile.dev和Dockerfile.prod移动到/docker目录
+**And** docker-compose.yml和docker-compose.prod.yml移动到/docker目录
+**And** 所有docker配置文件相对路径引用正确更新
+**And** 添加生产环境监控配置(Prometheus和Grafana)
+**And** 创建详细的Docker使用文档和说明
+**And** Docker配置通过语法验证，确保可用性
+
+**Prerequisites:** Story 1.1 (项目基础设施初始化)
+
+**Technical Implementation:**
+- **文件重组**: 移动所有Docker相关文件到/docker目录，保持逻辑组织
+- **路径更新**: 更新docker-compose文件中的相对路径引用
+- **生产配置**: 添加MySQL/Redis生产环境优化配置和监控支持
+- **文档完善**: 创建详细的使用文档和部署指南
+- **验证测试**: 确保重组后Docker配置正确可用
+
+**Notes:** 基础设施维护任务，优化项目结构和Docker配置组织性
+
+---
+
+## Epic 2: 会议室核心管理 (Room Management Core)
+
+提供完整的会议室信息管理、搜索和展示功能，建立会议室资源的基础数据体系。
+
+### Story 2.1: 会议室基础数据管理
+
+As a 系统管理员,
+I want 添加、编辑和删除会议室基础信息,
+So that 建立完整的会议室资源数据库.
+
 **Acceptance Criteria:**
 
 **Given** 用户在系统中执行任何操作
@@ -1089,6 +1131,7 @@ So that 使系统符合企业的品牌形象和视觉规范.
 | FR3 | 用户可以管理个人资料信息和偏好设置 | Epic 1 | Story 1.2 |
 | FR4 | 系统记录和审计所有用户操作日志 | Epic 1 | Story 1.4 |
 | FR5 | 支持企业组织架构的层级管理和数据隔离 | Epic 1 | Story 1.3 |
+| INFRA1 | Docker基础设施重组和配置优化 | Epic 1 | Story 1.5 |
 | FR6 | 管理员可以添加、编辑和删除会议室基础信息 | Epic 2 | Story 2.1 |
 | FR7 | 系统支持会议室状态的实时管理和显示 | Epic 2 | Story 2.1 |
 | FR8 | 会议室支持图片和360度全景图展示 | Epic 2 | Story 2.3 |
@@ -1117,7 +1160,7 @@ So that 使系统符合企业的品牌形象和视觉规范.
 | FR31 | 支持邮件通知和系统消息的配置 | Epic 7 | Story 7.3 |
 | FR32 | 系统支持企业品牌主题的定制 | Epic 7 | Story 7.4 |
 
-**Total Coverage: 32 FRs → 28 Stories (100% coverage)**
+**Total Coverage: 32 FRs + 1 INFRA → 29 Stories (100% coverage)**
 
 ---
 
@@ -1128,7 +1171,7 @@ So that 使系统符合企业的品牌形象和视觉规范.
 **Created:** epics.md with 7 epics and 28 implementable stories
 
 **Epic Structure:**
-- Epic 1: 基础设施与用户认证 (4 stories)
+- Epic 1: 基础设施与用户认证 (5 stories)
 - Epic 2: 会议室核心管理 (4 stories)
 - Epic 3: 预约系统核心 (6 stories)
 - Epic 4: 签到与验证系统 (4 stories)
@@ -1137,6 +1180,7 @@ So that 使系统符合企业的品牌形象和视觉规范.
 - Epic 7: 系统配置与管理 (4 stories)
 
 **FR Coverage:** All 32 functional requirements from PRD mapped to stories with complete traceability
+**Infrastructure Coverage:** 1 infrastructure optimization story for Docker configuration reorganization
 
 **Story Quality:**
 - All stories follow proper BDD format with detailed acceptance criteria

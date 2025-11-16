@@ -42,6 +42,7 @@ development_status:
   1-2-enterprise-sso-integration: backlog
   1-3-role-permission-management: done
   1-4-operation-audit-log-system: backlog
+  1-5-docker-infrastructure-reorganization: done
   epic-1-retrospective: optional
 
   # Epic 2: 会议室核心管理
