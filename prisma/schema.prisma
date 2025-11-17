@@ -21,6 +21,18 @@ model User {
   avatar        String?
   phone         String?
   isActive      Boolean     @default(true)
+
+  // 安全字段
+  loginAttempts Int         @default(0)      // 登录尝试次数
+  lockedUntil  DateTime?   // 账户锁定时间
+  lastLoginAt  DateTime?   // 最后登录时间
+  lastLoginIP  String?     // 最后登录IP
+  passwordResetToken String? @unique        // 密码重置令牌
+  passwordResetExpires DateTime?           // 密码重置过期时间
+
+  // 认证方式：LOCAL, SSO
+  authMethod    String      @default("LOCAL")
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -36,6 +48,7 @@ model User {
   auditLogs      AuditLog[]
   permissionRequests PermissionRequest[]
   reviewedRequests PermissionRequest[] @relation("RequestReviewer")
+  roomHistory    RoomHistory[]   // 会议室操作历史
 
   @@map("users")
 }
@@ -144,20 +157,27 @@ model MeetingRoom {
   capacity        Int             // 最大容纳人数
   location        String?         // 位置
 
-  // 设施配置
-  hasProjector    Boolean         @default(false)
-  hasWhiteboard   Boolean         @default(false)
-  hasVideoConf    Boolean         @default(false)
-  hasAirCondition Boolean         @default(true)
-  hasWifi         Boolean         @default(true)
+  // 设施配置 (JSON类型，支持灵活配置)
+  equipment       Json?           // 设备配置详情：{projector: true, whiteboard: true, videoConf: true, airCondition: true, wifi: true, customEquipment: [...]}
+
+  // 图片管理 (JSON类型，支持多张图片和不同类型)
+  images          Json?           // 图片列表：[{url: "...", type: "main", caption: "..."}, {url: "...", type: "360", caption: "..."}]
 
   // 状态管理
   status          RoomStatus      @default(AVAILABLE)
 
-  // 预约规则
+  // 规则配置 (JSON类型，支持灵活的预约规则)
+  rules           Json?           // 预约规则：{requiresApproval: false, minBookingDuration: 30, maxBookingDuration: 240, allowedTimeRange: {start: "08:00", end: "18:00"}}
+
+  // 预约规则 (向后兼容字段)
   requiresApproval Boolean        @default(false)
 
+  // 软删除支持
+  deletedAt       DateTime?       // 软删除时间戳
+
+  // 关联关系
   reservations    Reservation[]
+  roomHistory     RoomHistory[]   // 会议室操作历史
 
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -171,6 +191,31 @@ enum RoomStatus {
   OCCUPIED       // 使用中
   MAINTENANCE    // 维护中
   RESERVED       // 已预约
+  DISABLED       // 禁用
+}
+
+// 会议室操作历史记录
+model RoomHistory {
+  id            String      @id @default(cuid())
+  roomId        String
+  room          MeetingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  // 操作信息
+  action        String      // 操作类型：CREATE, UPDATE, DELETE, STATUS_CHANGE
+  field         String?     // 变更字段（如果是单字段变更）
+  oldValue      Json?       // 变更前的值
+  newValue      Json?       // 变更后的值
+
+  // 操作人信息
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // 系统信息
+  ipAddress     String?
+  userAgent     String?
+  timestamp     DateTime    @default(now())
+
+  @@map("room_history")
 }
 
 // 预约记录
@@ -230,8 +275,8 @@ model PermissionRequest {
   id            String      @id @default(cuid())
   requestedBy   String
   requester     User        @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
-  permissions   String[]    // 申请的权限代码列表
-  roles         String[]    // 申请的角色代码列表
+  permissions   Json        // 申请的权限代码列表 (JSON数组)
+  roles         Json        // 申请的角色代码列表 (JSON数组)
   reason        String
   duration      String?     // 使用期限
   urgency       String      @default("normal") // 紧急程度

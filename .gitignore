@@ -40,3 +40,8 @@ redis_data
 # Logs
 logs
 *.log
+
+# Debug files (keep structure, ignore content)
+docs/debug/*/
+!docs/debug/.gitkeep
+!docs/debug/README.md

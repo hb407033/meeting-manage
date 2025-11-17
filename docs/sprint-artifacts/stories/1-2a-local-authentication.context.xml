@@ -1,0 +1,115 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>2a</storyId>
+    <title>local-authentication</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-16</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/1-2a-local-authentication.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>企业用户</asA>
+    <iWant>使用用户名和密码在会议室管理系统进行本地登录</iWant>
+    <soThat>能够独立访问系统基础功能，不依赖外部企业认证系统</soThat>
+    <tasks>- [ ] Task 1.2a.1: 本地用户认证系统 (AC: 1, 2)
+  - [ ] 扩展 Prisma User 表支持本地认证字段
+  - [ ] 创建密码哈希工具函数 server/utils/password.ts
+  - [ ] 实现用户注册和密码设置API
+  - [ ] 创建本地登录验证逻辑 server/api/v1/auth/local-login.post.ts
+  - [ ] 配置安全的密码存储和验证机制
+
+- [ ] Task 1.2a.2: 会话管理和Token机制 (AC: 3)
+  - [ ] 实现 JWT 工具函数 server/utils/jwt.ts
+  - [ ] 配置访问令牌和刷新令牌机制
+  - [ ] 创建令牌刷新端点 server/api/v1/auth/refresh.post.ts
+  - [ ] 实现 middleware/auth.ts 认证中间件
+  - [ ] 配置 secure, httpOnly, sameSite cookies
+
+- [ ] Task 1.2a.3: 登录状态持久化 (AC: 4, 5)
+  - [ ] 升级 stores/auth.ts 支持本地认证会话
+  - [ ] 实现页面刷新后登录状态保持
+  - [ ] 创建认证状态本地存储机制
+  - [ ] 实现登录失败计数和账户锁定
+  - [ ] 配置会话超时和自动登出
+
+- [ ] Task 1.2a.4: 前端登录界面开发 (AC: 6, 7)
+  - [ ] 创建 auth.vue 认证页面布局
+  - [ ] 实现 pages/auth/login.vue 本地登录表单
+  - [ ] 设计表单验证和错误提示组件
+  - [ ] 创建加载状态和进度反馈
+  - [ ] 实现防暴力破解的登录限制
+
+- [ ] Task 1.2a.5: 基础权限和安全防护 (AC: 7, 8)
+  - [ ] 集成现有权限系统 composables/usePermissions.ts
+  - [ ] 实现基于角色的基础功能访问控制
+  - [ ] 配置 CSRF 防护机制
+  - [ ] 实现登录失败锁定和IP限制
+  - [ ] 创建安全登出功能</tasks>
+  </story>
+
+  <acceptanceCriteria>1. **Given** 用户已在系统中注册账户, **When** 用户输入正确的用户名和密码, **Then** 系统完成身份验证并建立用户会话
+2. 本地用户认证系统实现，包含安全的密码哈希和验证机制
+3. 会话管理完成，支持访问令牌和刷新令牌机制
+4. 用户登录状态持久化，支持页面刷新后保持登录状态
+5. 基础错误处理机制，包含用户名/密码错误、账户锁定等场景
+6. 登录界面开发，提供良好的用户体验和表单验证
+7. 安全措施实施，防止暴力破解和会话劫持
+8. 基础权限验证，支持不同角色的功能访问控制</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/prd.md" title="Product Requirements Document" section="用户认证与管理模块" snippet="FR1: 用户可以通过Hyd企业系统进行单点登录认证；FR2: 系统支持基于角色的用户权限管理（管理员、部门经理、普通用户）；FR3: 用户可以管理个人资料信息和偏好设置；FR4: 系统记录和审计所有用户操作日志"/>
+      <doc path="docs/architecture.md" title="Architecture Decision Document" section="Security Architecture" snippet="JWT Token 管理：interface JWTPayload { sub: string // 用户ID; email: string // 用户邮箱; role: UserRole // 用户角色; permissions: string[]; iat: number // 签发时间; exp: number // 过期时间 }"/>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Epic 1: 基础设施与用户认证" snippet="Epic 1: 基础设施与用户认证，包含5个故事：1-1项目基础设施初始化，1-2用户认证系统，1-3角色权限管理，1-4操作审计日志系统，1-5Docker基础设施重组"/>
+    </docs>
+    <code>
+      <code path="server/api/middleware/auth.ts" kind="middleware" symbol="authMiddleware" lines="1-50" reason="核心认证中间件，实现JWT令牌验证和用户状态检查"/>
+      <code path="server/utils/jwt.ts" kind="utility" symbol="generateAccessToken" lines="1-30" reason="JWT令牌生成工具，支持访问令牌和刷新令牌"/>
+      <code path="server/api/auth/login.post.ts" kind="endpoint" symbol="POST /api/auth/login" lines="1-40" reason="现有登录接口，实现邮箱密码认证"/>
+      <code path="server/api/auth/register.post.ts" kind="endpoint" symbol="POST /api/auth/register" lines="1-40" reason="现有注册接口，实现用户创建和密码哈希"/>
+      <code path="prisma/schema.prisma" kind="schema" symbol="User model" lines="50-80" reason="用户数据模型，支持认证相关字段"/>
+      <code path="server/utils/validation.ts" kind="utility" symbol="ValidationSchemas" lines="1-20" reason="数据验证规则，支持用户注册和登录验证"/>
+      <code path="server/utils/response.ts" kind="utility" symbol="successResponse" lines="1-15" reason="API响应格式化工具，统一响应格式"/>
+    </code>
+    <dependencies>
+      <dependency ecosystem="Node.js" package="jsonwebtoken" version="^9.0.2" purpose="JWT令牌生成和验证"/>
+      <dependency ecosystem="Node.js" package="bcryptjs" version="^3.0.3" purpose="密码哈希处理"/>
+      <dependency ecosystem="Node.js" package="@prisma/client" version="^6.19.0" purpose="数据库ORM"/>
+      <dependency ecosystem="Node.js" package="ioredis" version="^5.8.2" purpose="Redis缓存服务"/>
+      <dependency ecosystem="Node.js" package="zod" version="^4.1.12" purpose="数据验证"/>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint id="auth-pattern" type="development">必须使用现有的JWT认证模式和中间件，不能重复开发认证基础设施</constraint>
+    <constraint id="security-standards" type="development">密码必须使用bcryptjs哈希，默认12轮加密，支持密码强度验证</constraint>
+    <constraint id="api-response" type="development">所有API接口必须使用统一的响应格式（server/utils/response.ts）</constraint>
+    <constraint id="error-handling" type="development">必须使用现有的错误处理机制和错误代码体系</constraint>
+    <constraint id="rate-limit" type="development">登录和注册接口必须实施限流保护，防止暴力破解</constraint>
+    <constraint id="user-status" type="development">必须检查用户isActive状态，支持账户锁定和解锁机制</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="JWT认证" kind="REST API" signature="Authorization: Bearer &lt;token&gt;" path="server/api/middleware/auth.ts"/>
+    <interface name="用户登录" kind="REST endpoint" signature="POST /api/auth/login { email, password }" path="server/api/auth/login.post.ts"/>
+    <interface name="用户注册" kind="REST endpoint" signature="POST /api/auth/register { email, password, name }" path="server/api/auth/register.post.ts"/>
+    <interface name="令牌刷新" kind="REST endpoint" signature="POST /api/auth/refresh { refreshToken }" path="需要实现"/>
+    <interface name="用户登出" kind="REST endpoint" signature="POST /api/auth/logout" path="需要实现"/>
+    <interface name="权限检查" kind="function" signature="hasPermission(user: JWTPayload, permission: string): boolean" path="server/api/middleware/auth.ts"/>
+  </interfaces>
+  <tests>
+    <standards>使用 Vitest 测试框架，测试文件放在 tests/ 目录下，API测试使用 supertest，数据库测试使用内存数据库，认证测试需要模拟JWT令牌</standards>
+    <locations>tests/integration/api/auth/ - 认证API集成测试；tests/unit/utils/jwt.test.ts - JWT工具函数单元测试；tests/unit/middleware/auth.test.ts - 认证中间件测试</locations>
+    <ideas>
+      <test idea="AC1" description="测试用户使用正确用户名密码登录成功，返回有效JWT令牌"/>
+      <test idea="AC2" description="测试密码哈希和验证机制，确保密码安全性"/>
+      <test idea="AC3" description="测试JWT令牌的生成、验证和刷新机制"/>
+      <test idea="AC4" description="测试页面刷新后登录状态持久化"/>
+      <test idea="AC5" description="测试各种错误场景：用户名错误、密码错误、账户锁定等"/>
+      <test idea="AC6" description="测试登录界面UI交互和表单验证"/>
+      <test idea="AC7" description="测试安全措施：防暴力破解、CSRF防护等"/>
+      <test idea="AC8" description="测试基于角色的权限控制"/>
+    </ideas>
+  </tests>
+</story-context>

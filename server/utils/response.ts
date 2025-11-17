@@ -292,7 +292,7 @@ function generateRequestId(): string {
 /**
  * 创建标准化的错误对象
  */
-export function createError(
+export function createApiError(
   code: string,
   message: string,
   details?: any

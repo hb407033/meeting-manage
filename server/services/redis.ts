@@ -3,8 +3,8 @@ import Redis from 'ioredis'
 // Redis连接配置
 const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || undefined,
+  port: parseInt(process.env.REDIS_PORT || '6380'),
+  password: process.env.REDIS_PASSWORD || '407033',
   db: parseInt(process.env.REDIS_DB || '0'),
   retryDelayOnFailover: 100,
   enableReadyCheck: false,
@@ -70,6 +70,23 @@ export class CacheService {
   }
 
   /**
+   * 连接到Redis
+   */
+  async connect(): Promise<void> {
+    try {
+      if (this.client.status === 'ready') {
+        return // 已经连接
+      }
+
+      if (this.client.status === 'end' || this.client.status === 'close') {
+        await this.client.connect()
+      }
+    } catch (error) {
+      throw new Error(`Redis connection failed: ${error}`)
+    }
+  }
+
+  /**
    * 设置缓存
    */
   async set(key: string, value: any, options?: { ttl?: number }): Promise<void> {
@@ -80,6 +97,13 @@ export class CacheService {
     } else {
       await this.client.set(key, serializedValue)
     }
+  }
+
+  /**
+   * 设置JSON缓存（别名方法）
+   */
+  async setJSON(key: string, value: any, ttl: number): Promise<void> {
+    await this.set(key, value, { ttl })
   }
 
   /**
@@ -156,6 +180,35 @@ export class CacheService {
     const value = await this.client.incr(key)
     await this.client.expire(key, ttl)
     return value
+  }
+
+  /**
+   * 递增并设置过期时间
+   */
+  async increment(key: string, value: number = 1, ttl?: number): Promise<number> {
+    const result = await this.client.incrby(key, value)
+    if (ttl && result === value) { // 第一次设置时添加过期时间
+      await this.client.expire(key, ttl)
+    }
+    return result
+  }
+
+  /**
+   * 检查是否被限流
+   */
+  async isRateLimited(key: string, limit: number, windowSeconds: number): Promise<boolean> {
+    const current = await this.client.incr(key)
+    if (current === 1) {
+      await this.client.expire(key, windowSeconds)
+    }
+    return current > limit
+  }
+
+  /**
+   * 获取键的TTL
+   */
+  async getTTL(key: string): Promise<number> {
+    return await this.client.ttl(key)
   }
 
   /**

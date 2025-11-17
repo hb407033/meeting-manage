@@ -49,8 +49,15 @@ export async function rateLimitMiddleware(
       await cache.increment(`counter:${key}`, 1, opts.windowMs / 1000)
     }
 
+  } catch (cacheError) {
+    // 如果Redis不可用，记录警告但不阻止请求
+    console.warn('Rate limiting cache operation failed, allowing request:', cacheError)
   } finally {
-    await cache.disconnect()
+    try {
+      await cache.disconnect()
+    } catch (disconnectError) {
+      console.warn('Redis disconnect failed in rate limit:', disconnectError)
+    }
   }
 }
 

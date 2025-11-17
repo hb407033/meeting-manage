@@ -40,6 +40,22 @@
       <aside class="admin-sidebar">
         <nav class="admin-nav">
           <div class="admin-nav-section">
+            <h3 class="admin-nav-title">会议室管理</h3>
+            <ul class="admin-nav-list">
+              <li>
+                <NuxtLink
+                  to="/admin/rooms"
+                  class="admin-nav-link"
+                  :class="{ 'active': $route.path === '/admin/rooms' }"
+                >
+                  <i class="pi pi-home admin-nav-icon"></i>
+                  <span>会议室管理</span>
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+
+          <div class="admin-nav-section">
             <h3 class="admin-nav-title">权限管理</h3>
             <ul class="admin-nav-list">
               <li>
@@ -136,12 +152,14 @@
 
 <script setup lang="ts">
 // 获取用户信息和权限
-const userInfo = await getCurrentUser()
+const { user } = useAuth()
+const userInfo = computed(() => user.value)
 
 // 页面标题和面包屑
 const pageTitle = computed(() => {
   const route = useRoute()
   const titleMap: Record<string, string> = {
+    '/admin/rooms': '会议室管理',
     '/admin/permissions': '权限管理',
     '/admin/roles': '角色管理',
     '/admin/users': '用户管理',
@@ -154,6 +172,10 @@ const pageTitle = computed(() => {
 const breadcrumbs = computed(() => {
   const route = useRoute()
   const breadcrumbMap: Record<string, Array<{ label: string; to?: string }>> = {
+    '/admin/rooms': [
+      { label: '管理后台', to: '/admin' },
+      { label: '会议室管理' }
+    ],
     '/admin/permissions': [
       { label: '管理后台', to: '/admin' },
       { label: '权限管理' }

@@ -1,4 +1,4 @@
-import { errorResponse, serverErrorResponse, createError, ErrorCodes } from '../../utils/response'
+import { errorResponse, serverErrorResponse, ErrorCodes } from '~~/server/utils/response'
 
 export interface ErrorContext {
   userId?: number
@@ -76,14 +76,10 @@ function handleUnknownError(error: ExtendedError, context: ErrorContext): any {
     ? 'Internal server error'
     : error.message
 
-  return serverErrorResponse(
-    message,
-    createError(
-      ErrorCodes.INTERNAL_ERROR,
-      'An unexpected error occurred',
-      isProduction ? null : error.stack
-    )
-  )
+  return serverErrorResponse(message, {
+    code: ErrorCodes.INTERNAL_ERROR,
+    details: isProduction ? null : error.stack
+  })
 }
 
 /**

@@ -1,14 +1,19 @@
-import { successResponse } from '~~/server/utils/response'
+import { successResponse, errorResponse } from '~~/server/utils/response'
 import { generateTokenPair } from '~~/server/utils/jwt'
-import bcrypt from 'bcryptjs'
-import { PrismaClient } from '@prisma/client'
+import { verifyPassword } from '~~/server/utils/password'
+import { getPrismaClient } from '~~/server/services/database'
+import { LoginAttemptTracker, IPRateLimiter, SecurityUtils } from '~~/server/utils/csrf'
+import { loginRateLimit } from '~~/server/api/middleware/rateLimit'
 
 export default defineEventHandler(async (event) => {
+  // 应用限流
+  await loginRateLimit(event)
+
   try {
-    // 暂时禁用限流和复杂验证，简化登录流程
     const body = await readBody(event)
     const { email, password } = body
 
+    // 输入验证
     if (!email || !password) {
       throw createError({
         statusCode: 400,
@@ -16,19 +21,81 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 直接使用Prisma进行数据库查询
-    const prisma = new PrismaClient()
+    // 邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: '邮箱格式不正确'
+      })
+    }
+
+    const normalizedEmail = email.toLowerCase().trim()
+
+    // 检查登录尝试次数
+    const attemptTracker = LoginAttemptTracker.getInstance()
+    const attemptResult = attemptTracker.recordAttempt(normalizedEmail)
+
+    if (!attemptResult.success) {
+      if (attemptResult.lockedUntil) {
+        const lockTimeRemaining = Math.ceil((attemptResult.lockedUntil - Date.now()) / 60000)
+        throw createError({
+          statusCode: 429,
+          statusMessage: `账户已被锁定，请 ${lockTimeRemaining} 分钟后再试`
+        })
+      } else {
+        throw createError({
+          statusCode: 429,
+          statusMessage: `登录尝试次数过多，还剩 ${attemptResult.attemptsLeft} 次机会`
+        })
+      }
+    }
+
+    // IP 限制检查
+    const ipLimiter = IPRateLimiter.getInstance(15 * 60 * 1000, 20) // 15分钟20次请求
+    const clientIP = getClientIP(event)
+    if (!ipLimiter.isAllowed(clientIP)) {
+      throw createError({
+        statusCode: 429,
+        statusMessage: 'IP请求频率过高，请稍后再试'
+      })
+    }
+
+    // 检测可疑活动
+    const userAgent = getHeader(event, 'user-agent') || ''
+    const suspiciousActivity = SecurityUtils.detectSuspiciousActivity(clientIP, userAgent, [])
+    if (suspiciousActivity.suspicious) {
+      console.warn('Suspicious activity detected:', {
+        ip: clientIP,
+        userAgent,
+        reasons: suspiciousActivity.reasons
+      })
+    }
+
+    // 使用Prisma客户端
+    const prisma = getPrismaClient()
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       select: {
         id: true,
         email: true,
         password: true,
         name: true,
-        role: true,
         isActive: true,
-        createdAt: true
+        createdAt: true,
+        // 获取用户角色信息
+        userRoles: {
+          include: {
+            role: {
+              select: {
+                name: true,
+                code: true,
+                level: true
+              }
+            }
+          }
+        }
       }
     })
 
@@ -43,12 +110,12 @@ export default defineEventHandler(async (event) => {
     if (!user.isActive) {
       throw createError({
         statusCode: 401,
-        statusMessage: '账户已被禁用'
+        statusMessage: '账户已被禁用，请联系管理员'
       })
     }
 
     // 验证密码
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+    const isPasswordValid = await verifyPassword(password, user.password)
     if (!isPasswordValid) {
       throw createError({
         statusCode: 401,
@@ -56,18 +123,54 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // 确定用户角色（取最高级别的角色）
+    let userRole = 'USER'
+    let permissions: string[] = []
+
+    if (user.userRoles && user.userRoles.length > 0) {
+      // 按角色级别排序，取最高级别
+      const sortedRoles = user.userRoles
+        .filter(ur => ur.role.isActive)
+        .sort((a, b) => (b.role?.level || 0) - (a.role?.level || 0))
+
+      if (sortedRoles.length > 0) {
+        userRole = sortedRoles[0].role?.code || 'USER'
+
+        // TODO: 获取角色权限（需要实现权限查询）
+        permissions = [`${userRole.toLowerCase()}:read`]
+      }
+    }
+
     // 生成JWT令牌
     const tokenPair = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role
+      role: userRole
     })
 
-    // 移除密码字段后返回用户信息
-    const { password: _, ...userWithoutPassword } = user
+    // 清除登录尝试记录
+    attemptTracker.clearAttempts(normalizedEmail)
+
+    // 更新最后登录信息
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIP: clientIP,
+        loginAttempts: 0,
+        lockedUntil: null
+      }
+    })
+
+    // 移除敏感字段后返回用户信息
+    const { password: _, userRoles, ...userWithoutSensitive } = user
 
     return successResponse({
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutSensitive,
+        role: userRole,
+        permissions
+      },
       tokens: {
         accessToken: tokenPair.accessToken,
         refreshToken: tokenPair.refreshToken,
@@ -89,10 +192,38 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // 记录登录错误日志（如果需要）
+    console.error('Login error:', error)
+
     // 处理其他错误
     throw createError({
       statusCode: 500,
-      statusMessage: '登录失败'
+      statusMessage: '登录失败，请稍后重试'
     })
   }
 })
+
+/**
+ * 获取客户端IP地址
+ */
+function getClientIP(event: any): string {
+  const headers = event.node.req.headers
+
+  // 检查代理头
+  const forwardedFor = headers['x-forwarded-for']
+  if (forwardedFor) {
+    return (forwardedFor as string).split(',')[0].trim()
+  }
+
+  const realIP = headers['x-real-ip']
+  if (realIP) {
+    return realIP as string
+  }
+
+  const clientIP = headers['cf-connecting-ip'] // Cloudflare
+  if (clientIP) {
+    return clientIP as string
+  }
+
+  return event.node.req.socket?.remoteAddress || 'unknown'
+}

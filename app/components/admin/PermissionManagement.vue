@@ -505,16 +505,18 @@ const actionOptions = ref([
 const availablePermissions = ref([])
 
 // 权限检查
-const userInfo = await getCurrentUser()
+const { user, isAuthenticated } = useAuth()
 const { hasPermission } = usePermissions()
 
-const canManagePermissions = computed(() =>
-  hasPermission(userInfo.value?.id || '', 'permission:manage')
-)
+const canManagePermissions = computed(() => {
+  if (!isAuthenticated.value || !user.value) return false
+  return hasPermission(user.value.id, 'permission:manage')
+})
 
-const canManageRoles = computed(() =>
-  hasPermission(userInfo.value?.id || '', 'role:manage')
-)
+const canManageRoles = computed(() => {
+  if (!isAuthenticated.value || !user.value) return false
+  return hasPermission(user.value.id, 'role:manage')
+})
 
 // 加载数据
 const loadData = async () => {

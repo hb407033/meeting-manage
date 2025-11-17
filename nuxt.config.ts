@@ -1,9 +1,14 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { fileURLToPath } from 'url'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+
+  // Nuxt 4 目录配置
+  dir: {
+    pages: 'app/pages',      // Nuxt 4 推荐使用 app/ 目录
+    layouts: 'app/layouts',  // 布局文件位于 app/layouts/
+  },
 
   // CSS配置
   css: ['~/assets/css/main.css'],
@@ -16,6 +21,7 @@ export default defineNuxtConfig({
   // 模块配置
   modules: [
     '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
   ],
 
   // TypeScript配置

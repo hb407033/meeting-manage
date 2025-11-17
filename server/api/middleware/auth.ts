@@ -4,9 +4,10 @@ import { DatabaseService } from '~~/server/services/database'
 
 export interface AuthenticatedRequest {
   user?: {
-    id: number
+    id: string
     email: string
     role: string
+    permissions?: string[]
   }
   headers: {
     authorization?: string
@@ -17,6 +18,7 @@ export interface AuthOptions {
   required?: boolean
   roles?: string[]
   permissions?: string[]
+  checkLockStatus?: boolean
 }
 
 /**
@@ -24,9 +26,9 @@ export interface AuthOptions {
  */
 export async function authMiddleware(
   event: any,
-  options: AuthOptions = { required: true }
+  options: AuthOptions = { required: true, checkLockStatus: true }
 ): Promise<AuthenticatedRequest> {
-  const { required = true, roles = [], permissions = [] } = options
+  const { required = true, roles = [], permissions = [], checkLockStatus = true } = options
 
   // 获取Authorization头
   const authHeader = event.node.req.headers.authorization
@@ -60,8 +62,21 @@ export async function authMiddleware(
       select: {
         id: true,
         email: true,
-        role: true,
-        isActive: true
+        isActive: true,
+        lockedUntil: true,
+        lastLoginAt: true,
+        // 获取用户角色信息
+        userRoles: {
+          include: {
+            role: {
+              select: {
+                name: true,
+                code: true,
+                level: true
+              }
+            }
+          }
+        }
       }
     })
 
@@ -69,15 +84,38 @@ export async function authMiddleware(
       throw unauthorizedResponse('User not found or inactive')
     }
 
+    // 检查账户锁定状态
+    if (checkLockStatus && user.lockedUntil && new Date() < user.lockedUntil) {
+      throw forbiddenResponse('Account has been locked due to multiple failed login attempts')
+    }
+
+    // 确定用户角色和权限
+    let userRole = 'USER'
+    let userPermissions: string[] = []
+
+    if (user.userRoles && user.userRoles.length > 0) {
+      // 按角色级别排序，取最高级别
+      const sortedRoles = user.userRoles
+        .filter(ur => ur.role.isActive)
+        .sort((a, b) => (b.role?.level || 0) - (a.role?.level || 0))
+
+      if (sortedRoles.length > 0) {
+        userRole = sortedRoles[0].role?.code || 'USER'
+        // TODO: 获取角色权限（需要实现权限查询）
+        userPermissions = [`${userRole.toLowerCase()}:read`]
+      }
+    }
+
     // 角色检查
-    if (roles.length > 0 && !roles.includes(user.role)) {
+    if (roles.length > 0 && !roles.includes(userRole)) {
       throw forbiddenResponse('Insufficient permissions')
     }
 
     result.user = {
       id: user.id,
       email: user.email,
-      role: user.role
+      role: userRole,
+      permissions: userPermissions
     }
 
     return result
@@ -118,7 +156,7 @@ export async function userAuthMiddleware(event: any): Promise<AuthenticatedReque
  */
 export async function resourceOwnerMiddleware(
   event: any,
-  resourceUserId: number
+  resourceUserId: string
 ): Promise<AuthenticatedRequest> {
   const auth = await userAuthMiddleware(event)
 
@@ -164,21 +202,42 @@ export function isUser(userRole: string): boolean {
  * 检查用户是否有权限访问特定资源
  */
 export async function canAccessResource(
-  userId: number,
+  userId: string,
   resourceType: string,
-  resourceId: number,
+  resourceId: string,
   action: string = 'read'
 ): Promise<boolean> {
   const db = new DatabaseService()
   const user = await db.getClient().user.findUnique({
     where: { id: userId },
-    select: { role: true }
+    select: {
+      role: true,
+      userRoles: {
+        include: {
+          role: {
+            select: { code: true, level: true }
+          }
+        }
+      }
+    }
   })
 
   if (!user) return false
 
+  // 确定用户角色
+  let userRole = 'USER'
+  if (user.userRoles && user.userRoles.length > 0) {
+    const sortedRoles = user.userRoles
+      .filter(ur => ur.role.isActive)
+      .sort((a, b) => (b.role?.level || 0) - (a.role?.level || 0))
+
+    if (sortedRoles.length > 0) {
+      userRole = sortedRoles[0].role?.code || 'USER'
+    }
+  }
+
   // 管理员有所有权限
-  if (user.role === 'ADMIN') return true
+  if (userRole === 'ADMIN') return true
 
   // 根据资源类型和操作检查权限
   switch (resourceType) {
@@ -197,41 +256,55 @@ export async function canAccessResource(
  * 检查预约访问权限
  */
 async function canAccessReservation(
-  userId: number,
-  reservationId: number,
+  userId: string,
+  reservationId: string,
   action: string
 ): Promise<boolean> {
   const db = new DatabaseService()
   const reservation = await db.getClient().reservation.findUnique({
     where: { id: reservationId },
-    select: { userId: true }
+    select: { organizerId: true }
   })
 
   if (!reservation) return false
 
   // 用户只能访问自己的预约
-  return reservation.userId === userId
+  return reservation.organizerId === userId
 }
 
 /**
  * 检查会议室访问权限
  */
 async function canAccessRoom(
-  userId: number,
-  roomId: number,
+  userId: string,
+  roomId: string,
   action: string
 ): Promise<boolean> {
   // 所有用户都可以查看和预约会议室
   if (['read', 'create'].includes(action)) return true
 
   // 只有管理员可以修改或删除会议室
-  const db = new DatabaseService()
   const user = await db.getClient().user.findUnique({
     where: { id: userId },
-    select: { role: true }
+    select: {
+      userRoles: {
+        include: {
+          role: {
+            select: { code: true, level: true }
+          }
+        }
+      }
+    }
   })
 
-  return user?.role === 'ADMIN' && ['update', 'delete'].includes(action)
+  if (!user || !user.userRoles || user.userRoles.length === 0) return false
+
+  // 检查是否有管理员角色
+  const adminRoles = user.userRoles.filter(
+    ur => ur.role.code === 'ADMIN' && ur.role.isActive
+  )
+
+  return adminRoles.length > 0 && ['update', 'delete'].includes(action)
 }
 
 /**

@@ -141,11 +141,51 @@ So that 为智能会议室管理系统奠定坚实的技术基础.
 - 配置 Toast 消息通知系统
 - 建立通用按钮、表单、模态框组件样式
 
-### Story 1.2: 企业单点登录集成
+### Story 1.2a: 本地用户名密码登录
+
+As a 企业用户,
+I want 使用用户名和密码在会议室管理系统进行本地登录,
+so that 能够独立访问系统基础功能，不依赖外部企业认证系统.
+
+**Acceptance Criteria:**
+
+**Given** 用户已在系统中注册账户
+**When** 用户输入正确的用户名和密码
+**Then** 系统完成身份验证并建立用户会话
+
+**And** 本地用户认证系统实现，包含安全的密码哈希和验证机制
+**And** 会话管理完成，支持访问令牌和刷新令牌机制
+**And** 用户登录状态持久化，支持页面刷新后保持登录状态
+**And** 基础错误处理机制，包含用户名/密码错误、账户锁定等场景
+**And** 登录界面开发，提供良好的用户体验和表单验证
+**And** 安全措施实施，防止暴力破解和会话劫持
+**And** 基础权限验证，支持不同角色的功能访问控制
+
+**Prerequisites:** Story 1.1 (项目基础设施初始化)
+
+**Technical Implementation:**
+- **认证模块**: 基于Nuxt 4 + Nitro的本地认证实现
+- **密码安全**: 使用 bcrypt 或 Argon2 安全哈希算法
+- **JWT管理**: 实现 JWT payload 包含用户信息和认证方式标识
+- **会话管理**: 配置 secure, httpOnly, sameSite cookies
+- **中间件**: 实现 middleware/auth.ts 认证中间件
+- **API设计**: 建立 server/api/v1/auth/ 本地认证端点
+- **状态管理**: 配置 stores/auth.ts 管理本地认证状态
+- **安全防护**: 实现防暴力破解、登录失败锁定、CSRF防护
+
+**UX Components:**
+- 创建 auth.vue 认证页面布局
+- 实现 pages/auth/login.vue 本地登录表单
+- 设计表单验证和错误提示组件
+- 建立 LoginForm.vue 本地登录表单组件
+- 实现 AuthStatus.vue 认证状态组件
+- 配置登录失败和账户锁定提示
+
+### Story 1.2b: 企业单点登录集成
 
 As a 企业用户,
 I want 通过Hyd企业系统进行单点登录认证,
-So that 无需记忆额外密码，安全便捷地访问会议室管理系统.
+so that 无需记忆额外密码，安全便捷地访问会议室管理系统，并与企业现有身份管理体系集成.
 
 **Acceptance Criteria:**
 
@@ -153,34 +193,33 @@ So that 无需记忆额外密码，安全便捷地访问会议室管理系统.
 **When** 用户访问智能会议室管理系统
 **Then** 系统自动通过Hyd SSO完成身份验证
 
-**And** 集成OAuth 2.0/OpenID Connect协议实现企业级单点登录
-**And** JWT Token管理完成，包含访问令牌和刷新令牌机制
-**And** 用户会话管理实现，支持自动续期和安全登出
+**And** OAuth 2.0/OpenID Connect协议集成，实现企业级单点登录
+**And** JWT Token管理完成，与本地认证系统兼容的访问令牌和刷新令牌机制
+**And** 用户信息同步，从Hyd企业系统获取用户基本信息和组织架构
+**And** 权限映射，将Hyd角色映射到系统内部权限体系
 **And** 跨域认证配置完成，支持前端和后端API的无缝认证
-**And** 错误处理机制完善，包含认证失败、网络异常等场景
-**And** 登录状态持久化，支持页面刷新后保持登录状态
-**And** 安全措施实施，防止CSRF攻击和会话劫持
+**And** 高级错误处理机制，包含认证失败、网络异常、企业系统不可用等场景
+**And** 双认证模式支持，用户可以选择本地登录或企业SSO登录
 
-**Prerequisites:** Story 1.1 (项目基础设施初始化)
+**Prerequisites:** Story 1.2a (本地用户名密码登录)
 
 **Technical Implementation:**
 - **认证模块**: 使用 @sidebase/nuxt-auth 实现 OAuth 2.0 集成
-- **JWT管理**: 实现 JWT payload 包含 sub, email, role, permissions, iat, exp
-- **会话管理**: 配置 secure, httpOnly, sameSite cookies，支持自动刷新
-- **中间件**: 实现 middleware/auth.ts 全局认证检查
-- **API安全**: 建立 server/api/v1/auth/ 认证端点，统一错误处理
-- **状态同步**: 配置 stores/auth.ts 管理认证状态和用户信息
-- **Hyd集成**: 配置企业 SSO 端点和用户信息同步
-- **安全防护**: 实现 CSRF 防护、会话超时、登录失败锁定
+- **兼容性**: 与现有本地认证系统完全兼容
+- **JWT管理**: 扩展现有JWT工具函数支持SSO认证
+- **用户同步**: 实现Hyd用户信息获取和本地存储机制
+- **权限映射**: 创建Hyd角色到系统权限的映射逻辑
+- **双模式**: 升级middleware/auth.ts支持双认证模式
+- **容错机制**: 实现Hyd系统不可用时的降级处理
 - **跨域支持**: 配置 CORS 支持 Hyd 域名的认证请求
 
 **UX Components:**
-- 创建 auth.vue 登录页面布局，企业品牌定制
-- 实现 login.vue 登录表单，支持企业 SSO 跳转
-- 配置 loading 状态显示，认证进度反馈
-- 建立 error handling 组件，处理认证失败场景
-- 设计 user-menu 用户信息展示组件
-- 实现 logout 功能和安全登出流程
+- 升级 auth.vue 页面支持双认证模式
+- 实现 AuthModeSelector.vue 认证方式选择器
+- 创建 SSOButton.vue SSO登录按钮
+- 设计 SSOLoading.vue SSO认证加载组件
+- 建立 SSO回调处理页面 pages/auth/sso-callback.vue
+- 实现认证方式切换和绑定界面
 
 ### Story 1.3: 角色权限管理系统
 

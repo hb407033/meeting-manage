@@ -96,63 +96,99 @@ meeting-manage/
 │   │       └── upload/         # 文件上传 API
 │   ├── middleware/              # 服务端中间件
 │   ├── utils/                   # 服务端工具函数
-│   └── types/                   # 服务端类型定义
-├── composables/                 # 组合式函数
-├── components/
-│   ├── common/                  # 通用组件
-│   ├── forms/                   # 表单组件
-│   ├── layout/                  # 布局组件
-│   └── features/                # 功能组件
-│       ├── rooms/               # 会议室相关组件
-│       ├── reservations/        # 预约相关组件
-│       ├── checkin/             # 签到相关组件
-│       └── admin/               # 管理后台组件
-├── pages/
-│   ├── index.vue                # 首页
-│   ├── rooms/                   # 会议室页面
-│   ├── reservations/            # 预约页面
-│   ├── profile/                 # 个人中心
-│   └── admin/                   # 管理后台
-├── layouts/
-│   ├── default.vue              # 默认布局
-│   ├── auth.vue                 # 认证页面布局
-│   └── admin.vue                # 管理后台布局
+│   │   ├── response.ts          # API 响应格式工具
+│   │   ├── validation.ts        # 数据验证工具
+│   │   ├── jwt.ts              # JWT 工具
+│   │   ├── audit.ts            # 审计日志工具
+│   │   ├── csrf.ts             # CSRF 防护工具
+│   │   └── password.ts         # 密码工具
+│   ├── services/                # 业务服务层
+│   │   ├── database.ts         # 数据库服务
+│   │   ├── redis.ts            # Redis 缓存服务
+│   │   └── organization-service.ts # 组织架构服务
+│   └── schemas/                 # 数据验证模式
+│       └── room.ts             # 会议室数据模式
+├── app/                         # 🎯 前端应用目录 (Nuxt 4 标准)
+│   ├── app.vue                  # 主应用入口
+│   ├── assets/                  # 静态资源
+│   │   └── css/
+│   │       └── main.css         # 主样式文件
+│   ├── components/              # Vue 组件
+│   │   ├── common/              # 通用组件
+│   │   └── features/            # 功能组件
+│   │       ├── rooms/           # 会议室相关组件
+│   │       ├── admin/           # 管理后台组件
+│   │       └── auth/            # 认证相关组件
+│   ├── composables/             # 组合式函数
+│   │   ├── usePermissionControl.ts
+│   │   └── usePermissions.ts
+│   ├── generated/               # 生成的文件
+│   │   └── prisma/             # Prisma 生成文件
+│   ├── layouts/                 # 布局组件
+│   │   ├── default.vue          # 默认布局
+│   │   ├── auth.vue             # 认证页面布局
+│   │   └── AdminLayout.vue      # 管理后台布局
+│   ├── pages/                   # 页面组件
+│   │   ├── index.vue            # 首页
+│   │   ├── dashboard.vue        # 仪表板
+│   │   └── auth/                # 认证页面
+│   └── middleware/              # 前端中间件 (按需创建)
+├── composables/                 # 全局组合式函数
+│   ├── useAuth.ts               # 认证组合式函数
+│   ├── usePasswordStrength.ts   # 密码强度验证
+│   └── usePermissions.ts        # 权限管理组合式函数
+├── plugins/                     # Nuxt 插件
+│   ├── auth.client.ts           # 客户端认证插件
+│   └── primevue.client.ts       # PrimeVue 插件
 ├── stores/                      # Pinia 状态管理
 │   ├── auth.ts                  # 认证状态
 │   ├── rooms.ts                 # 会议室状态
 │   ├── reservations.ts          # 预约状态
 │   └── system.ts                # 系统状态
-├── types/                       # 类型定义
+├── types/                       # 类型定义 (按需创建)
 │   ├── api.ts                   # API 类型
 │   ├── models.ts                # 数据模型类型
 │   └── components.ts            # 组件类型
-├── utils/                       # 工具函数
+├── utils/                       # 工具函数 (按需创建)
 │   ├── api.ts                   # API 工具
 │   ├── auth.ts                  # 认证工具
 │   ├── date.ts                  # 日期工具
 │   └── validation.ts            # 验证工具
-├── plugins/                     # Nuxt 插件
-│   ├── api.ts                   # API 插件
-│   ├── auth.ts                  # 认证插件
-│   └── primevue.ts              # PrimeVue 插件
-├── middleware/                  # 前端中间件
+├── middleware/                  # 前端中间件 (按需创建)
 │   ├── auth.ts                  # 认证中间件
 │   ├── admin.ts                 # 管理员中间件
 │   └── guest.ts                 # 访客中间件
-├── assets/                      # 静态资源
-│   ├── css/                     # 样式文件
-│   ├── images/                  # 图片资源
-│   └── icons/                   # 图标资源
 ├── public/                      # 公共文件
 │   ├── favicon.ico              # 网站图标
-│   └── uploads/                 # 上传文件存储
-│       ├── rooms/               # 会议室图片
-│       ├── users/               # 用户头像
-│       └── reservations/        # 预约附件
+│   └── robots.txt               # 搜索引擎配置
+├── docker/                      # Docker 配置
+│   ├── docker-compose.yml       # 开发环境配置
+│   ├── docker-compose.prod.yml  # 生产环境配置
+│   ├── Dockerfile.dev           # 开发环境镜像
+│   ├── Dockerfile.prod          # 生产环境镜像
+│   ├── mysql/                   # MySQL 配置
+│   ├── redis/                   # Redis 配置
+│   ├── nginx/                   # Nginx 配置
+│   ├── prometheus/              # 监控配置
+│   └── grafana/                 # 可视化配置
+├── scripts/                     # 项目脚本
+│   ├── backup.sh                # 备份脚本
+│   ├── deploy.sh                # 部署脚本
+│   └── setup-dev.sh             # 开发环境设置
+├── tests/                       # 测试文件
+│   ├── unit/                    # 单元测试
+│   ├── integration/             # 集成测试
+│   └── e2e/                     # 端到端测试
+├── test/                        # 测试配置
+│   ├── basic.test.ts            # 基础测试
+│   ├── components/              # 组件测试
+│   ├── integration/             # 集成测试
+│   ├── e2e/                     # 端到端测试
+│   └── unit/                    # 单元测试
 └── docs/                        # 项目文档
-    ├── architecture.md          # 架构文档
-    ├── api.md                   # API 文档
-    └── deployment.md            # 部署文档
+    ├── architecture.md          # 架构文档 (本文件)
+    ├── sprint-artifacts/         # 冲刺工件
+    └── *.md                     # 其他文档
 ```
 
 ---
@@ -161,12 +197,12 @@ meeting-manage/
 
 | Epic | Architecture Components | Implementation Location |
 | ---- | ----------------------- | --------------------- |
-| **Epic 1: 基础设施与用户认证** | JWT 认证、RBAC 权限、审计日志 | `stores/auth.ts`, `server/api/v1/auth/`, `server/middleware/` |
-| **Epic 2: 会议室核心管理** | 会议室数据模型、文件上传、搜索筛选 | `components/features/rooms/`, `server/api/v1/rooms/`, `utils/fileUpload.ts` |
-| **Epic 3: 预约系统核心** | 预约数据模型、冲突检测、状态管理 | `components/features/reservations/`, `stores/reservations.ts`, `server/api/v1/reservations/` |
-| **Epic 4: 签到与验证系统** | 签到数据模型、二维码生成、验证逻辑 | `components/features/checkin/`, `server/api/v1/checkin/` |
-| **Epic 5: 智能设备集成** | 设备抽象层、协议适配（后期扩展） | `server/services/iot/`, `components/features/devices/` |
-| **Epic 6: 数据分析洞察** | 统计查询、数据可视化、报表生成 | `components/analytics/`, `server/api/v1/analytics/` |
+| **Epic 1: 基础设施与用户认证** | JWT 认证、RBAC 权限、审计日志 | `stores/auth.ts`, `composables/useAuth.ts`, `server/api/v1/auth/`, `server/utils/jwt.ts`, `server/utils/audit.ts` |
+| **Epic 2: 会议室核心管理** | 会议室数据模型、文件上传、搜索筛选 | `app/components/features/rooms/`, `composables/usePermissions.ts`, `server/api/v1/rooms/`, `server/utils/response.ts` |
+| **Epic 3: 预约系统核心** | 预约数据模型、冲突检测、状态管理 | `app/components/features/reservations/`, `stores/reservations.ts`, `server/api/v1/reservations/` |
+| **Epic 4: 签到与验证系统** | 签到数据模型、二维码生成、验证逻辑 | `app/components/features/checkin/`, `server/api/v1/checkin/` |
+| **Epic 5: 智能设备集成** | 设备抽象层、协议适配（后期扩展） | `server/services/iot/`, `app/components/features/devices/` |
+| **Epic 6: 数据分析洞察** | 统计查询、数据可视化、报表生成 | `app/components/analytics/`, `server/api/v1/analytics/` |
 | **Epic 7: 系统配置与管理** | 配置管理、通知系统、品牌定制 | `stores/system.ts`, `server/api/v1/system/`, `plugins/` |
 
 ---
@@ -195,6 +231,44 @@ meeting-manage/
 - **ESLint** - JavaScript 代码检查工具
 - **Prettier** - 代码格式化工具
 - **pnpm** - 快速、节省磁盘空间的包管理器
+
+### Nuxt 4 配置说明
+
+**项目使用 Nuxt 4 标准 app/ 目录结构：**
+
+```typescript
+// nuxt.config.ts 关键配置
+export default defineNuxtConfig({
+  // 路由配置 - 指向app目录中的pages和layouts
+  dir: {
+    pages: 'app/pages',      // Nuxt 4 推荐使用 app/ 目录
+    layouts: 'app/layouts',  // 布局文件位于 app/layouts/
+  },
+
+  // CSS配置 - 指向app目录中的assets
+  css: ['~/assets/css/main.css'], // ~/ 自动解析到 app/assets/
+
+  // 运行时配置
+  runtimeConfig: {
+    // 私有配置 - 服务端可用
+    databaseUrl: process.env.DATABASE_URL,
+    redisUrl: process.env.REDIS_URL,
+    jwtSecret: process.env.JWT_SECRET,
+
+    // 公共配置 - 客户端和服务端都可用
+    public: {
+      apiBase: process.env.API_BASE_URL || '/api',
+      appName: '智能会议室管理系统',
+    },
+  },
+})
+```
+
+**架构优势：**
+1. **🎯 清晰的边界**：`app/` 目录包含所有前端应用代码
+2. **🔒 安全性**：服务端代码在 `server/` 目录，完全分离
+3. **📁 标准化**：符合 Nuxt 4 官方推荐的最佳实践
+4. **🚀 性能优化**：更好的代码分割和懒加载支持
 
 ### Integration Points
 
@@ -262,6 +336,8 @@ interface ApiResponse<T = any> {
 - 成功：20000-29999
 - 业务错误：40000-49999
 - 系统错误：50000-59999
+
+**实现位置：** `server/utils/response.ts` - 提供统一的API响应格式工具函数
 
 ### 2. 错误处理模式
 
@@ -380,6 +456,30 @@ const rooms = await prisma.meetingRoom.findMany({
 - 页面文件：`kebab-case.vue` (例：`room-detail.vue`)
 - 工具文件：`camelCase.ts` (例：`fileUpload.ts`)
 - API 文件：`kebab-case.post.ts` (例：`create-room.post.ts`)
+
+**Import 路径规范：**
+- **Server 文件 Import**: 对于 server 目录中的 TypeScript 文件，使用 `~~/server` 而不是 `~/server`
+  ```typescript
+  // 正确示例
+  import { responseUtil } from '~~/server/utils/response'
+  import { validateRoom } from '~~/server/schemas/room'
+
+  // 错误示例 - 不要使用
+  import { responseUtil } from '~/server/utils/response'
+  import { validateRoom } from '~/server/schemas/room'
+  ```
+- **App 目录文件**: 使用标准 Nuxt 路径别名 `~/` (自动解析到 app/ 目录)
+  ```typescript
+  // 正确示例
+  import { useAuth } from '~/composables/useAuth'
+  import MyComponent from '~/components/common/MyComponent.vue'
+  import { RoomType } from '~/types/models'
+  ```
+- **全局文件**: 使用 `~/` 前缀访问根目录下的文件
+  ```typescript
+  // 正确示例 - 访问根目录的 composables
+  import { usePasswordStrength } from '~/composables/usePasswordStrength'
+  ```
 
 **变量命名：**
 - 变量：`camelCase` (例：`roomList`)

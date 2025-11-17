@@ -1,4 +1,5 @@
 import type { NitroRouteConfig } from 'nitropack'
+import { getCurrentUser } from '~~/server/utils/auth'
 
 /**
  * 页面权限中间件
@@ -9,7 +10,8 @@ export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
   if (url.pathname.startsWith('/api/') ||
       url.pathname.startsWith('/_nuxt/') ||
-      url.pathname.includes('.')) {
+      url.pathname.includes('.') ||
+      url.pathname === '/') {
     return
   }
 
@@ -24,7 +26,7 @@ export default defineEventHandler(async (event) => {
     const user = await getCurrentUser(event)
     if (!user) {
       // 用户未登录，重定向到登录页
-      return sendRedirect(event, '/login?redirect=' + encodeURIComponent(url.pathname))
+      return sendRedirect(event, '/auth/login?redirect=' + encodeURIComponent(url.pathname))
     }
 
     // 管理员跳过权限检查

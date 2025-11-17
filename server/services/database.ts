@@ -186,6 +186,13 @@ export class DatabaseService {
   }
 
   /**
+   * 获取Prisma客户端实例
+   */
+  getClient(): PrismaClient {
+    return this.client
+  }
+
+  /**
    * 关闭连接
    */
   async disconnect(): Promise<void> {
@@ -199,6 +206,20 @@ export class DatabaseService {
   get prisma(): PrismaClient {
     return this.client
   }
+
+  // 暴露所有Prisma模型访问器
+  get user() { return this.client.user }
+  get meetingRoom() { return this.client.meetingRoom }
+  get reservation() { return this.client.reservation }
+  get organization() { return this.client.organization }
+  get role() { return this.client.role }
+  get permission() { return this.client.permission }
+  get userRole() { return this.client.userRole }
+  get rolePermission() { return this.client.rolePermission }
+  get systemConfig() { return this.client.systemConfig }
+  get permissionRequest() { return this.client.permissionRequest }
+  get auditLog() { return this.client.auditLog }
+  get roomHistory() { return this.client.roomHistory }
 }
 
 // 导出单例实例

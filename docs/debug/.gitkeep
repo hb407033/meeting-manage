@@ -1,0 +1,2 @@
+# This file ensures the debug directory structure is maintained in version control
+# while allowing the actual debug files to be ignored by git

@@ -220,20 +220,23 @@ export function createPermissionDirective(options: PermissionControlOptions = {}
 export function createRouteGuard(permissions: string[] = [], roles: string[] = []) {
   return async (to: any, from: any, next: any) => {
     const { hasPermission, hasRole, hasAnyPermission, hasAnyRole } = usePermissions()
-    const currentUser = await getCurrentUser()
+    const { user, isAuthenticated, hasRole: authHasRole } = useAuth()
 
-    if (!currentUser) {
-      return next('/login')
+    if (!isAuthenticated.value || !user.value) {
+      return next('/auth/login')
     }
 
-    const userId = currentUser.id
+    const userId = user.value.id
 
     try {
       let hasRequiredPermission = true
 
       // 检查角色
       if (roles.length > 0) {
-        hasRequiredPermission = await hasAnyRole(userId, roles)
+        // 使用 useAuth 中的角色检查
+        hasRequiredPermission = roles.some(role => authHasRole(role))
+        // 或者使用权限系统中的角色检查
+        // hasRequiredPermission = await hasAnyRole(userId, roles)
       }
 
       // 检查权限
@@ -269,11 +272,13 @@ export function RequirePermission(permission: string | string[]) {
 
     descriptor.value = async function (...args: any[]) {
       const { hasPermission, hasAnyPermission } = usePermissions()
-      const currentUser = await getCurrentUser()
+      const { user, isAuthenticated } = useAuth()
 
-      if (!currentUser) {
+      if (!isAuthenticated.value || !user.value) {
         throw new Error('用户未登录')
       }
+
+      const currentUser = user.value
 
       try {
         let hasRequiredPermission = true
