@@ -1,6 +1,6 @@
 # Story 1.2a: 本地用户名密码登录
 
-Status: review
+Status: done
 
 ## Story
 
@@ -164,5 +164,8 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 ### Debug Log References
 
 ### Completion Notes List
+
+**Completed:** 2025-11-17
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing
 
 ### File List

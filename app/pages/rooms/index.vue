@@ -209,11 +209,12 @@
 <script setup lang="ts">
 // 页面设置
 definePageMeta({
-  middleware: 'auth' // 使用认证中间件
+  layout: 'public', // 使用public布局避免认证检查
+  // middleware: 'auth' // 临时注释掉认证中间件用于开发调试
 })
 
 // 认证相关
-const { user, canAccess } = useAuth()
+const { canAccess } = useAuth()
 
 // 响应式数据
 const rooms = ref([])

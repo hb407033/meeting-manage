@@ -166,7 +166,7 @@
 import { onClickOutside } from '@vueuse/core'
 
 // 认证相关
-const { user, isAuthenticated, hasPermission, canAccess, logout } = useAuth()
+const { user, isAuthenticated, canAccess, logout } = useAuth()
 const route = useRoute()
 const router = useRouter()
 
