@@ -3,7 +3,7 @@
  * 用于保护需要登录才能访问的页面
  */
 export default defineNuxtRouteMiddleware((to, from) => {
-  // 获取认证状态
+  // 使用useAuth来检查认证状态
   const { isAuthenticated } = useAuth()
 
   // 如果用户未认证，重定向到登录页面

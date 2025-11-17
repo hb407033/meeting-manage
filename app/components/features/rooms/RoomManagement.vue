@@ -1,211 +1,226 @@
 <template>
   <div class="room-management">
-    <!-- 页面标题和操作栏 -->
     <div class="flex justify-between items-center mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">会议室管理</h1>
-        <p class="text-gray-600 mt-1">管理和配置会议室信息</p>
+      <h1 class="text-2xl font-bold text-gray-800">会议室管理</h1>
+      <div class="flex gap-2">
+          <Button
+          label="导出数据"
+          icon="pi pi-download"
+          @click="exportRooms"
+          class="p-button-outlined"
+          :loading="isExporting"
+        />
+        <!-- 新增会议室按钮 -->
+        <Button
+          label="新增会议室"
+          icon="pi pi-plus"
+          @click="showCreateDialog = true"
+        />
       </div>
-      <Button
-        label="添加会议室"
-        icon="pi pi-plus"
-        @click="showCreateDialog = true"
-      />
     </div>
 
-    <!-- 搜索和筛选栏 -->
+    <!-- 筛选和搜索 -->
     <Card class="mb-6">
       <template #content>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div class="flex-1">
-            <IconField iconPosition="left">
-              <InputIcon class="pi pi-search" />
+          <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 mb-1">搜索会议室</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
               <InputText
-                v-model="searchKeyword"
-                placeholder="搜索会议室名称、描述..."
+                v-model="searchQuery"
+                placeholder="输入会议室名称或位置"
                 class="w-full"
-                @input="handleSearch"
               />
-            </IconField>
+            </span>
           </div>
-
-          <Dropdown
-            v-model="selectedStatus"
-            :options="statusOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="所有状态"
-            class="w-full"
-            @change="handleFilter"
+          <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 mb-1">状态筛选</label>
+            <Dropdown
+              v-model="selectedStatus"
+              :options="statusOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="全部状态"
+              class="w-full"
+              showClear
+            />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 mb-1">最小容量</label>
+            <InputNumber
+              v-model="minCapacity"
+              placeholder="最小容量"
+              class="w-full"
+              :min="1"
+            />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 mb-1">最大容量</label>
+            <InputNumber
+              v-model="maxCapacity"
+              placeholder="最大容量"
+              class="w-full"
+              :min="1"
+            />
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <Button
+            label="应用筛选"
+            icon="pi pi-filter"
+            @click="loadRooms"
+            class="p-button-outlined"
           />
-
-          <Dropdown
-            v-model="selectedSort"
-            :options="sortOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="排序方式"
-            class="w-full"
-            @change="handleSort"
-          />
-
           <Button
             label="重置"
             icon="pi pi-refresh"
-            severity="secondary"
-            variant="text"
             @click="resetFilters"
+            class="p-button-outlined p-button-secondary ml-2"
           />
         </div>
       </template>
     </Card>
 
-    <!-- 统计信息 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <Card>
-        <template #content>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-green-600">{{ availableCount }}</div>
-            <div class="text-gray-600 text-sm">可用会议室</div>
-          </div>
-        </template>
-      </Card>
-
-      <Card>
-        <template #content>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-red-600">{{ occupiedCount }}</div>
-            <div class="text-gray-600 text-sm">使用中</div>
-          </div>
-        </template>
-      </Card>
-
-      <Card>
-        <template #content>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-orange-600">{{ maintenanceCount }}</div>
-            <div class="text-gray-600 text-sm">维护中</div>
-          </div>
-        </template>
-      </Card>
-
-      <Card>
-        <template #content>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-blue-600">{{ totalCount }}</div>
-            <div class="text-gray-600 text-sm">总会议室数</div>
-          </div>
-        </template>
-      </Card>
-    </div>
-
     <!-- 会议室列表 -->
-    <div v-if="roomStore.loading" class="flex justify-center py-8">
-      <ProgressSpinner />
-    </div>
+    <Card>
+      <template #content>
+        <DataTable
+          :value="rooms"
+          :loading="isLoading"
+          paginator
+          :rows="10"
+          :totalRecords="totalRecords"
+          :lazy="true"
+          @page="onPageChange"
+          @sort="onSort"
+          sortMode="single"
+          :globalFilterFields="['name', 'location', 'description']"
+          :filters="filters"
+          class="p-datatable-sm"
+        >
+          <template #empty>
+            <div class="text-center py-8">
+              <i class="pi pi-info-circle text-4xl text-gray-400"></i>
+              <p class="mt-4 text-gray-600">暂无会议室数据</p>
+              <Button
+                label="新增会议室"
+                icon="pi pi-plus"
+                @click="showCreateDialog = true"
+                class="mt-4"
+              />
+            </div>
+          </template>
 
-    <div v-else-if="roomStore.error" class="text-center py-8">
-      <Message severity="error" :closable="false">
-        {{ roomStore.error }}
-      </Message>
-      <Button
-        label="重试"
-        icon="pi pi-refresh"
-        class="mt-4"
-        @click="loadRooms"
-      />
-    </div>
+          <Column field="name" header="会议室名称" sortable>
+            <template #body="{ data }">
+              <div class="font-medium">{{ data.name }}</div>
+            </template>
+          </Column>
 
-    <div v-else-if="roomStore.rooms.length === 0" class="text-center py-8">
-      <div class="text-gray-500">
-        <i class="pi pi-home text-4xl mb-4"></i>
-        <p class="text-lg">暂无会议室</p>
-        <p class="text-sm mt-2">点击"添加会议室"创建第一个会议室</p>
-      </div>
-    </div>
+          <Column field="location" header="位置" sortable>
+            <template #body="{ data }">
+              <span class="text-gray-600">{{ data.location || '-' }}</span>
+            </template>
+          </Column>
 
-    <div v-else>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <RoomCard
-          v-for="room in roomStore.rooms"
-          :key="room.id"
-          :room="room"
-          @view="handleViewRoom"
-          @edit="handleEditRoom"
-          @delete="handleDeleteRoom"
-        />
-      </div>
+          <Column field="capacity" header="容量" sortable>
+            <template #body="{ data }">
+              <div class="flex items-center gap-2">
+                <i class="pi pi-users text-gray-400"></i>
+                <span>{{ data.capacity }}人</span>
+              </div>
+            </template>
+          </Column>
 
-      <!-- 分页 -->
-      <div class="flex justify-center mt-8">
-        <Paginator
-          :rows="roomStore.pagination.limit"
-          :totalRecords="roomStore.pagination.total"
-          :first="(roomStore.pagination.page - 1) * roomStore.pagination.limit"
-          @page="handlePageChange"
-        />
-      </div>
-    </div>
+          <Column field="status" header="状态" sortable>
+            <template #body="{ data }">
+              <Tag
+                :value="getStatusLabel(data.status)"
+                :severity="getStatusSeverity(data.status)"
+              />
+            </template>
+          </Column>
 
+          <Column field="createdAt" header="创建时间" sortable>
+            <template #body="{ data }">
+              <span class="text-gray-600">{{ formatDate(data.createdAt) }}</span>
+            </template>
+          </Column>
+
+          <Column header="操作" :exportable="false">
+            <template #body="{ data }">
+              <div class="flex gap-1">
+                <Button
+                  icon="pi pi-pencil"
+                  size="small"
+                  text
+                  rounded
+                  @click="editRoom(data)"
+                  v-tooltip="'编辑'"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  size="small"
+                  text
+                  rounded
+                  severity="danger"
+                  @click="deleteRoom(data)"
+                  v-tooltip="'删除'"
+                />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
+      </template>
+    </Card>
+
+  
     <!-- 创建/编辑对话框 -->
     <Dialog
       v-model:visible="showCreateDialog"
-      :header="editingRoom ? '编辑会议室' : '添加会议室'"
-      :modal="true"
-      :style="{ width: '600px' }"
+      modal
+      :header="editingRoom ? '编辑会议室' : '新增会议室'"
+      :style="{ width: '60vw', maxWidth: '600px' }"
+      @hide="resetForm"
     >
       <RoomForm
         :room="editingRoom"
-        @save="handleSaveRoom"
-        @cancel="showCreateDialog = false"
+        @save="onRoomSave"
+        @cancel="resetForm"
       />
     </Dialog>
 
-    <!-- 详情对话框 -->
-    <Dialog
-      v-model:visible="showDetailDialog"
-      header="会议室详情"
-      :modal="true"
-      :style="{ width: '800px' }"
-    >
-      <RoomDetail
-        v-if="selectedRoom"
-        :room="selectedRoom"
-        @edit="handleEditRoom"
-        @close="showDetailDialog = false"
-      />
-    </Dialog>
-
+  
     <!-- 删除确认对话框 -->
     <Dialog
       v-model:visible="showDeleteDialog"
+      modal
       header="确认删除"
-      :modal="true"
       :style="{ width: '400px' }"
     >
-      <div class="text-center">
-        <i class="pi pi-exclamation-triangle text-4xl text-orange-500 mb-4"></i>
-        <p class="text-lg font-semibold mb-2">确定要删除这个会议室吗？</p>
-        <p class="text-gray-600" v-if="roomToDelete">
-          {{ roomToDelete.name }}
+      <div class="text-center py-4">
+        <i class="pi pi-exclamation-triangle text-4xl text-orange-500"></i>
+        <p class="mt-4">
+          确定要删除会议室 <strong>{{ deletingRoom?.name }}</strong> 吗？
         </p>
-        <p class="text-sm text-gray-500 mt-2">
-          此操作不可恢复，请谨慎操作。
+        <p class="text-sm text-gray-600 mt-2">
+          此操作不可恢复，相关预约记录也会受到影响。
         </p>
       </div>
-
       <template #footer>
         <Button
           label="取消"
           icon="pi pi-times"
-          severity="secondary"
           @click="showDeleteDialog = false"
+          class="p-button-outlined"
         />
         <Button
           label="确认删除"
           icon="pi pi-check"
-          severity="danger"
           @click="confirmDelete"
+          severity="danger"
+          :loading="isDeleting"
         />
       </template>
     </Dialog>
@@ -213,32 +228,72 @@
 </template>
 
 <script setup lang="ts">
-import type { MeetingRoom } from '~/stores/rooms'
+import { ref, computed, onMounted } from 'vue'
+import { useToast } from 'primevue/usetoast'
+import { useRooms } from '~/composables/useRooms'
+import RoomForm from './RoomForm.vue'
 
-definePageMeta({
-  layout: 'admin',
-  middleware: 'auth'
-})
+interface Room {
+  id: string
+  name: string
+  description?: string
+  capacity: number
+  location?: string
+  status: string
+  equipment?: any
+  images?: any
+  rules?: any
+  requiresApproval: boolean
+  createdAt: string
+  updatedAt: string
+}
 
-const roomStore = useRoomStore()
-const toast = useToast()
+interface StatusOption {
+  label: string
+  value: string
+}
+
+// 组件元数据
+// definePageMeta 只能在页面中使用，不能在组件中使用
+
+// 使用rooms store
+const {
+  rooms,
+  loading: isLoading,
+  pagination,
+  filters: storeFilters,
+  fetchRooms,
+  deleteRoom: deleteRoomFromStore
+} = useRooms()
 
 // 响应式数据
-const searchKeyword = ref('')
-const selectedStatus = ref('')
-const selectedSort = ref('createdAt-desc')
+const isExporting = ref(false)
+const isDeleting = ref(false)
+const totalRecords = computed(() => pagination.value.total)
 
+// 筛选相关
+const searchQuery = ref('')
+const selectedStatus = ref<string | undefined>(undefined)
+const minCapacity = ref<number | null>(null)
+const maxCapacity = ref<number | null>(null)
+const filters = ref({})
+
+// 分页相关
+const currentPage = ref(1) // store使用的是基于1的页面索引
+const pageSize = ref(10)
+const sortField = ref('createdAt')
+const sortOrder = ref(-1)
+
+// 对话框状态
 const showCreateDialog = ref(false)
-const showDetailDialog = ref(false)
 const showDeleteDialog = ref(false)
 
-const editingRoom = ref<MeetingRoom | null>(null)
-const selectedRoom = ref<MeetingRoom | null>(null)
-const roomToDelete = ref<MeetingRoom | null>(null)
+// 表单相关
+const editingRoom = ref<Room | null>(null)
+const deletingRoom = ref<Room | null>(null)
 
-// 筛选选项
-const statusOptions = [
-  { label: '所有状态', value: '' },
+// 状态选项
+const statusOptions: StatusOption[] = [
   { label: '可用', value: 'AVAILABLE' },
   { label: '使用中', value: 'OCCUPIED' },
   { label: '维护中', value: 'MAINTENANCE' },
@@ -246,158 +301,228 @@ const statusOptions = [
   { label: '禁用', value: 'DISABLED' }
 ]
 
-const sortOptions = [
-  { label: '创建时间（最新）', value: 'createdAt-desc' },
-  { label: '创建时间（最早）', value: 'createdAt-asc' },
-  { label: '名称（A-Z）', value: 'name-asc' },
-  { label: '名称（Z-A）', value: 'name-desc' },
-  { label: '容量（大到小）', value: 'capacity-desc' },
-  { label: '容量（小到大）', value: 'capacity-asc' }
-]
-
-// 计算属性
-const availableCount = computed(() => roomStore.availableRooms.length)
-const occupiedCount = computed(() => roomStore.rooms.filter(r => r.status === 'OCCUPIED').length)
-const maintenanceCount = computed(() => roomStore.maintenanceRooms.length)
-const totalCount = computed(() => roomStore.rooms.length)
-
-// 加载会议室列表
+// 方法
 const loadRooms = async () => {
-  const [sortBy, sortOrder] = selectedSort.value.split('-')
+  try {
+    const params: any = {
+      page: currentPage.value,
+      limit: pageSize.value,
+      sortBy: sortField.value,
+      sortOrder: sortOrder.value === 1 ? 'asc' : 'desc'
+    }
 
-  await roomStore.fetchRooms({
-    search: searchKeyword.value,
-    status: selectedStatus.value,
-    sortBy: sortBy as any,
-    sortOrder: sortOrder as any
-  })
+    // 添加筛选条件
+    if (searchQuery.value) {
+      params.search = searchQuery.value
+    }
+    if (selectedStatus.value) {
+      params.status = selectedStatus.value
+    }
+    if (minCapacity.value) {
+      params.capacityMin = minCapacity.value
+    }
+    if (maxCapacity.value) {
+      params.capacityMax = maxCapacity.value
+    }
+    await fetchRooms(params)
+  } catch (error) {
+    console.error('加载会议室列表失败:', error)
+    useToast().add({
+      severity: 'error',
+      summary: '加载失败',
+      detail: '无法加载会议室列表',
+      life: 3000
+    })
+  }
 }
 
-// 处理搜索
-const handleSearch = useDebounceFn(() => {
-  loadRooms()
-}, 500)
-
-// 处理筛选
-const handleFilter = () => {
+const onPageChange = (event: any) => {
+  // DataTable使用基于0的索引，store使用基于1的
+  currentPage.value = event.page + 1
   loadRooms()
 }
 
-// 处理排序
-const handleSort = () => {
+const onSort = (event: any) => {
+  sortField.value = event.sortField
+  sortOrder.value = event.sortOrder === 1 ? 1 : -1
   loadRooms()
 }
 
-// 重置筛选
 const resetFilters = () => {
-  searchKeyword.value = ''
-  selectedStatus.value = ''
-  selectedSort.value = 'createdAt-desc'
-  roomStore.resetFilters()
+  searchQuery.value = ''
+  selectedStatus.value = undefined
+  minCapacity.value = null
+  maxCapacity.value = null
+  currentPage.value = 1
   loadRooms()
 }
 
-// 处理分页变化
-const handlePageChange = (event: any) => {
-  roomStore.pagination.page = event.page + 1
-  loadRooms()
+const exportRooms = async () => {
+  isExporting.value = true
+  try {
+    const params: any = {}
+
+    // 添加筛选条件
+    if (selectedStatus.value) {
+      params.status = selectedStatus.value
+    }
+    if (minCapacity.value) {
+      params.minCapacity = minCapacity.value
+    }
+    if (maxCapacity.value) {
+      params.maxCapacity = maxCapacity.value
+    }
+
+    const { $apiFetch } = useNuxtApp() as any
+    const response = await $apiFetch('/api/v1/rooms/export', { params })
+
+    // 创建下载链接
+    const blob = new Blob([response as string], { type: 'text/csv;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `meeting-rooms-export-${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    useToast().add({
+      severity: 'success',
+      summary: '导出成功',
+      detail: '会议室数据已成功导出',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('导出失败:', error)
+    useToast().add({
+      severity: 'error',
+      summary: '导出失败',
+      detail: '无法导出会议室数据',
+      life: 3000
+    })
+  } finally {
+    isExporting.value = false
+  }
 }
 
-// 处理查看会议室
-const handleViewRoom = (room: MeetingRoom) => {
-  selectedRoom.value = room
-  showDetailDialog.value = true
-}
 
-// 处理编辑会议室
-const handleEditRoom = (room: MeetingRoom) => {
-  editingRoom.value = room
+const editRoom = (room: Room) => {
+  editingRoom.value = { ...room }
   showCreateDialog.value = true
-  showDetailDialog.value = false
 }
 
-// 处理删除会议室
-const handleDeleteRoom = (room: MeetingRoom) => {
-  roomToDelete.value = room
+const deleteRoom = (room: Room) => {
+  deletingRoom.value = room
   showDeleteDialog.value = true
 }
 
-// 确认删除
 const confirmDelete = async () => {
-  if (!roomToDelete.value) return
+  if (!deletingRoom.value) return
 
-  const success = await roomStore.deleteRoom(roomToDelete.value.id)
+  isDeleting.value = true
+  try {
+    const success = await deleteRoomFromStore(deletingRoom.value.id)
 
-  if (success) {
-    toast.add({
-      severity: 'success',
-      summary: '删除成功',
-      detail: `会议室 "${roomToDelete.value.name}" 已删除`,
-      life: 3000
-    })
-  } else {
-    toast.add({
+    if (success) {
+      useToast().add({
+        severity: 'success',
+        summary: '删除成功',
+        detail: `会议室 ${deletingRoom.value.name} 已删除`,
+        life: 3000
+      })
+    }
+
+    showDeleteDialog.value = false
+    deletingRoom.value = null
+  } catch (error) {
+    console.error('删除失败:', error)
+    useToast().add({
       severity: 'error',
       summary: '删除失败',
-      detail: roomStore.error || '删除会议室失败',
+      detail: '无法删除会议室',
       life: 3000
     })
-  }
-
-  showDeleteDialog.value = false
-  roomToDelete.value = null
-}
-
-// 处理保存会议室
-const handleSaveRoom = async (roomData: any) => {
-  let success = false
-
-  if (editingRoom.value) {
-    success = await roomStore.updateRoom(editingRoom.value.id, roomData)
-  } else {
-    success = await roomStore.createRoom(roomData)
-  }
-
-  if (success) {
-    toast.add({
-      severity: 'success',
-      summary: editingRoom.value ? '更新成功' : '创建成功',
-      detail: `会议室 "${roomData.name}" ${editingRoom.value ? '已更新' : '已创建'}`,
-      life: 3000
-    })
-
-    showCreateDialog.value = false
-    editingRoom.value = null
-    loadRooms()
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: editingRoom.value ? '更新失败' : '创建失败',
-      detail: roomStore.error || '操作失败',
-      life: 3000
-    })
+  } finally {
+    isDeleting.value = false
   }
 }
 
-// 初始化
-onMounted(() => {
+const onRoomSave = () => {
+  resetForm()
   loadRooms()
-})
+}
 
-// 监听页面切换
-watch(() => roomStore.pagination.page, () => {
+const resetForm = () => {
+  editingRoom.value = null
+  showCreateDialog.value = false
+}
+
+
+// 工具方法
+const getStatusLabel = (status: string): string => {
+  const option = statusOptions.find(opt => opt.value === status)
+  return option?.label || status
+}
+
+const getStatusSeverity = (status: string): string => {
+  switch (status) {
+    case 'AVAILABLE': return 'success'
+    case 'OCCUPIED': return 'warning'
+    case 'MAINTENANCE': return 'danger'
+    case 'RESERVED': return 'info'
+    case 'DISABLED': return 'secondary'
+    default: return 'secondary'
+  }
+}
+
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 生命周期
+onMounted(() => {
   loadRooms()
 })
 </script>
 
 <style scoped>
 .room-management {
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 @media (max-width: 768px) {
   .room-management {
-    padding: 1rem;
+    padding: 0.5rem;
   }
+
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  padding: 0.75rem;
+}
+
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  padding: 0.75rem;
+  font-weight: 600;
+}
+
+:deep(.p-dialog .p-dialog-header) {
+  padding: 1.5rem 1.5rem 0 1.5rem;
+}
+
+:deep(.p-dialog .p-dialog-content) {
+  padding: 1.5rem;
+}
+
+:deep(.p-card .p-card-content) {
+  padding: 1.5rem;
 }
 </style>

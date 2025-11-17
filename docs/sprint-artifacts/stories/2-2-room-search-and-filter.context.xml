@@ -1,0 +1,88 @@
+<story-context id="2-2-room-search-and-filter" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2</storyId>
+    <title>会议室搜索与筛选</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-17</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/2-2-room-search-and-filter.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>普通用户</asA>
+    <iWant>搜索和筛选会议室</iWant>
+    <soThat>快速找到符合需求的会议室资源</soThat>
+    <tasks>6个主要任务：
+1. Task 2.2.1: 开发数据库搜索API接口 (AC: 1)
+2. Task 2.2.2: 实现筛选功能 (AC: 2, 3)
+3. Task 2.2.3: 创建搜索前端组件 (AC: 1, 2, 3)
+4. Task 2.2.4: 实现分页和性能优化 (AC: 4)
+5. Task 2.2.5: 集成状态管理和路由 (AC: 全部)
+6. Task 2.2.6: 添加测试覆盖 (AC: 全部)</tasks>
+  </story>
+
+  <acceptanceCriteria>4个验收标准：
+1. 支持关键词模糊查询：会议室名称、位置、描述字段进行数据库模糊查询
+2. 多维度筛选：容量范围、设备配置、地理位置、可用状态等
+3. 排序功能：按容量、名称、位置等维度排序
+4. 分页显示：每页20条记录，优化大数据量下的性能</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/architecture.md" title="系统架构文档" section="API架构和数据模型" snippet="RESTful API设计，统一响应格式{success, data, message, timestamp}，MeetingRoom数据模型包含name, location, capacity, description, equipment, status等字段" />
+      <doc path="docs/epics.md" title="Epic功能规格" section="Epic 2 - 会议室核心管理" snippet="Story 2.2：会议室搜索与筛选，实现基于数据库的搜索功能，支持模糊查询和多维度筛选，FR10功能要求" />
+      <doc path="docs/ux-design.md" title="UX设计规范" section="交互模式和性能" snippet="搜索防抖300ms，实时反馈，状态清晰，PrimeVue Styled Mode + Aura主题，响应式设计" />
+      <doc path="docs/sprint-artifacts/stories/2-1-room-basic-data-management.md" title="前序故事" section="基础设施和API模式" snippet="完善的权限系统、统一API响应格式、PrimeVue + FormKit集成模式，为搜索功能提供基础" />
+    </docs>
+    <code>
+      <code path="prisma/schema.prisma" kind="data-model" symbol="MeetingRoom" lines="153-186" reason="会议室数据模型，包含搜索所需的name, location, description, equipment, status字段" />
+      <code path="server/api/v1/rooms/index.get.ts" kind="api" symbol="会议室列表API" lines="1-50" reason="现有API接口，需要扩展支持搜索和筛选参数" />
+      <code path="server/middleware/permission.ts" kind="middleware" symbol="requirePermission" lines="1-30" reason="权限验证中间件，用于搜索API的room:read权限控制" />
+      <code path="app/stores/rooms.ts" kind="store" symbol="会议室状态管理" lines="1-50" reason="Pinia store，需要扩展支持搜索和筛选状态" />
+      <code path="server/utils/response.ts" kind="utility" symbol="统一响应格式" lines="1-30" reason="API响应工具函数，搜索API需要遵循统一响应格式" />
+    </code>
+    <dependencies>
+      <dependency ecosystem="node" name="nuxt" version="^4.2.1" />
+      <dependency ecosystem="node" name="@primevue/themes" version="^4.4.1" />
+      <dependency ecosystem="node" name="formkit" version="^1.6.8" />
+      <dependency ecosystem="node" name="prisma" version="^6.19.0" />
+      <dependency ecosystem="node" name="mysql2" version="^3.9.0" />
+      <dependency ecosystem="node" name="@prisma/client" version="^6.19.0" />
+      <dependency ecosystem="node" name="zod" version="^3.24.0" />
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture" description="必须使用现有技术栈：Nuxt 4 + PrimeVue + Prisma + MySQL，遵循现有API设计模式" />
+    <constraint type="security" description="所有搜索API需要JWT认证 + room:read权限，输入验证防止SQL注入和XSS攻击" />
+    <constraint type="performance" description="搜索响应时间 < 500ms，前端防抖处理300ms，支持1000+并发用户" />
+    <constraint type="database" description="使用MySQL模糊查询，为搜索字段添加索引优化，避免全表扫描" />
+    <constraint type="api-design" description="遵循RESTful设计，使用统一响应格式，GET/POST语义化使用" />
+  </constraints>
+
+  <interfaces>
+    <interface name="会议室搜索API" kind="REST endpoint" signature="POST /api/v1/rooms/search" path="server/api/v1/rooms/search.post.ts" />
+    <interface name="会议室筛选API" kind="REST endpoint" signature="GET /api/v1/rooms?search=keyword&capacity=min,max&location=area&status=available" path="server/api/v1/rooms/index.get.ts" />
+    <interface name="权限验证" kind="middleware" signature="requirePermission('room:read')" path="server/middleware/permission.ts" />
+    <interface name="会议室状态管理" kind="Pinia store" signature="useRoomsStore() - searchQuery, filters, results, pagination" path="app/stores/rooms.ts" />
+  </interfaces>
+
+  <tests>
+    <standards>使用Vitest + Vue Test Utils进行前端组件测试，使用supertest进行API集成测试，测试覆盖包括搜索功能、筛选逻辑、权限验证、性能测试</standards>
+    <locations>
+      <location pattern="tests/integration/api/rooms.test.ts" />
+      <location pattern="tests/components/features/rooms/*.test.ts" />
+      <location pattern="app/components/features/rooms/__tests__/" />
+    </locations>
+    <ideas>
+      <test idea="搜索API集成测试" ac="1" description="测试关键词模糊查询功能，验证返回结果的准确性和响应时间" />
+      <test idea="筛选功能测试" ac="2" description="测试多维度筛选：容量范围、设备配置、位置、状态筛选功能" />
+      <test idea="排序功能测试" ac="3" description="测试按容量、名称、位置等维度的排序功能" />
+      <test idea="分页功能测试" ac="4" description="测试搜索结果分页显示，验证每页20条记录的逻辑" />
+      <test idea="权限验证测试" all="true" description="测试搜索API的JWT认证和room:read权限验证" />
+      <test idea="前端组件单元测试" ac="1,2,3" description="测试RoomSearch.vue、RoomFilter.vue、SearchResults.vue组件功能" />
+      <test idea="性能测试" ac="4" description="测试搜索响应时间 < 500ms，并发用户访问性能" />
+    </ideas>
+  </tests>
+</story-context>

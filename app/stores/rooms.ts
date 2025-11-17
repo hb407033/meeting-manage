@@ -5,6 +5,38 @@
 
 import { defineStore } from 'pinia'
 
+// 获取 $apiFetch 的辅助函数
+function getApiFetch() {
+  try {
+    const nuxtApp = useNuxtApp()
+    if (nuxtApp && nuxtApp.$apiFetch) {
+      return nuxtApp.$apiFetch as typeof $fetch
+    }
+
+    // 如果无法获取 $apiFetch，则使用带认证的 $fetch 作为后备
+    return $fetch.create({
+      onRequest({ request, options }) {
+        // 只对API请求添加认证头
+        if (typeof request === 'string' && request.startsWith('/api/')) {
+          // 从本地存储获取token
+          const token = import.meta.client ? localStorage.getItem('auth_access_token') : null
+
+          if (token) {
+            options.headers = {
+              ...options.headers,
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      }
+    })
+  } catch (error) {
+    console.error('获取 $apiFetch 失败:', error)
+    // 返回基本的 $fetch 作为后备
+    return $fetch
+  }
+}
+
 export interface RoomEquipment {
   projector: boolean
   whiteboard: boolean
@@ -94,7 +126,7 @@ export const useRoomStore = defineStore('rooms', {
       hasPrev: false
     } as PaginationMeta,
     filters: {
-      status: '',
+      status: undefined,
       location: '',
       capacityMin: undefined as number | undefined,
       capacityMax: undefined as number | undefined,
@@ -170,7 +202,7 @@ export const useRoomStore = defineStore('rooms', {
     // 重置过滤器
     resetFilters() {
       this.filters = {
-        status: '',
+        status: undefined,
         location: '',
         capacityMin: undefined,
         capacityMax: undefined,
@@ -182,21 +214,28 @@ export const useRoomStore = defineStore('rooms', {
     async fetchRooms(params?: RoomQuery) {
       this.setLoading(true)
       this.setError(null)
-
       try {
-        const queryParams = {
+        // 构建查询参数，只包含有效值
+        const queryParams: any = {
           page: params?.page || this.pagination.page,
-          limit: params?.limit || this.pagination.limit,
-          ...this.filters,
-          ...params
+          limit: params?.limit || this.pagination.limit
         }
 
-        const { data } = await $fetch<RoomListResponse>('/api/v1/rooms', {
+        // 只添加有效的筛选条件
+        const allFilters = { ...this.filters, ...params }
+        if (allFilters.status) queryParams.status = allFilters.status
+        if (allFilters.location) queryParams.location = allFilters.location
+        if (allFilters.capacityMin) queryParams.capacityMin = allFilters.capacityMin
+        if (allFilters.capacityMax) queryParams.capacityMax = allFilters.capacityMax
+        if (allFilters.search) queryParams.search = allFilters.search
+
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<RoomListResponse>('/api/v1/rooms', {
           query: queryParams
         })
 
-        this.rooms = data.data
-        this.pagination = data.meta
+        this.rooms = response.data.items
+        this.pagination = response.meta
         this.currentRoom = null
 
       } catch (error: any) {
@@ -213,7 +252,8 @@ export const useRoomStore = defineStore('rooms', {
       this.setError(null)
 
       try {
-        const { data } = await $fetch<{ data: MeetingRoom }>(`/api/v1/rooms/${id}`)
+        const apiFetch = getApiFetch()
+        const { data } = await apiFetch<{ data: MeetingRoom }>(`/api/v1/rooms/${id}`)
         this.currentRoom = data
         return data
 
@@ -232,7 +272,8 @@ export const useRoomStore = defineStore('rooms', {
       this.setError(null)
 
       try {
-        const { data } = await $fetch<{ data: MeetingRoom }>('/api/v1/rooms', {
+        const apiFetch = getApiFetch()
+        const { data } = await apiFetch<{ data: MeetingRoom }>('/api/v1/rooms', {
           method: 'POST',
           body: roomData
         })
@@ -258,7 +299,8 @@ export const useRoomStore = defineStore('rooms', {
       this.setError(null)
 
       try {
-        const { data } = await $fetch<{ data: MeetingRoom }>(`/api/v1/rooms/${id}`, {
+        const apiFetch = getApiFetch()
+        const { data } = await apiFetch<{ data: MeetingRoom }>(`/api/v1/rooms/${id}`, {
           method: 'PUT',
           body: roomData
         })
@@ -290,7 +332,8 @@ export const useRoomStore = defineStore('rooms', {
       this.setError(null)
 
       try {
-        await $fetch(`/api/v1/rooms/${id}`, {
+        const apiFetch = getApiFetch()
+        await apiFetch(`/api/v1/rooms/${id}`, {
           method: 'DELETE'
         })
 
@@ -322,6 +365,7 @@ export const useRoomStore = defineStore('rooms', {
       this.setError(null)
 
       try {
+        const apiFetch = getApiFetch()
         const formData = new FormData()
         formData.append('file', file)
         formData.append('roomId', roomId)
@@ -330,7 +374,7 @@ export const useRoomStore = defineStore('rooms', {
           formData.append('caption', caption)
         }
 
-        const { data } = await $fetch<{ data: RoomImage }>('/api/v1/upload/rooms', {
+        const { data } = await apiFetch<{ data: RoomImage }>('/api/v1/upload/rooms', {
           method: 'POST',
           body: formData
         })

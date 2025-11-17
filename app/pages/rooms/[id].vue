@@ -208,8 +208,7 @@
 const route = useRoute()
 const roomId = route.params.id as string
 
-// 组件导入
-import RoomForm from '~/components/features/rooms/RoomForm.vue'
+// 组件导入 - Nuxt会自动导入
 
 // 认证和权限
 const { user } = useAuth()

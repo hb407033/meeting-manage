@@ -103,17 +103,47 @@
         </div>
       </div>
 
-      <!-- 快速入口 -->
-      <div class="mt-8 text-center">
-        <p class="text-gray-600 mb-4">已有账号？</p>
-        <NuxtLink
-          to="/auth/login"
-          class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg"
-        >
-          <i class="pi pi-sign-in mr-2"></i>
-          立即登录
-        </NuxtLink>
-      </div>
+、    <!-- 页面标题 -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        欢迎回来，{{ user?.name }}！
+      </h1>
+      <p class="mt-1 text-gray-600 dark:text-gray-400">
+        这是您的会议室管理仪表盘
+      </p>
+    </div>
+
+    <!-- 用户信息卡片 -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">账户信息</h2>
+      <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">用户名</dt>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user?.name }}</dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">邮箱</dt>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user?.email }}</dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">角色</dt>
+          <dd class="mt-1">
+            <span
+              class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+              :class="roleBadgeClass"
+            >
+              {{ userRole }}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">最后登录</dt>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+            {{ lastLoginTime }}
+          </dd>
+        </div>
+      </dl>
+    </div>
     </div>
   </div>
 </template>
@@ -124,4 +154,34 @@ definePageMeta({
   layout: 'public',
   auth: false
 })
+
+// 认证相关
+const { user, userRole, canAccess } = useAuth()
+
+// 计算属性
+const roleBadgeClass = computed(() => {
+  switch (userRole.value) {
+    case 'ADMIN':
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+    case 'MANAGER':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+    case 'USER':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+  }
+})
+
+const lastLoginTime = computed(() => {
+  if (!user.value?.lastLoginAt) return '未知'
+  return new Date(user.value.lastLoginAt).toLocaleString('zh-CN')
+})
+
+// 处理新建预约
+const handleNewReservation = () => {
+  // TODO: 实现新建预约功能
+  console.log('新建预约功能待实现')
+  // 暂时跳转到会议室列表页面
+  navigateTo('/rooms')
+}
 </script>

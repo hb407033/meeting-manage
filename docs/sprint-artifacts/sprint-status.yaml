@@ -53,7 +53,7 @@ development_status:
   epic-2: backlog
   2-1-room-basic-data-management: done
   2-1-routes-navigation-fix: done
-  2-2-room-search-and-filter: backlog
+  2-2-room-search-and-filter: ready-for-dev
   2-3-room-detail-display: backlog
   2-4-room-rules-configuration: backlog
   epic-2-retrospective: optional

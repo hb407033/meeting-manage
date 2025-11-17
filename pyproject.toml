@@ -1,0 +1,13 @@
+[project]
+name = "meeting-manage-scripts"
+version = "0.1.0"
+description = "Project scripts for meeting-manage"
+dependencies = []
+
+[project.scripts]
+serena-mcp-server = "serena.mcp:start_mcp_server"
+index-project = "serena.agent:index_project"
+print_system_prompt = "scripts.print_system_prompt:main"
+
+[tool.uv]
+dev-dependencies = []

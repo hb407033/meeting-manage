@@ -1,5 +1,6 @@
-import { useAuthStore } from '../../stores/auth'
+import { useAuthStore } from '../stores/auth'
 import { useIntervalFn, useEventListener, onClickOutside } from '@vueuse/core'
+import { getCurrentInstance } from 'vue'
 
 export const useAuth = () => {
   const authStore = useAuthStore()
@@ -197,10 +198,13 @@ export const useAuth = () => {
     }
   }, 60000) // 每分钟检查一次
 
-  // 在组件卸载时停止检查
-  onUnmounted(() => {
-    stopTokenCheck()
-  })
+  // 在组件卸载时停止检查 - 只在组件实例存在时执行
+  const instance = getCurrentInstance()
+  if (instance) {
+    onUnmounted(() => {
+      stopTokenCheck()
+    })
+  }
 
   // 在页面可见性变化时检查
   useEventListener('visibilitychange', () => {

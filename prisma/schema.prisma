@@ -1,316 +1,237 @@
-// 智能会议室管理系统 - 简化数据模型
-// 用于演示数据库和缓存配置
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
 
-// 用户管理
 model User {
-  id            String      @id @default(cuid())
-  email         String      @unique
-  name          String
-  password      String      // 密码哈希
-  avatar        String?
-  phone         String?
-  isActive      Boolean     @default(true)
-
-  // 安全字段
-  loginAttempts Int         @default(0)      // 登录尝试次数
-  lockedUntil  DateTime?   // 账户锁定时间
-  lastLoginAt  DateTime?   // 最后登录时间
-  lastLoginIP  String?     // 最后登录IP
-  passwordResetToken String? @unique        // 密码重置令牌
-  passwordResetExpires DateTime?           // 密码重置过期时间
-
-  // 认证方式：LOCAL, SSO
-  authMethod    String      @default("LOCAL")
-
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  // 组织架构
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-
-  // 权限关联
-  userRoles      UserRole[]
-
-  // 关联关系
-  reservations   Reservation[]
-  auditLogs      AuditLog[]
-  permissionRequests PermissionRequest[]
-  reviewedRequests PermissionRequest[] @relation("RequestReviewer")
-  roomHistory    RoomHistory[]   // 会议室操作历史
+  id                   String              @id @default(cuid())
+  email                String              @unique
+  name                 String
+  password             String
+  avatar               String?
+  phone                String?
+  isActive             Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  organizationId       String?
+  authMethod           String              @default("LOCAL")
+  lastLoginAt          DateTime?
+  lastLoginIP          String?
+  lockedUntil          DateTime?
+  loginAttempts        Int                 @default(0)
+  passwordResetExpires DateTime?
+  passwordResetToken   String?             @unique
+  organization         Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  userRoles            UserRole[]
+  reservations         Reservation[]
+  auditLogs            AuditLog[]
+  permissionRequests   PermissionRequest[]
+  reviewedRequests     PermissionRequest[] @relation("RequestReviewer")
+  roomHistory          RoomHistory[]
 
   @@map("users")
 }
 
-// 组织架构
 model Organization {
-  id          String      @id @default(cuid())
-  name        String      @unique
-  code        String?     @unique  // 组织编码
-  parentId    String?
-  level       Int         @default(0)  // 组织层级
-  path        String?     // 层级路径，便于查询
-  isActive    Boolean     @default(true)
-
-  users       User[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String?  @unique
+  parentId  String?
+  level     Int      @default(0)
+  path      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
 
   @@map("organizations")
 }
 
-// 角色
 model Role {
-  id          String      @id @default(cuid())
-  name        String      @unique
-  code        String?     @unique  // 角色编码
+  id          String           @id @default(cuid())
+  name        String           @unique
+  code        String?          @unique
   description String?
-  level       Int         @default(0)  // 角色层级，数值越大权限越高
-  isSystem    Boolean     @default(false)  // 是否系统内置角色
-  isActive    Boolean     @default(true)
-
-  // 权限关联
+  level       Int              @default(0)
+  isSystem    Boolean          @default(false)
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   permissions RolePermission[]
   userRoles   UserRole[]
-
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 
   @@map("roles")
 }
 
-// 权限
 model Permission {
-  id          String      @id @default(cuid())
-  name        String      @unique
-  code        String?     @unique  // 权限编码，如 "user:create", "room:read"
-  resource    String?     // 资源类型，如 "user", "room", "reservation"
-  action      String?     // 操作类型，如 "create", "read", "update", "delete"
+  id          String           @id @default(cuid())
+  name        String           @unique
+  code        String?          @unique
+  resource    String?
+  action      String?
   description String?
-  module      String?     // 模块分组
-  isActive    Boolean     @default(true)
-
-  // 权限关联
+  module      String?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   roles       RolePermission[]
-
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 
   @@map("permissions")
 }
 
-// 用户角色关联表
 model UserRole {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roleId      String
-  role        Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  assignedBy  String?     // 分配人ID
-  assignedAt  DateTime    @default(now())
-  expiresAt   DateTime?   // 过期时间
-
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String    @id @default(cuid())
+  userId     String
+  roleId     String
+  assignedBy String?
+  assignedAt DateTime  @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@map("user_roles")
 }
 
-// 角色权限关联表
 model RolePermission {
-  id          String      @id @default(cuid())
-  roleId      String
-  role        Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  roleId       String
   permissionId String
-  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  createdAt   DateTime    @default(now())
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
 }
 
-// 用户角色枚举（保留用于向后兼容）
-enum UserRoleLegacy {
-  ADMIN        // 系统管理员
-  MANAGER      // 部门经理
-  USER         // 普通用户
-  VISITOR      // 访客
-}
-
-// 会议室信息
 model MeetingRoom {
-  id              String          @id @default(cuid())
-  name            String
-  description     String?
-  capacity        Int             // 最大容纳人数
-  location        String?         // 位置
-
-  // 设施配置 (JSON类型，支持灵活配置)
-  equipment       Json?           // 设备配置详情：{projector: true, whiteboard: true, videoConf: true, airCondition: true, wifi: true, customEquipment: [...]}
-
-  // 图片管理 (JSON类型，支持多张图片和不同类型)
-  images          Json?           // 图片列表：[{url: "...", type: "main", caption: "..."}, {url: "...", type: "360", caption: "..."}]
-
-  // 状态管理
-  status          RoomStatus      @default(AVAILABLE)
-
-  // 规则配置 (JSON类型，支持灵活的预约规则)
-  rules           Json?           // 预约规则：{requiresApproval: false, minBookingDuration: 30, maxBookingDuration: 240, allowedTimeRange: {start: "08:00", end: "18:00"}}
-
-  // 预约规则 (向后兼容字段)
-  requiresApproval Boolean        @default(false)
-
-  // 软删除支持
-  deletedAt       DateTime?       // 软删除时间戳
-
-  // 关联关系
-  reservations    Reservation[]
-  roomHistory     RoomHistory[]   // 会议室操作历史
-
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id               String        @id @default(cuid())
+  name             String
+  description      String?
+  capacity         Int
+  location         String?
+  equipment        Json?
+  images           Json?
+  status           RoomStatus    @default(AVAILABLE)
+  rules            Json?
+  requiresApproval Boolean       @default(false)
+  deletedAt        DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  reservations     Reservation[]
+  roomHistory      RoomHistory[]
 
   @@map("meeting_rooms")
 }
 
-// 会议室状态枚举
-enum RoomStatus {
-  AVAILABLE      // 可用
-  OCCUPIED       // 使用中
-  MAINTENANCE    // 维护中
-  RESERVED       // 已预约
-  DISABLED       // 禁用
-}
-
-// 会议室操作历史记录
 model RoomHistory {
-  id            String      @id @default(cuid())
-  roomId        String
-  room          MeetingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-
-  // 操作信息
-  action        String      // 操作类型：CREATE, UPDATE, DELETE, STATUS_CHANGE
-  field         String?     // 变更字段（如果是单字段变更）
-  oldValue      Json?       // 变更前的值
-  newValue      Json?       // 变更后的值
-
-  // 操作人信息
-  userId        String?
-  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  // 系统信息
-  ipAddress     String?
-  userAgent     String?
-  timestamp     DateTime    @default(now())
+  id        String      @id @default(cuid())
+  roomId    String
+  action    String
+  field     String?
+  oldValue  Json?
+  newValue  Json?
+  userId    String?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime    @default(now())
+  room      MeetingRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("room_history")
 }
 
-// 预约记录
 model Reservation {
-  id              String          @id @default(cuid())
-  title           String
-  description     String?
-
-  // 时间信息
-  startTime       DateTime
-  endTime         DateTime
-
-  // 预约状态
-  status          ReservationStatus @default(PENDING)
-
-  // 参会信息
-  organizerId     String
-  organizer       User            @relation(fields: [organizerId], references: [id])
-  attendeeCount   Int             @default(1)
-
-  // 会议室信息
-  roomId          String
-  room            MeetingRoom     @relation(fields: [roomId], references: [id])
-
-  // 系统字段
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id            String            @id @default(cuid())
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  status        ReservationStatus @default(PENDING)
+  organizerId   String
+  attendeeCount Int               @default(1)
+  roomId        String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  organizer     User              @relation(fields: [organizerId], references: [id])
+  room          MeetingRoom       @relation(fields: [roomId], references: [id])
 
   @@map("reservations")
 }
 
-// 预约状态枚举
-enum ReservationStatus {
-  PENDING         // 待确认
-  CONFIRMED       // 已确认
-  CANCELED        // 已取消
-  COMPLETED       // 已完成
-}
-
-// 系统配置
 model SystemConfig {
-  id            String      @id @default(cuid())
-  key           String      @unique
-  value         Json
-  description   String?
-  category      String?
-  isActive      Boolean     @default(true)
-
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  category    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("system_configs")
 }
 
-// 权限申请
 model PermissionRequest {
-  id            String      @id @default(cuid())
+  id            String    @id @default(cuid())
   requestedBy   String
-  requester     User        @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
-  permissions   Json        // 申请的权限代码列表 (JSON数组)
-  roles         Json        // 申请的角色代码列表 (JSON数组)
+  permissions   Json
+  roles         Json
   reason        String
-  duration      String?     // 使用期限
-  urgency       String      @default("normal") // 紧急程度
-  attachments   Json?       // 附件列表
+  duration      String?
+  urgency       String    @default("normal")
+  attachments   Json?
   userAgent     String?
-  requestPath   String?     // 申请时所在路径
-  expiresAt     DateTime?   // 申请期望的到期时间
-
-  // 审批相关字段
-  status        String      @default("pending") // pending, approved, rejected, expired
+  requestPath   String?
+  expiresAt     DateTime?
+  status        String    @default("pending")
   reviewedBy    String?
-  reviewer      User?       @relation("RequestReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
   reviewedAt    DateTime?
-  reviewReason  String?     // 审批原因
-  reviewComment String?     // 审批评论
-
-  requestedAt   DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  reviewReason  String?
+  reviewComment String?
+  requestedAt   DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  requester     User      @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
+  reviewer      User?     @relation("RequestReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
   @@map("permission_requests")
 }
 
-// 操作日志
 model AuditLog {
-  id            String      @id @default(cuid())
-  userId        String?
-  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action        String
-  resourceType  String
-  resourceId    String?
-  details       Json?
-  ipAddress     String?
-  userAgent     String?
-  timestamp     DateTime    @default(now())
+  id           String   @id @default(cuid())
+  userId       String?
+  action       String
+  resourceType String
+  resourceId   String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  timestamp    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  RESERVED
+  DISABLED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  COMPLETED
 }

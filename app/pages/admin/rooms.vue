@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-// 会议室管理组件
+// 手动导入会议室管理组件
 import RoomManagement from '~/components/features/rooms/RoomManagement.vue'
 
 // 页面元数据

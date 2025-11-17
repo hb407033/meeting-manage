@@ -1,5 +1,29 @@
 import { defineStore } from 'pinia'
 
+// 声明 Nuxt 应用扩展类型
+declare module '#app' {
+  interface NuxtApp {
+    $apiFetch: typeof $fetch
+    $auth: {
+      user: User | null
+      isAuthenticated: boolean
+      isLoading: boolean
+      lastError: string | null
+      login: (credentials: LoginCredentials) => Promise<void>
+      logout: () => Promise<void>
+      register: (data: RegisterData) => Promise<void>
+      refreshTokens: () => Promise<void>
+      updateUser: (userData: Partial<User>) => void
+      hasRole: (role: string) => boolean
+      hasPermission: (permission: string) => boolean
+      canAccess: (resource: string, action?: string) => boolean
+      isAdmin: boolean
+      isUser: boolean
+      isLoggedIn: boolean
+    }
+  }
+}
+
 export interface User {
   id: string
   email: string
@@ -193,7 +217,9 @@ export const useAuthStore = defineStore('auth', {
       try {
         // 调用服务器登出接口
         if (this.accessToken && this.refreshToken) {
-          await $fetch('/api/auth/logout', {
+          // 在 store 中必须通过 useNuxtApp() 访问注入的依赖
+          const { $apiFetch } = useNuxtApp()
+          await $apiFetch('/api/auth/logout', {
             method: 'POST',
             body: {
               accessToken: this.accessToken,
@@ -219,7 +245,9 @@ export const useAuthStore = defineStore('auth', {
       }
 
       try {
-        const response = await $fetch<{
+        // 在 store 中必须通过 useNuxtApp() 访问注入的依赖
+        const { $apiFetch } = useNuxtApp()
+        const response = await $apiFetch<{
           success: boolean
           data: {
             tokens: Tokens

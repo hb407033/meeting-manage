@@ -144,7 +144,7 @@
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <NuxtLink
           v-if="canAccess('room', 'read')"
-          to="/rooms"
+          to="/admin/rooms"
           class="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
         >
           <Icon name="i-heroicons-building-office-2" class="h-5 w-5 mr-2" />

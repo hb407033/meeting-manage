@@ -101,8 +101,35 @@ export async function authMiddleware(
 
       if (sortedRoles.length > 0) {
         userRole = sortedRoles[0].role?.code || 'USER'
-        // TODO: 获取角色权限（需要实现权限查询）
-        userPermissions = [`${userRole.toLowerCase()}:read`]
+
+        // 根据角色分配相应权限
+        if (userRole === 'ADMIN') {
+          // 管理员拥有所有权限
+          userPermissions = [
+            'user:read', 'user:create', 'user:update', 'user:delete',
+            'role:read', 'role:create', 'role:update', 'role:delete', 'role:assign',
+            'room:read', 'room:create', 'room:update', 'room:delete', 'room:manage-status',
+            'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel', 'reservation:approve', 'reservation:read-others',
+            'analytics:read', 'analytics:export',
+            'system:read', 'system:update', 'audit:read',
+            'device:manage', 'device:read-data'
+          ]
+        } else if (userRole === 'MANAGER') {
+          // 部门经理拥有部门内权限
+          userPermissions = [
+            'user:read', 'user:create', 'user:update',
+            'room:read', 'room:create', 'room:update', 'room:manage-status',
+            'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel', 'reservation:approve', 'reservation:read-others',
+            'analytics:read', 'analytics:export',
+            'device:read-data'
+          ]
+        } else {
+          // 普通用户只有基础权限
+          userPermissions = [
+            'room:read',
+            'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel'
+          ]
+        }
       }
     }
 

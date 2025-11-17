@@ -1,4 +1,4 @@
-import { useAuthStore } from '~/stores/auth'
+import { useAuthStore } from '../stores/auth'
 
 export default defineNuxtPlugin((nuxtApp) => {
   const authStore = useAuthStore()
@@ -46,17 +46,10 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   }
 
-  // 注入到 nuxt 应用
-  nuxtApp.provide('auth', $auth)
-
   // 添加到 Vue 全局属性
-  if (process.client) {
+  if (import.meta.client) {
     nuxtApp.vueApp.config.globalProperties.$auth = $auth
   }
 
-  return {
-    provide: {
-      auth: $auth
-    }
-  }
+  // 注意：$apiFetch 现在由 api.client.ts 插件提供
 })

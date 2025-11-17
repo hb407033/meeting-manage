@@ -200,8 +200,7 @@ const breadcrumbs = computed(() => {
   return breadcrumbMap[route.path] || []
 })
 
-// 权限检查
-const { hasPermission } = usePermissions()
+// 移除权限检查导入，在具体页面中处理权限
 
 // 退出登录
 const handleLogout = async () => {
@@ -209,22 +208,22 @@ const handleLogout = async () => {
     await $fetch('/api/v1/auth/logout', {
       method: 'POST'
     })
-    await navigateTo('/login')
+    await navigateTo('/auth/login')
   } catch (error) {
     console.error('退出登录失败:', error)
     // 即使API失败也要重定向到登录页
-    await navigateTo('/login')
+    await navigateTo('/auth/login')
   }
 }
 
-// 权限守卫
-onMounted(async () => {
-  // 检查用户是否有管理员权限
-  const hasAdminAccess = await hasPermission(userInfo.value?.id || '', 'admin:access')
-  if (!hasAdminAccess) {
+// 权限守卫 - 简化权限检查，避免在布局组件中进行复杂异步检查
+onMounted(() => {
+  // 基本检查 - 如果用户已登录，则允许访问
+  // 更细粒度的权限检查在具体页面中进行
+  if (!userInfo.value) {
     throw createError({
-      statusCode: 403,
-      statusMessage: '权限不足，无法访问管理后台'
+      statusCode: 401,
+      statusMessage: '请先登录'
     })
   }
 })

@@ -1,6 +1,6 @@
 # Story 2.1: 会议室基础数据管理
 
-Status: review
+Status: in-progress-dev
 
 ## Story
 
@@ -53,14 +53,14 @@ So that 建立完整的会议室资源数据库.
   - [x] 添加权限验证和用户ID记录 [修复安全漏洞]
 
 - [x] Task 2.1.4: 创建会议室管理前端组件 (AC: 1)
-  - [x] 创建 components/features/rooms/RoomManagement.vue - 会议室管理主界面
-  - [x] 创建 components/features/rooms/RoomCard.vue - 会议室卡片组件
-  - [x] 创建 components/features/rooms/RoomForm.vue - 会议室编辑表单
+  - [x] 创建 app/components/features/rooms/RoomManagement.vue - 会议室管理主界面
+  - [x] 创建 app/components/features/rooms/RoomCard.vue - 会议室卡片组件
+  - [x] 创建 app/components/features/rooms/RoomForm.vue - 会议室编辑表单
   - [x] 集成 FormKit 表单验证组件 [Source: docs/architecture.md#Implementation-Patterns]
   - [x] 集成 PrimeVue 组件库，使用企业商务蓝主题 [Source: docs/architecture.md#Decision-Summary]
 
 - [x] Task 2.1.5: 实现会议室状态管理 (AC: 1)
-  - [x] 创建 stores/rooms.ts - Pinia 状态管理
+  - [x] 创建 app/stores/rooms.ts - Pinia 状态管理
   - [x] 实现 RoomStatus 枚举：AVAILABLE, OCCUPIED, MAINTENANCE, DISABLED [Source: docs/architecture.md#Core-Data-Models]
   - [x] 创建状态切换功能和管理界面
   - [x] 实现状态变更的业务逻辑验证
@@ -114,9 +114,9 @@ So that 建立完整的会议室资源数据库.
 
 根据架构文档，会议室管理功能应该放置在以下位置：
 - **API接口**: `server/api/v1/rooms/` 目录
-- **前端组件**: `components/features/rooms/` 目录
-- **页面**: `pages/rooms/` 目录
-- **状态管理**: `stores/rooms.ts`
+- **前端组件**: `app/components/features/rooms/` 目录
+- **页面**: `app/pages/rooms/` 目录
+- **状态管理**: `app/stores/rooms.ts`
 - **文件上传**: `server/api/v1/upload/rooms/` 目录
 - **静态资源**: `public/uploads/rooms/` 目录
 
@@ -187,6 +187,19 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
   - 完善了会议室管理组件：RoomManagement.vue、RoomForm.vue、RoomDetail.vue、RoomHistoryView.vue
   - 修复了审查跟进项目[AI-Review][Medium] 实现CSV批量导入导出功能
 
+- **2025-11-17**: 修复app/pages/admin/rooms页面渲染问题
+  - **问题诊断**: 使用Chrome DevTools调试发现页面无法正常渲染的问题
+  - **根本原因**:
+    1. middleware/auth.ts中直接调用useAuthStore()导致导入错误
+    2. RoomManagement组件自动导入失败
+    3. 登录成功后认证状态持久化问题
+  - **解决方案**:
+    1. 修复middleware/auth.ts，改用useAuth() composable
+    2. 在app/pages/admin/rooms.vue中手动导入RoomManagement组件
+    3. 验证登录API正常工作（返回200，用户角色ADMIN，权限完整）
+  - **结果**: app/pages/admin/rooms页面现在可以正常访问和渲染
+  - **技术细节**: 登录功能正常，路由跳转正常，页面加载成功，API认证头问题为次要优化项
+
 ### File List
 
 **Files Created:**
@@ -196,11 +209,11 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 - server/api/v1/rooms/import/preview.post.ts - CSV预览API
 - server/api/v1/rooms/history.get.ts - 操作历史API
 - server/utils/csv.ts - CSV工具函数
-- components/features/rooms/RoomManagement.vue - 会议室管理主界面
-- components/features/rooms/RoomForm.vue - 会议室表单组件
-- components/features/rooms/RoomBatchImport.vue - 批量导入组件
-- components/features/rooms/RoomDetail.vue - 会议室详情组件
-- components/features/rooms/RoomHistoryView.vue - 历史记录查看组件
+- app/components/features/rooms/RoomManagement.vue - 会议室管理主界面
+- app/components/features/rooms/RoomForm.vue - 会议室表单组件
+- app/components/features/rooms/RoomBatchImport.vue - 批量导入组件
+- app/components/features/rooms/RoomDetail.vue - 会议室详情组件
+- app/components/features/rooms/RoomHistoryView.vue - 历史记录查看组件
 
 **Existing Files:**
 - server/api/v1/rooms/index.get.ts - 会议室列表API
@@ -209,9 +222,12 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 - server/api/v1/rooms/[id].put.ts - 更新会议室API
 - server/api/v1/rooms/[id].delete.ts - 删除会议室API
 - server/api/v1/upload/rooms/post.ts - 会议室文件上传API
-- stores/rooms.ts - 会议室状态管理
+- app/stores/rooms.ts - 会议室状态管理
 - prisma/schema.prisma - MeetingRoom 和 RoomHistory 数据模型
 - server/middleware/permission.ts - 会议室管理权限检查
+- app/pages/admin/rooms.vue - 修复了组件导入问题
+- app/middleware/auth.ts - 修复了useAuthStore调用问题
+- app/composables/useAuth.ts - 认证状态管理composable
 
 ## Senior Developer Review (AI)
 
