@@ -52,7 +52,7 @@ development_status:
   # Epic 2: 会议室核心管理
   epic-2: backlog
   2-1-room-basic-data-management: in-progress
-  2-1-routes-navigation-fix: ready-for-dev
+  2-1-routes-navigation-fix: done
   2-2-room-search-and-filter: backlog
   2-3-room-detail-display: backlog
   2-4-room-rules-configuration: backlog

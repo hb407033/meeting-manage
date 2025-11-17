@@ -4,12 +4,13 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
-  // Nuxt 4 目录配置
+  // Nuxt 4 App目录模式 - 移除pages配置让Nuxt自动检测app/pages
   dir: {
-    pages: 'app/pages',      // Nuxt 4 推荐使用 app/ 目录
     layouts: 'app/layouts',  // 布局文件位于 app/layouts/
+    // 注意：不配置pages，让Nuxt自动发现app/pages目录
   },
 
+  
   // CSS配置
   css: ['~/assets/css/main.css'],
 
@@ -69,5 +70,17 @@ export default defineNuxtConfig({
         target: 'esnext',
       },
     },
+  },
+
+  // 路由配置
+  router: {
+    options: {
+      strict: false,
+    },
+  },
+
+  // 应用配置
+  app: {
+    pageTransition: { name: 'page', mode: 'out-in' },
   },
 })
