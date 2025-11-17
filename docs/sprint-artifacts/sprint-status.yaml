@@ -46,7 +46,7 @@ development_status:
   1-4-operation-audit-log-system: backlog
   1-5-docker-infrastructure-reorganization: done
   1-6-component-reorganization: review
-  1-7-technical-documentation-migration: review
+  1-7-technical-documentation-migration: done
   epic-1-retrospective: optional
 
   # Epic 2: 会议室核心管理
