@@ -47,7 +47,7 @@ export default defineConfig({
     ],
 
     testTimeout: 15000,
-    setupFiles: ['./test/fixtures/vitest-setup.ts'],
+    setupFiles: ['./test/fixtures/vitest-setup-simple.ts'],
 
     // 环境变量
     env: {

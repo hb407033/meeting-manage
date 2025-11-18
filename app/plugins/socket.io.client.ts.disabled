@@ -1,0 +1,52 @@
+import { io, Socket } from 'socket.io-client'
+
+export default defineNuxtPlugin((nuxtApp) => {
+  let socket: Socket | null = null
+
+  // 只在客户端初始化Socket.IO
+  if (process.client) {
+    socket = io('/reservations', {
+      transports: ['websocket', 'polling'],
+      autoConnect: true
+    })
+
+    socket.on('connect', () => {
+      console.log('已连接到预约实时更新服务')
+    })
+
+    socket.on('disconnect', () => {
+      console.log('与预约实时更新服务断开连接')
+    })
+
+    socket.on('reservation-updated', (data) => {
+      console.log('收到预约状态更新:', data)
+    })
+
+    // 提供便捷的方法
+    nuxtApp.$socket = socket
+
+    // 自动重连
+    socket.on('connect_error', (error) => {
+      console.error('Socket连接错误:', error)
+    })
+  }
+
+  return {
+    provide: {
+      socket
+    }
+  }
+})
+
+// 扩展NuxtApp类型
+declare module '#app' {
+  interface NuxtApp {
+    $socket: Socket | null
+  }
+}
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $socket: Socket | null
+  }
+}

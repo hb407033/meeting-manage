@@ -1,9 +1,10 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-    <div class="max-w-md w-full space-y-8 p-8">
+  <div class="min-h-screen flex items-center w-full justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 sm:px-6 lg:px-8">
+    <!-- 使用固定高度的容器确保垂直居中 -->
+    <div class="flex flex-col items-center justify-center w-full min-h-[600px]">
       <!-- Logo 和标题 -->
-      <div class="text-center">
-        <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-600 dark:bg-blue-500">
+      <div class="text-center mb-8">
+        <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-600 dark:bg-blue-500 mb-4">
           <i class="pi pi-building text-white text-2xl"></i>
         </div>
         <h2 class="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
@@ -14,13 +15,13 @@
         </p>
       </div>
 
-      <!-- 主要内容 -->
-      <div class="bg-white dark:bg-gray-800 py-8 px-6 shadow-xl rounded-lg">
+      <!-- 主要内容 - 插槽内容 -->
+      <div class="w-full flex-shrink-0">
         <slot />
       </div>
 
       <!-- 页脚信息 -->
-      <div class="text-center text-sm text-gray-600 dark:text-gray-400">
+      <div class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
         <p>&copy; 2025 会议室管理系统. All rights reserved.</p>
       </div>
     </div>

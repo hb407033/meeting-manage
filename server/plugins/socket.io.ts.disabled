@@ -1,0 +1,131 @@
+import { Server as HTTPServer } from 'http'
+import { Server as SocketIOServer } from 'socket.io'
+import { availabilityCacheService } from '../services/availability-cache'
+
+export default defineNuxtPlugin((nuxtApp) => {
+  let io: SocketIOServer | null = null
+
+  // 只在服务端初始化Socket.IO
+  if (process.server) {
+    const httpServer = nuxtApp.nodeApp.server as HTTPServer
+
+    io = new SocketIOServer(httpServer, {
+      cors: {
+        origin: process.env.NODE_ENV === 'production'
+          ? process.env.ALLOWED_ORIGINS?.split(',') || []
+          : ['http://localhost:3004', 'http://localhost:3000'],
+        methods: ['GET', 'POST']
+      },
+      transports: ['websocket', 'polling']
+    })
+
+    // 存储会议室预约状态的命名空间
+    const reservationNamespace = io.of('/reservations')
+
+    reservationNamespace.on('connection', (socket) => {
+      console.log('用户连接到预约实时更新:', socket.id)
+
+      // 加入会议室特定的房间
+      socket.on('join-room', (roomId: string) => {
+        socket.join(`room-${roomId}`)
+        console.log(`用户 ${socket.id} 加入会议室 ${roomId}`)
+      })
+
+      // 离开会议室房间
+      socket.on('leave-room', (roomId: string) => {
+        socket.leave(`room-${roomId}`)
+        console.log(`用户 ${socket.id} 离开会议室 ${roomId}`)
+      })
+
+      // 处理预约状态变更
+      socket.on('reservation-change', async (data: {
+        roomId: string
+        action: 'created' | 'updated' | 'deleted'
+        reservation?: any
+      }) => {
+        try {
+          // 立即使相关缓存失效
+          await availabilityCacheService.invalidateRoomAvailability(data.roomId)
+
+          // 向订阅该会议室的所有用户广播变更
+          socket.to(`room-${data.roomId}`).emit('reservation-updated', {
+            roomId: data.roomId,
+            action: data.action,
+            reservation: data.reservation,
+            timestamp: new Date().toISOString()
+          })
+
+          console.log(`🔄 预约变更已处理: ${data.action} for room ${data.roomId}`)
+        } catch (error) {
+          console.error('❌ 处理预约变更时出错:', error)
+
+          // 即使缓存失效失败，也要广播预约变更
+          socket.to(`room-${data.roomId}`).emit('reservation-updated', {
+            roomId: data.roomId,
+            action: data.action,
+            reservation: data.reservation,
+            timestamp: new Date().toISOString(),
+            error: '缓存失效失败，但预约状态已更新'
+          })
+        }
+      })
+
+      socket.on('disconnect', () => {
+        console.log('用户断开连接:', socket.id)
+      })
+    })
+
+    // 全局广播函数，供API调用
+    nuxtApp.$broadcastReservationChange = async (data: {
+      roomId: string
+      action: 'created' | 'updated' | 'deleted'
+      reservation?: any
+    }) => {
+      try {
+        // 立即使相关缓存失效
+        await availabilityCacheService.invalidateRoomAvailability(data.roomId)
+
+        if (reservationNamespace) {
+          reservationNamespace.emit('reservation-updated', {
+            roomId: data.roomId,
+            action: data.action,
+            reservation: data.reservation,
+            timestamp: new Date().toISOString()
+          })
+
+          console.log(`📡 预约变更已广播: ${data.action} for room ${data.roomId}`)
+        }
+      } catch (error) {
+        console.error('❌ 广播预约变更时出错:', error)
+
+        // 即使缓存失效失败，也要广播预约变更
+        if (reservationNamespace) {
+          reservationNamespace.emit('reservation-updated', {
+            roomId: data.roomId,
+            action: data.action,
+            reservation: data.reservation,
+            timestamp: new Date().toISOString(),
+            error: '缓存失效失败，但预约状态已更新'
+          })
+        }
+      }
+    }
+  }
+
+  return {
+    provide: {
+      socket: io
+    }
+  }
+})
+
+// 扩展NuxtApp类型以包含广播函数
+declare module '#app' {
+  interface NuxtApp {
+    $broadcastReservationChange: (data: {
+      roomId: string
+      action: 'created' | 'updated' | 'deleted'
+      reservation?: any
+    }) => void
+  }
+}

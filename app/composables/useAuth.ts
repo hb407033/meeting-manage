@@ -30,9 +30,9 @@ export const useAuth = () => {
     try {
       await authStore.login(credentials)
 
-      // 登录成功后重定向
+      // 登录成功后重定向到预约列表，提供快速操作
       const redirect = route.query.redirect as string
-      await router.push(redirect || '/dashboard')
+      await router.push(redirect || '/reservations')
 
       return true
     } catch (error) {
@@ -45,9 +45,9 @@ export const useAuth = () => {
     try {
       await authStore.register(data)
 
-      // 注册成功后重定向
+      // 注册成功后重定向到预约列表，提供快速操作
       const redirect = route.query.redirect as string
-      await router.push(redirect || '/dashboard')
+      await router.push(redirect || '/reservations')
 
       return true
     } catch (error) {

@@ -13,7 +13,6 @@ export default defineNuxtConfig({
   
   // CSS配置
   css: [
-    '~/assets/css/main.css',
     'primeicons/primeicons.css'
   ],
 

@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<context>
+  <story>
+    <key>3-1-calendar-view-and-availability-query</key>
+    <name>日历视图与可用性查询</name>
+    <status>drafted</status>
+    <as-a>普通用户</as-a>
+    <i-want>通过日历视图查看会议室可用时间</i-want>
+    <so-that>直观地了解会议室的时间安排，选择合适的预约时间</sothat>
+  </story>
+
+  <acceptance-criteria>
+    <ac id="1">
+      <title>日历时间选择界面</title>
+      <criteria>系统显示直观的日历时间选择界面，支持日视图、周视图、月视图切换</criteria>
+    </ac>
+    <ac id="2">
+      <title>会议室可用性实时显示</title>
+      <criteria>会议室可用性实时显示，用颜色区分状态(可用、已预约、维护中)</criteria>
+    </ac>
+    <ac id="3">
+      <title>快速时间选择</title>
+      <criteria>支持快速时间选择：点击时间块快速选择，拖拽选择时间段</criteria>
+    </ac>
+    <ac id="4">
+      <title>多会议室对比</title>
+      <criteria>支持多会议室对比，同时查看多个会议室的时间安排</criteria>
+    </ac>
+    <ac id="5">
+      <title>时间冲突高亮显示</title>
+      <criteria>时间冲突高亮显示，帮助用户避开冲突时间</criteria>
+    </ac>
+    <ac id="6">
+      <title>智能时间推荐</title>
+      <criteria>提供智能时间推荐功能，基于历史数据推荐最佳时间段</criteria>
+    </ac>
+    <ac id="7">
+      <title>响应时间要求</title>
+      <criteria>响应时间要求：日历视图加载时间 &lt; 1秒</criteria>
+    </ac>
+  </acceptance-criteria>
+
+  <technical-context>
+    <architecture>
+      <framework>Nuxt 4</framework>
+      <frontend-ui>PrimeVue 4.4.1 + Nuxt UI</frontend-ui>
+      <database>MySQL + Prisma ORM 6.19.0</database>
+      <cache>Redis (ioredis 5.8.2)</cache>
+      <validation>FormKit + Zod 4.1.12</validation>
+      <testing>Vitest 4.0.9 + Vue Test Utils 2.4.6</testing>
+    </architecture>
+
+    <existing-patterns>
+      <api-design>
+        <response-format>统一的ApiResponse格式，包含success、data、code、message、meta字段</response-format>
+        <error-handling>标准错误码API_CODES，包含业务错误和系统错误分类</error-handling>
+        <middleware>JWT认证 + RBAC权限验证中间件</middleware>
+      </api-design>
+
+      <database-schema>
+        <reservation-model>已存在基础Reservation模型，包含title、description、startTime、endTime、status等字段</reservation-model>
+        <meeting-room-model>MeetingRoom模型已完善，支持equipment、images、rules等JSON字段</meeting-room-model>
+        <user-model>User模型支持organization、roles、权限体系</user-model>
+      </database-schema>
+
+      <component-structure>
+        <organization>app/components/features/reservations/ - 功能组件</organization>
+        <common>app/components/common/ - 通用组件(权限拒绝等)</common>
+        <naming>PascalCase.vue格式</naming>
+      </component-structure>
+    </existing-patterns>
+
+    <dependencies-required>
+      <calendar-library>
+        <name>@fullcalendar/vue</name>
+        <version>^6.1.15</version>
+        <purpose>日历组件集成</purpose>
+      </calendar-library>
+      <calendar-core>
+        <name>@fullcalendar/core</name>
+        <version>^6.1.15</version>
+        <purpose>日历核心库</purpose>
+      </calendar-core>
+      <calendar-plugins>
+        <name>@fullcalendar/daygrid, @fullcalendar/timegrid, @fullcalendar/interaction</name>
+        <version>^6.1.15</version>
+        <purpose>日视图、周视图、拖拽交互</purpose>
+      </calendar-plugins>
+      <date-processing>
+        <name>date-fns, date-fns-tz</name>
+        <version>^4.1.0, ^3.1.3</version>
+        <purpose>日期处理和时区管理</purpose>
+      </date-processing>
+      <recurring-patterns>
+        <name>rrule</name>
+        <version>^13.0.1</version>
+        <purpose>周期性预约规则解析</purpose>
+      </recurring-patterns>
+    </dependencies-required>
+
+    <api-endpoints-to-create>
+      <availability>
+        <method>POST</method>
+        <path>/api/v1/reservations/availability</path>
+        <purpose>检查会议室可用性查询</purpose>
+        <performance>&lt; 200ms响应时间</performance>
+      </availability>
+      <suggestions>
+        <method>GET</method>
+        <path>/api/v1/reservations/suggestions</path>
+        <purpose>获取智能时间推荐</purpose>
+      </suggestions>
+      <conflict-check>
+        <method>POST</method>
+        <path>/api/v1/reservations/conflict-check</path>
+        <purpose>预约冲突检测</purpose>
+        <performance>&lt; 100ms响应时间</performance>
+      </conflict-check>
+      <reservations-crud>
+        <method>POST, GET, PUT, DELETE</method>
+        <path>/api/v1/reservations</path>
+        <purpose>预约管理基础API</purpose>
+      </reservations-crud>
+    </api-endpoints-to-create>
+
+    <database-optimizations>
+      <indexes>
+        <index>(roomId, startTime, endTime) - 预约查询优化</index>
+        <index>(userId, startTime) - 用户预约历史</index>
+        <index>(status) - 状态筛选</index>
+      </indexes>
+      <cache-strategy>
+        <availability-cache>Redis 5分钟TTL缓存可用性数据</availability-cache>
+        <user-list-cache>用户预约列表10分钟TTL</user-list-cache>
+        <conflict-cache>冲突检测结果2分钟TTL</conflict-cache>
+      </cache-strategy>
+    </database-optimizations>
+
+    <security-requirements>
+      <authentication>集成现有JWT认证机制</authentication>
+      <authorization>RBAC权限控制，验证reservation:read、reservation:create等权限</authorization>
+      <input-validation>前后端双重数据验证，防止SQL注入和XSS</input-validation>
+      <rate-limiting>API请求频率限制，防止恶意查询</rate-limiting>
+    </security-requirements>
+
+    <performance-requirements>
+      <calendar-load>&lt; 1秒日历视图加载时间</calendar-load>
+      <availability-query>&lt; 200ms可用性查询响应</availability-query>
+      <conflict-detection>&lt; 100ms冲突检测响应</conflict-detection>
+      <concurrent-users>支持500+并发查询操作</concurrent-users>
+      <data-volume>支持大量预约数据的虚拟化处理</data-volume>
+    </performance-requirements>
+
+    <testing-strategy>
+      <unit-testing>
+        <framework>Vitest + Vue Test Utils</framework>
+        <coverage>业务逻辑组件100%覆盖</coverage>
+        <components>CalendarView、TimeSlotSelector、AvailabilityIndicator等组件测试</components>
+        <services>ConflictDetectionEngine、AvailabilityChecker等服务测试</services>
+      </unit-testing>
+
+      <integration-testing>
+        <api-testing>预约相关API端点集成测试</api-testing>
+        <database-testing>Prisma查询和数据一致性测试</database-testing>
+        <cache-testing>Redis缓存策略和失效机制测试</cache-testing>
+      </integration-testing>
+
+      <end-to-end-testing>
+        <framework>Playwright</framework>
+        <scenarios>
+          <scenario>完整日历视图交互流程</scenario>
+          <scenario>多会议室可用性对比流程</scenario>
+          <scenario>时间冲突检测和解决流程</scenario>
+          <scenario>智能推荐功能验证</scenario>
+        </scenarios>
+      </end-to-end-testing>
+
+      <performance-testing>
+        <load-testing>并发预约操作压力测试</load-testing>
+        <response-time>各API端点响应时间验证</response-time>
+        <cache-efficiency>缓存命中率和性能提升测试</cache-efficiency>
+      </performance-testing>
+    </testing-strategy>
+
+    <component-design-specs>
+      <calendar-view>
+        <file>app/components/features/reservations/CalendarView.vue</file>
+        <responsibility>主日历组件，集成FullCalendar</responsibility>
+        <props>roomIds[], selectedTimeRange, viewMode</props>
+        <emits>timeSelect, roomSelect, viewChange</emits>
+      </calendar-view>
+
+      <time-slot-selector>
+        <file>app/components/features/reservations/TimeSlotSelector.vue</file>
+        <responsibility>时间段选择器，支持点击和拖拽选择</responsibility>
+        <props>availableSlots[], selectedSlots[], disabled</props>
+        <emits>slotSelect, slotDeselect, selectionComplete</emits>
+      </time-slot-selector>
+
+      <availability-indicator>
+        <file>app/components/features/reservations/RoomAvailabilityIndicator.vue</file>
+        <responsibility>会议室可用性状态指示器</responsibility>
+        <props>roomData, timeRange, status</props>
+        <features>颜色编码、悬浮详情、状态切换动画</features>
+      </availability-indicator>
+
+      <calendar-toolbar>
+        <file>app/components/features/reservations/CalendarToolbar.vue</file>
+        <responsibility>日历工具栏，视图切换和筛选控制</responsibility>
+        <props>viewMode, dateRange, roomFilter</props>
+        <emits>viewModeChange, dateRangeChange, roomFilterChange</emits>
+      </calendar-toolbar>
+
+      <time-suggestion-panel>
+        <file>app/components/features/reservations/TimeSuggestionPanel.vue</file>
+        <responsibility>智能时间推荐面板</responsibility>
+        <props>suggestions[], loading, algorithm</props>
+        <features>推荐排序、过滤逻辑、应用推荐</features>
+      </time-suggestion-panel>
+    </component-design-specs>
+
+    <file-structure>
+      <frontend-components>
+        <path>app/components/features/reservations/</path>
+        <files>
+          <file>CalendarView.vue - 主日历组件</file>
+          <file>TimeSlotSelector.vue - 时间段选择器</file>
+          <file>RoomAvailabilityIndicator.vue - 可用性指示器</file>
+          <file>CalendarToolbar.vue - 日历工具栏</file>
+          <file>CalendarFilter.vue - 会议室筛选器</file>
+          <file>TimeSuggestionPanel.vue - 智能推荐面板</file>
+        </files>
+      </frontend-components>
+
+      <api-endpoints>
+        <path>server/api/v1/reservations/</path>
+        <files>
+          <file>availability.post.ts - 可用性查询API</file>
+          <file>suggestions.get.ts - 智能推荐API</file>
+          <file>conflict-check.post.ts - 冲突检测API</file>
+          <file>index.post.ts - 创建预约API</file>
+          <file>index.get.ts - 获取预约列表API</file>
+        </files>
+      </api-endpoints>
+
+      <services>
+        <path>server/services/</path>
+        <files>
+          <file>reservation-service.ts - 预约业务逻辑</file>
+          <file>availability-service.ts - 可用性查询服务</file>
+          <file>conflict-detection.ts - 冲突检测引擎</file>
+          <file>cache-service.ts - 缓存管理服务</file>
+        </files>
+      </services>
+
+      <types>
+        <path>types/</path>
+        <files>
+          <file>reservation.ts - 预约相关类型定义</file>
+          <file>calendar.ts - 日历相关类型定义</file>
+          <file>availability.ts - 可用性查询类型定义</file>
+        </files>
+      </types>
+    </file-structure>
+
+    <validation-rules>
+      <time-validation>
+        <rule>预约开始时间不能是过去时间</rule>
+        <rule>预约结束时间必须晚于开始时间</rule>
+        <rule>预约时长不能超过24小时</rule>
+        <rule>最小预约时长15分钟</rule>
+      </time-validation>
+
+      <room-validation>
+        <rule>验证会议室访问权限</rule>
+        <rule>检查会议室容量匹配</rule>
+        <rule>验证设备需求支持</rule>
+        <rule>检查会议室状态(可用/维护中)</rule>
+      </room-validation>
+
+      <conflict-validation>
+        <rule>检测时间重叠冲突</rule>
+        <rule>检查容量超限冲突</rule>
+        <rule>验证设备冲突</rule>
+        <rule>处理特殊时间段限制</rule>
+      </conflict-validation>
+    </validation-rules>
+
+    <implementation-notes>
+      <calendar-integration>
+        <note>FullCalendar需要适配Nuxt 4 SSR模式</note>
+        <note>客户端水合(SRR hydration)处理</note>
+        <note>虚拟化渲染处理大量预约数据</note>
+        <note>响应式设计适配移动端</note>
+      </calendar-integration>
+
+      <real-time-features>
+        <note>WebSocket连接实现实时预约状态更新</note>
+        <note>预约变更时缓存失效机制</note>
+        <note>多用户并发预约冲突处理</note>
+      </real-time-features>
+
+      <performance-optimizations>
+        <note>懒加载日历事件数据</note>
+        <note>防抖处理用户交互</note>
+        <note>预加载相邻时间段数据</note>
+        <note>缓存命中优先策略</note>
+      </performance-optimizations>
+    </implementation-notes>
+
+    <learnings-from-epic-2>
+      <established-patterns>
+        <pattern>PrimeVue + FormKit表单验证模式已建立，可用于预约表单开发</pattern>
+        <pattern>统一API响应格式已定义，新的预约API需遵循此格式</pattern>
+        <pattern>用户认证和RBAC权限体系已实现，直接集成到预约功能</pattern>
+        <pattern>会议室状态管理模式已建立，可在预约系统中复用</pattern>
+      </established-patterns>
+
+      <technical-decisions>
+        <decision>数据库索引策略已验证，预约查询可复用现有模式</decision>
+        <decision>Redis缓存配置已优化，预约缓存可直接使用现有基础设施</decision>
+        <decision>错误处理和日志记录模式已建立，预约系统遵循相同标准</decision>
+      </technical-decisions>
+    </learnings-from-epic-2>
+
+    <success-metrics>
+      <user-experience>
+        <metric>日历视图加载时间 &lt; 1秒</metric>
+        <metric>可用性查询响应时间 &lt; 200ms</metric>
+        <metric>用户完成预约流程时间 &lt; 2分钟</metric>
+        <metric>移动端体验评分 &gt; 4.5/5</metric>
+      </user-experience>
+
+      <system-performance>
+        <metric>系统并发用户数 &gt; 500</metric>
+        <metric>API响应时间达标率 &gt; 95%</metric>
+        <metric>缓存命中率 &gt; 80%</metric>
+        <metric>冲突检测准确率 &gt; 99%</metric>
+      </system-performance>
+
+      <business-impact>
+        <metric>会议室利用率提升 &gt; 20%</metric>
+        <metric>预约冲突减少 &gt; 50%</metric>
+        <metric>用户满意度 &gt; 90%</metric>
+        <metric>系统可用性 &gt; 99.5%</metric>
+      </business-impact>
+    </success-metrics>
+  </technical-context>
+</context>

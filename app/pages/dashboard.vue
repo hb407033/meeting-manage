@@ -158,16 +158,15 @@
           <Icon name="i-heroicons-plus" class="h-5 w-5 mr-2" />
           添加会议室
         </NuxtLink>
-        <button
-          v-if="canAccess('reservation', 'create')"
-          class="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          @click="handleNewReservation"
-        >
-          <Icon name="i-heroicons-calendar-plus" class="h-5 w-5 mr-2" />
-          新建预约
-        </button>
         <NuxtLink
-          to="/rooms"
+          to="/reservations"
+          class="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+        >
+          <Icon name="i-heroicons-calendar-days" class="h-5 w-5 mr-2" />
+          新建预约
+        </NuxtLink>
+        <NuxtLink
+          to="/reservations"
           class="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
         >
           <Icon name="i-heroicons-calendar-days" class="h-5 w-5 mr-2" />
@@ -208,9 +207,7 @@ const lastLoginTime = computed(() => {
 
 // 处理新建预约
 const handleNewReservation = () => {
-  // TODO: 实现新建预约功能
-  console.log('新建预约功能待实现')
-  // 暂时跳转到会议室列表页面
-  navigateTo('/rooms')
+  // 跳转到预约页面，用户可以在那里查看和创建预约
+  navigateTo('/reservations')
 }
 </script>

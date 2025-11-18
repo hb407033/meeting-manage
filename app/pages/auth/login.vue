@@ -1,5 +1,6 @@
 <template>
-  <form @submit.prevent="handleLogin" class="space-y-6">
+  <!-- 使用固定宽度的form容器 -->
+  <form @submit.prevent="handleLogin" class="w-full max-w-md mx-auto space-y-6 bg-white dark:bg-gray-800 py-8 px-6 shadow-xl rounded-lg">
     <!-- 错误提示 -->
     <div v-if="lastError" class="p-4 bg-red-50 border border-red-200 rounded-md">
       <div class="flex">
@@ -147,7 +148,7 @@ const route = useRoute()
 
 // 表单数据
 const form = reactive({
-  email: 'houbin@123.com',
+  email: '',
   password: ''
 })
 

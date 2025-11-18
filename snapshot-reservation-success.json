@@ -1,0 +1,28 @@
+uid=11_0 RootWebArea "智能会议室管理系统" url="http://localhost:3002/test-reservation-public"
+  uid=11_1 heading "会议室预约系统" level="1"
+  uid=11_2 StaticText "选择会议室和时间段，创建会议预约"
+  uid=11_3 StaticText ""
+  uid=11_4 StaticText "✅ 预约创建成功！会议室：1，主题：项目评审会议"
+  uid=11_5 StaticText "选择会议室 *"
+  uid=11_6 combobox haspopup="menu" invalid="true" value="请选择会议室"
+    uid=11_7 option "请选择会议室" selectable selected value="请选择会议室"
+    uid=11_8 option "会议室 A (10人)" value="会议室 A (10人)"
+    uid=11_9 option "会议室 B (6人)" value="会议室 B (6人)"
+    uid=11_10 option "会议室 C (20人)" value="会议室 C (20人)"
+  uid=11_11 StaticText "会议主题 *"
+  uid=11_12 textbox "请输入会议主题" required
+  uid=11_13 StaticText "会议描述"
+  uid=11_14 textbox "请输入会议详细描述（可选）" multiline
+  uid=11_15 button "创建预约" disableable disabled
+  uid=11_16 heading "💡 使用说明" level="3"
+  uid=11_17 StaticText "• 选择一个会议室查看可用时间段"
+  uid=11_18 StaticText "• 点击绿色时间段进行选择"
+  uid=11_19 StaticText "• 红色表示已预约，橙色表示维护中"
+  uid=11_20 StaticText "• 填写会议主题后提交预约"
+  uid=11_21 button "Go to parent" disableable disabled
+  uid=11_22 button "Open in editor"
+  uid=11_23 button "Close"
+  uid=11_24 button "Toggle Nuxt DevTools"
+  uid=11_25 StaticText "4"
+  uid=11_26 StaticText "ms"
+  uid=11_27 button "Toggle Component Inspector"

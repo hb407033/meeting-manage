@@ -117,18 +117,27 @@ export const useAuthStore = defineStore('auth', {
         const tokenExpiresAt = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRES_AT)
 
         if (accessToken && userData) {
-          this.accessToken = accessToken
-          this.refreshToken = refreshToken
-          this.user = JSON.parse(userData)
-          this.isAuthenticated = true
-          this.tokenExpiresAt = tokenExpiresAt ? parseInt(tokenExpiresAt) : null
+          try {
+            this.accessToken = accessToken
+            this.refreshToken = refreshToken
+            this.user = JSON.parse(userData)
+            this.isAuthenticated = true
+            this.tokenExpiresAt = tokenExpiresAt ? parseInt(tokenExpiresAt) : null
 
-          // 检查令牌是否过期
-          if (this.isTokenExpiringSoon) {
-            this.refreshTokens().catch(() => {
-              this.clearAuth()
-            })
+            // 检查令牌是否过期
+            if (this.isTokenExpiringSoon) {
+              this.refreshTokens().catch(() => {
+                console.warn('Token refresh failed during init, clearing auth state')
+                this.clearAuth()
+              })
+            }
+          } catch (parseError) {
+            console.error('Failed to parse user data:', parseError)
+            this.clearAuth()
           }
+        } else {
+          // 确保状态完全清除
+          this.clearAuth()
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error)

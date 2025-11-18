@@ -3,8 +3,21 @@ import { useAuthStore } from '../stores/auth'
 export default defineNuxtPlugin((nuxtApp) => {
   const authStore = useAuthStore()
 
-  // 初始化认证状态
-  authStore.initAuth()
+  // 只在客户端初始化认证状态
+  if (process.client) {
+    // 确保在插件中正确初始化认证状态
+    authStore.initAuth()
+
+    // 在页面刷新时自动恢复认证状态
+  const router = useRouter()
+
+  // 监听路由变化，确保认证状态正确
+  router.beforeEach(() => {
+    if (!authStore.isAuthenticated && authStore.accessToken) {
+      authStore.initAuth()
+    }
+  })
+  }
 
   // 创建一个组合式函数来使用
   const $auth = {

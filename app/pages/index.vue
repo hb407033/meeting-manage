@@ -41,7 +41,7 @@
             快速创建会议室预约，简单三步完成预约流程
           </p>
           <NuxtLink
-            to="/dashboard"
+            to="/reservations/create"
             class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             <i class="pi pi-plus mr-2"></i>
@@ -59,11 +59,11 @@
             管理个人信息，查看预约历史和权限设置
           </p>
           <NuxtLink
-            to="/dashboard"
+            to="/reservations"
             class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
-            <i class="pi pi-cog mr-2"></i>
-            进入控制台
+            <i class="pi pi-list mr-2"></i>
+            查看预约列表
           </NuxtLink>
         </div>
       </div>
@@ -138,9 +138,7 @@ const lastLoginTime = computed(() => {
 
 // 处理新建预约
 const handleNewReservation = () => {
-  // TODO: 实现新建预约功能
-  console.log('新建预约功能待实现')
-  // 暂时跳转到会议室列表页面
-  navigateTo('/rooms')
+  // 直接跳转到新建预约页面
+  navigateTo('/reservations/create')
 }
 </script>

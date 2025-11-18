@@ -1,0 +1,383 @@
+import { createSuccessResponse, createErrorResponse, API_CODES } from '~~/server/utils/response'
+import { getRequiredCurrentUser } from '~~/server/utils/auth'
+import { availabilityCacheService } from '~~/server/services/availability-cache'
+
+interface AvailabilityRequest {
+  roomIds: string[]
+  startTime: string // ISO datetime
+  endTime: string   // ISO datetime
+  includeUnavailable?: boolean
+}
+
+interface AvailabilityCacheKey {
+  roomIds: string[]
+  startTime: string
+  endTime: string
+}
+
+interface AvailabilityResponse {
+  [roomId: string]: {
+    roomId: string
+    roomName: string
+    status: 'available' | 'unavailable' | 'maintenance'
+    availableSlots?: Array<{
+      startTime: string
+      endTime: string
+      duration: number // minutes
+    }>
+    reservations?: Array<{
+      id: string
+      title: string
+      startTime: string
+      endTime: string
+      organizerName?: string
+      status: string
+    }>
+    maintenanceSlots?: Array<{
+      id: string
+      startTime: string
+      endTime: string
+      reason?: string
+    }>
+  }
+}
+
+export default defineEventHandler(async (event) => {
+  const startTimeOverall = Date.now()
+
+  try {
+    // 验证用户会话
+    const user = await getRequiredCurrentUser(event)
+
+    // 获取请求体
+    const body = await readBody(event) as AvailabilityRequest
+
+    // 验证请求参数
+    if (!body.roomIds || !Array.isArray(body.roomIds) || body.roomIds.length === 0) {
+      return createErrorResponse(API_CODES.INVALID_REQUEST, 'roomIds 参数是必需的')
+    }
+
+    if (!body.startTime || !body.endTime) {
+      return createErrorResponse(API_CODES.INVALID_REQUEST, 'startTime 和 endTime 参数是必需的')
+    }
+
+    const startTime = new Date(body.startTime)
+    const endTime = new Date(body.endTime)
+
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return createErrorResponse(API_CODES.INVALID_REQUEST, '时间格式无效')
+    }
+
+    if (startTime >= endTime) {
+      return createErrorResponse(API_CODES.INVALID_REQUEST, '开始时间必须早于结束时间')
+    }
+
+    // 查询时间范围限制（最多查询30天）
+    const maxQueryRange = 30 * 24 * 60 * 60 * 1000 // 30天
+    if (endTime.getTime() - startTime.getTime() > maxQueryRange) {
+      return createErrorResponse(API_CODES.INVALID_REQUEST, '查询时间范围不能超过30天')
+    }
+
+    // 检查缓存
+    const cacheParams: AvailabilityCacheKey = {
+      roomIds: body.roomIds,
+      startTime: body.startTime,
+      endTime: body.endTime
+    }
+
+    // 尝试从缓存获取数据
+    const cachedData = await availabilityCacheService.getAvailability(cacheParams)
+    if (cachedData) {
+      const cacheTime = Date.now() - startTimeOverall
+      console.log(`📦 Cache hit! Total response time: ${cacheTime}ms`)
+      return createSuccessResponse(cachedData)
+    }
+
+    // 获取分布式锁防止缓存击穿
+    const lockValue = await availabilityCacheService.getCacheLock(cacheParams, 10000)
+    let needsToSetCache = false
+
+    try {
+      // 再次检查缓存（防止锁竞争期间其他请求已经设置了缓存）
+      const recheckedData = await availabilityCacheService.getAvailability(cacheParams)
+      if (recheckedData) {
+        const cacheTime = Date.now() - startTimeOverall
+        console.log(`📦 Cache hit after lock! Total response time: ${cacheTime}ms`)
+        return createSuccessResponse(recheckedData)
+      }
+
+      needsToSetCache = true
+
+      // 获取会议室信息
+      const rooms = await prisma.meetingRoom.findMany({
+        where: {
+          id: { in: body.roomIds },
+          status: 'AVAILABLE'
+        },
+        select: {
+          id: true,
+          name: true,
+          capacity: true,
+          status: true,
+          equipment: true
+        }
+      })
+
+      if (rooms.length === 0) {
+        return createErrorResponse(API_CODES.NOT_FOUND, '未找到可用的会议室')
+      }
+
+      // 查询预约数据
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          roomId: { in: body.roomIds },
+          OR: [
+            {
+              AND: [
+                { startTime: { gte: startTime } },
+                { startTime: { lte: endTime } }
+              ]
+            },
+            {
+              AND: [
+                { endTime: { gte: startTime } },
+                { endTime: { lte: endTime } }
+              ]
+            },
+            {
+              AND: [
+                { startTime: { lte: startTime } },
+                { endTime: { gte: endTime } }
+              ]
+            }
+          ],
+          status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] }
+        },
+        select: {
+          id: true,
+          title: true,
+          startTime: true,
+          endTime: true,
+          roomId: true,
+          userId: true,
+          status: true
+        },
+        orderBy: {
+          startTime: 'asc'
+        }
+      })
+
+      // 获取用户信息（用于显示组织者）
+      const userIds = [...new Set(reservations.map(r => r.userId))]
+      const users = userIds.length > 0 ? await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true }
+      }) : []
+
+      const userMap = new Map(users.map(u => [u.id, u.name]))
+
+      // 构建响应数据
+      const response: AvailabilityResponse = {}
+
+      // 初始化所有会议室的数据结构
+      rooms.forEach(room => {
+        response[room.id] = {
+          roomId: room.id,
+          roomName: room.name,
+          status: 'available',
+          availableSlots: [],
+          reservations: [],
+          maintenanceSlots: []
+        }
+      })
+
+      // 处理预约数据
+      reservations.forEach(reservation => {
+        if (response[reservation.roomId]) {
+          response[reservation.roomId].reservations?.push({
+            id: reservation.id,
+            title: reservation.title,
+            startTime: reservation.startTime.toISOString(),
+            endTime: reservation.endTime.toISOString(),
+            organizerName: userMap.get(reservation.userId) || '未知用户',
+            status: reservation.status
+          })
+
+          // 更新状态
+          if (response[reservation.roomId].status === 'available') {
+            response[reservation.roomId].status = 'unavailable'
+          }
+        }
+      })
+
+      // 模拟维护时间段（实际项目中应该从数据库或配置中获取）
+      const generateMaintenanceSlots = (roomId: string) => {
+        const slots = []
+        const currentDate = new Date()
+
+        // 每周日凌晨 2:00-6:00 为维护时间
+        for (let i = 0; i < 4; i++) {
+          const sunday = new Date(currentDate)
+          sunday.setDate(sunday.getDate() + (7 - sunday.getDay() + i * 7))
+          sunday.setHours(2, 0, 0, 0)
+
+          const endSunday = new Date(sunday)
+          endSunday.setHours(6, 0, 0, 0)
+
+          // 检查是否在查询范围内
+          if ((sunday >= startTime && sunday <= endTime) ||
+              (endSunday >= startTime && endSunday <= endTime) ||
+              (sunday <= startTime && endSunday >= endTime)) {
+            slots.push({
+              id: `maintenance-${roomId}-${i}`,
+              startTime: sunday.toISOString(),
+              endTime: endSunday.toISOString(),
+              reason: '定期维护'
+            })
+          }
+        }
+
+        return slots
+      }
+
+      // 为每个会议室添加维护时间段
+      rooms.forEach(room => {
+        const maintenanceSlots = generateMaintenanceSlots(room.id)
+        response[room.id].maintenanceSlots = maintenanceSlots
+
+        // 如果有维护时间段，更新状态
+        if (maintenanceSlots.length > 0) {
+          const hasActiveMaintenance = maintenanceSlots.some(slot => {
+            const slotStart = new Date(slot.startTime)
+            const slotEnd = new Date(slot.endTime)
+            const now = new Date()
+            return (slotStart <= now && slotEnd >= now)
+          })
+
+          if (hasActiveMaintenance) {
+            response[room.id].status = 'maintenance'
+          }
+        }
+      })
+
+      // 生成可用时间段
+      rooms.forEach(room => {
+        const roomData = response[room.id]
+        const unavailableSlots = [
+          ...(roomData.reservations || []).map(r => ({
+            start: new Date(r.startTime),
+            end: new Date(r.endTime)
+          })),
+          ...(roomData.maintenanceSlots || []).map(m => ({
+            start: new Date(m.startTime),
+            end: new Date(m.endTime)
+          }))
+        ]
+
+        // 按开始时间排序
+        unavailableSlots.sort((a, b) => a.start.getTime() - b.start.getTime())
+
+        // 生成可用时间段
+        const availableSlots = []
+        let currentTime = new Date(Math.max(startTime, new Date()))
+
+        // 只生成未来的可用时间段
+        if (currentTime > endTime) {
+          roomData.availableSlots = []
+          return
+        }
+
+        // 合并重叠的不可用时间段
+        const mergedUnavailableSlots = []
+        for (const slot of unavailableSlots) {
+          if (mergedUnavailableSlots.length === 0) {
+            mergedUnavailableSlots.push({ ...slot })
+          } else {
+            const lastSlot = mergedUnavailableSlots[mergedUnavailableSlots.length - 1]
+            if (slot.start <= lastSlot.end) {
+              // 合并重叠时间段
+              lastSlot.end = new Date(Math.max(lastSlot.end.getTime(), slot.end.getTime()))
+            } else {
+              mergedUnavailableSlots.push({ ...slot })
+            }
+          }
+        }
+
+        // 生成可用时间段
+        for (const unavailableSlot of mergedUnavailableSlots) {
+          if (currentTime < unavailableSlot.start) {
+            const duration = (unavailableSlot.start.getTime() - currentTime.getTime()) / (1000 * 60)
+            if (duration >= 30) { // 最短30分钟的可用时间段
+              availableSlots.push({
+                startTime: currentTime.toISOString(),
+                endTime: unavailableSlot.start.toISOString(),
+                duration: Math.round(duration)
+              })
+            }
+          }
+          currentTime = new Date(Math.max(currentTime.getTime(), unavailableSlot.end.getTime()))
+        }
+
+        // 添加最后一个可用时间段
+        if (currentTime < endTime) {
+          const duration = (endTime.getTime() - currentTime.getTime()) / (1000 * 60)
+          if (duration >= 30) {
+            availableSlots.push({
+              startTime: currentTime.toISOString(),
+              endTime: endTime.toISOString(),
+              duration: Math.round(duration)
+            })
+          }
+        }
+
+        roomData.availableSlots = availableSlots
+      })
+
+      // 缓存结果
+      if (needsToSetCache) {
+        await availabilityCacheService.setAvailability(cacheParams, response, 300) // 5分钟TTL
+      }
+
+    } finally {
+      // 释放分布式锁
+      if (lockValue) {
+        await availabilityCacheService.releaseCacheLock(cacheParams, lockValue)
+      }
+    }
+
+    // 记录性能指标
+    const totalTime = Date.now() - startTimeOverall
+    console.log(`🚀 Availability query completed in ${totalTime}ms for ${body.roomIds.length} rooms`)
+
+    // 性能警告
+    if (totalTime > 200) {
+      console.warn(`⚠️ Slow availability query: ${totalTime}ms (target: < 200ms)`)
+    }
+
+    return createSuccessResponse(response)
+
+  } catch (error) {
+    console.error('❌ Availability query error:', error)
+
+    // 释放锁（如果有）
+    try {
+      const cacheParams: AvailabilityCacheKey = {
+        roomIds: body?.roomIds || [],
+        startTime: body?.startTime || '',
+        endTime: body?.endTime || ''
+      }
+      const lockValue = await availabilityCacheService.getCacheLock(cacheParams, 10000)
+      if (lockValue) {
+        await availabilityCacheService.releaseCacheLock(cacheParams, lockValue)
+      }
+    } catch (lockError) {
+      console.warn('Failed to release cache lock on error:', lockError)
+    }
+
+    if (error instanceof Error) {
+      return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, error.message)
+    }
+
+    return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, '查询可用性失败')
+  }
+})
