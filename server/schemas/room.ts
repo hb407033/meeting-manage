@@ -26,7 +26,6 @@ const RoomImageSchema = z.object({
 
 // 预约规则 schema
 const RoomRulesSchema = z.object({
-  requiresApproval: z.boolean().default(false),
   minBookingDuration: z.number().min(15).max(480).default(30), // 15分钟到8小时
   maxBookingDuration: z.number().min(30).max(1440).default(240), // 30分钟到24小时
   allowedTimeRange: z.object({
@@ -35,7 +34,7 @@ const RoomRulesSchema = z.object({
   }).optional(),
   advanceBookingDays: z.number().min(0).max(365).default(30), // 提前预约天数
   maxConcurrentBookings: z.number().min(1).max(10).default(1) // 最大并发预约数
-})
+}).optional()
 
 // 会议室状态枚举验证
 export const RoomStatusSchema = z.enum(['AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'RESERVED', 'DISABLED'])
@@ -49,6 +48,7 @@ export const CreateRoomSchema = z.object({
   equipment: EquipmentSchema.optional(),
   images: z.array(RoomImageSchema).max(10, '最多只能上传10张图片').optional(),
   rules: RoomRulesSchema.optional(),
+  requiresApproval: z.boolean().default(false),
   status: RoomStatusSchema.optional()
 })
 
@@ -64,8 +64,16 @@ export const RoomQuerySchema = z.object({
   capacityMin: z.coerce.number().min(1).optional(),
   capacityMax: z.coerce.number().max(1000).optional(),
   search: z.string().max(100).optional(), // 搜索关键词
-  sortBy: z.enum(['name', 'capacity', 'createdAt', 'updatedAt']).default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+  sortBy: z.enum(['name', 'capacity', 'location', 'createdAt', 'updatedAt']).default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  // 新增：设备筛选参数
+  equipment: z.object({
+    projector: z.coerce.boolean().optional(),
+    whiteboard: z.coerce.boolean().optional(),
+    videoConf: z.coerce.boolean().optional(),
+    airCondition: z.coerce.boolean().optional(),
+    wifi: z.coerce.boolean().optional()
+  }).optional()
 })
 
 // 会议室ID参数 schema

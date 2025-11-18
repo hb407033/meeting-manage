@@ -47,16 +47,17 @@ development_status:
   1-5-docker-infrastructure-reorganization: done
   1-6-component-reorganization: review
   1-7-technical-documentation-migration: done
+  1-8-ui-theme-optimization: done
   epic-1-retrospective: optional
 
   # Epic 2: 会议室核心管理
-  epic-2: backlog
+  epic-2: completed
   2-1-room-basic-data-management: done
   2-1-routes-navigation-fix: done
-  2-2-room-search-and-filter: ready-for-dev
-  2-3-room-detail-display: backlog
-  2-4-room-rules-configuration: backlog
-  epic-2-retrospective: optional
+  2-2-room-search-and-filter: done
+  2-3-room-detail-display: done
+  2-4-room-rules-configuration: done
+  epic-2-retrospective: completed
 
   # Epic 3: 预约系统核心
   epic-3: backlog

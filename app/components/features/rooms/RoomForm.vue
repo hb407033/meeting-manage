@@ -1,11 +1,13 @@
 <template>
   <div class="room-form">
     <form @submit.prevent="handleSubmit">
-      <!-- 基本信息 -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">基本信息</h3>
+      <!-- 使用双列布局 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 左列 -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">基本信息</h3>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-4">
           <div>
             <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
               会议室名称 <span class="text-red-500">*</span>
@@ -62,176 +64,174 @@
             />
             <small class="text-gray-500">会议室当前状态</small>
           </div>
-        </div>
 
-        <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">描述</label>
-          <Textarea
-            id="description"
-            v-model="formData.description"
-            placeholder="请输入会议室描述"
-            :rows="3"
-            class="w-full"
-            maxlength="1000"
-          />
-          <small class="text-gray-500">会议室的详细描述，包括特色、用途等 (最多1000字)</small>
-        </div>
-      </div>
-
-      <!-- 设备配置 -->
-      <div class="space-y-4 mt-6">
-        <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">设备配置</h3>
-
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="projector"
-              v-model="formData.equipment.projector"
-              inputId="projector"
-              name="projector"
-            />
-            <label for="projector" class="text-sm font-medium text-gray-700">投影仪</label>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="whiteboard"
-              v-model="formData.equipment.whiteboard"
-              inputId="whiteboard"
-              name="whiteboard"
-            />
-            <label for="whiteboard" class="text-sm font-medium text-gray-700">白板</label>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="videoConf"
-              v-model="formData.equipment.videoConf"
-              inputId="videoConf"
-              name="videoConf"
-            />
-            <label for="videoConf" class="text-sm font-medium text-gray-700">视频会议</label>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="airCondition"
-              v-model="formData.equipment.airCondition"
-              inputId="airCondition"
-              name="airCondition"
-            />
-            <label for="airCondition" class="text-sm font-medium text-gray-700">空调</label>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="wifi"
-              v-model="formData.equipment.wifi"
-              inputId="wifi"
-              name="wifi"
-            />
-            <label for="wifi" class="text-sm font-medium text-gray-700">WiFi</label>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="tv"
-              v-model="formData.equipment.tv"
-              inputId="tv"
-              name="tv"
-            />
-            <label for="tv" class="text-sm font-medium text-gray-700">电视</label>
-          </div>
-        </div>
-
-        <div>
-          <label for="customEquipment" class="block text-sm font-medium text-gray-700 mb-1">其他设备</label>
-          <InputText
-            id="customEquipment"
-            v-model="formData.equipment.customEquipment"
-            placeholder="请输入其他设备，用逗号分隔"
-            class="w-full"
-          />
-          <small class="text-gray-500">如：麦克风,音响,投影幕</small>
-        </div>
-      </div>
-
-      <!-- 预约规则 -->
-      <div class="space-y-4 mt-6">
-        <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">预约规则</h3>
-
-        <div class="flex items-center space-x-2">
-          <Checkbox
-            id="requiresApproval"
-            v-model="formData.requiresApproval"
-            inputId="requiresApproval"
-            name="requiresApproval"
-          />
-          <label for="requiresApproval" class="text-sm font-medium text-gray-700">需要审批</label>
-          <small class="text-gray-500">启用后，预约该会议室需要管理员审批</small>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label for="minBookingDuration" class="block text-sm font-medium text-gray-700 mb-1">
-              最短预约时长（分钟）
-            </label>
-            <InputNumber
-              id="minBookingDuration"
-              v-model="formData.rules.minBookingDuration"
-              placeholder="30"
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+            <Textarea
+              id="description"
+              v-model="formData.description"
+              placeholder="请输入会议室描述"
+              :rows="3"
               class="w-full"
-              :min="0"
+              maxlength="1000"
             />
-            <small class="text-gray-500">单次预约的最短时长，留空表示不限制</small>
+            <small class="text-gray-500">会议室的详细描述，包括特色、用途等 (最多1000字)</small>
           </div>
-
-          <div>
-            <label for="maxBookingDuration" class="block text-sm font-medium text-gray-700 mb-1">
-              最长预约时长（分钟）
-            </label>
-            <InputNumber
-              id="maxBookingDuration"
-              v-model="formData.rules.maxBookingDuration"
-              placeholder="240"
-              class="w-full"
-              :min="0"
-            />
-            <small class="text-gray-500">单次预约的最长时长，留空表示不限制</small>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 右列 -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">设备配置</h3>
+
+          <div class="space-y-4">
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="projector"
+                  v-model="formData.equipment.projector"
+                  name="projector"
+                />
+                <label for="projector" class="text-sm font-medium text-gray-700">投影仪</label>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="whiteboard"
+                  v-model="formData.equipment.whiteboard"
+                  name="whiteboard"
+                />
+                <label for="whiteboard" class="text-sm font-medium text-gray-700">白板</label>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="videoConf"
+                  v-model="formData.equipment.videoConf"
+                  name="videoConf"
+                />
+                <label for="videoConf" class="text-sm font-medium text-gray-700">视频会议</label>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="airCondition"
+                  v-model="formData.equipment.airCondition"
+                  name="airCondition"
+                />
+                <label for="airCondition" class="text-sm font-medium text-gray-700">空调</label>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="wifi"
+                  v-model="formData.equipment.wifi"
+                  name="wifi"
+                />
+                <label for="wifi" class="text-sm font-medium text-gray-700">WiFi</label>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="tv"
+                  v-model="formData.equipment.tv"
+                  name="tv"
+                />
+                <label for="tv" class="text-sm font-medium text-gray-700">电视</label>
+              </div>
+            </div>
+
           <div>
-            <label for="startTime" class="block text-sm font-medium text-gray-700 mb-1">
-              允许预约开始时间
-            </label>
+            <label for="customEquipment" class="block text-sm font-medium text-gray-700 mb-1">其他设备</label>
             <InputText
-              id="startTime"
-              v-model="formData.rules.allowedTimeRange.start"
-              type="time"
+              id="customEquipment"
+              v-model="formData.equipment.customEquipment"
+              placeholder="请输入其他设备，用逗号分隔"
               class="w-full"
             />
-            <small class="text-gray-500">允许预约的最早时间</small>
+            <small class="text-gray-500">如：麦克风,音响,投影幕</small>
           </div>
 
+          <!-- 预约规则 -->
           <div>
-            <label for="endTime" class="block text-sm font-medium text-gray-700 mb-1">
-              允许预约结束时间
-            </label>
-            <InputText
-              id="endTime"
-              v-model="formData.rules.allowedTimeRange.end"
-              type="time"
-              class="w-full"
-            />
-            <small class="text-gray-500">允许预约的最晚时间</small>
+            <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mt-6">预约规则</h3>
+            <div class="space-y-4">
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  inputId="requiresApproval"
+                  v-model="formData.requiresApproval"
+                  name="requiresApproval"
+                />
+                <label for="requiresApproval" class="text-sm font-medium text-gray-700">需要审批</label>
+                <small class="text-gray-500">启用后，预约该会议室需要管理员审批</small>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="minBookingDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                    最短预约时长（分钟）
+                  </label>
+                  <InputNumber
+                    id="minBookingDuration"
+                    v-model="formData.rules.minBookingDuration"
+                    placeholder="30"
+                    class="w-full"
+                    :min="0"
+                  />
+                  <small class="text-gray-500">单次预约的最短时长</small>
+                </div>
+
+                <div>
+                  <label for="maxBookingDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                    最长预约时长（分钟）
+                  </label>
+                  <InputNumber
+                    id="maxBookingDuration"
+                    v-model="formData.rules.maxBookingDuration"
+                    placeholder="240"
+                    class="w-full"
+                    :min="0"
+                  />
+                  <small class="text-gray-500">单次预约的最长时长</small>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="startTime" class="block text-sm font-medium text-gray-700 mb-1">
+                    允许预约开始时间
+                  </label>
+                  <InputText
+                    id="startTime"
+                    v-model="formData.rules.allowedTimeRange.start"
+                    type="time"
+                    class="w-full"
+                  />
+                  <small class="text-gray-500">允许预约的最早时间</small>
+                </div>
+
+                <div>
+                  <label for="endTime" class="block text-sm font-medium text-gray-700 mb-1">
+                    允许预约结束时间
+                  </label>
+                  <InputText
+                    id="endTime"
+                    v-model="formData.rules.allowedTimeRange.end"
+                    type="time"
+                    class="w-full"
+                  />
+                  <small class="text-gray-500">允许预约的最晚时间</small>
+                </div>
+              </div>
+            </div>
+          </div>
           </div>
         </div>
       </div>
 
       <!-- 按钮组 -->
-      <div class="flex justify-end gap-2 mt-8 pt-6 border-t">
+      <div class="flex justify-end gap-2 mt-8 pt-6 border-t lg:col-span-2">
         <Button
           label="取消"
           @click="handleCancel"
@@ -248,7 +248,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useRooms } from '~/composables/useRooms'
+import { useNuxtApp } from '#app'
 
 interface Room {
   id?: string
@@ -256,7 +258,7 @@ interface Room {
   description?: string
   capacity: number
   location?: string
-  status: string
+  status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'RESERVED' | 'DISABLED'
   equipment?: any
   rules?: any
   requiresApproval: boolean
@@ -270,7 +272,64 @@ const props = defineProps<Props>()
 
 // 使用会议室 store 和 Toast
 const { createRoom, updateRoom } = useRooms()
-const { $toast } = useNuxtApp() as any
+
+// 安全地获取 Toast 服务
+const nuxtApp = useNuxtApp()
+const toast: any = (nuxtApp as any).$toast || {
+  add: (options: any) => {
+    // Toast 服务的 fallback 实现
+    console.log('Toast Message:', options.summary, options.detail)
+
+    // 创建一个简单的 DOM 元素作为 toast 通知
+    const toastDiv = document.createElement('div')
+    toastDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 6px;
+      color: white;
+      font-weight: 500;
+      z-index: 9999;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      max-width: 300px;
+      word-wrap: break-word;
+    `
+
+    // 根据类型设置颜色
+    switch (options.severity) {
+      case 'success':
+        toastDiv.style.backgroundColor = '#10b981'
+        break
+      case 'error':
+        toastDiv.style.backgroundColor = '#ef4444'
+        break
+      case 'warn':
+        toastDiv.style.backgroundColor = '#f59e0b'
+        break
+      case 'info':
+        toastDiv.style.backgroundColor = '#3b82f6'
+        break
+      default:
+        toastDiv.style.backgroundColor = '#6b7280'
+    }
+
+    toastDiv.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 4px;">${options.summary || '通知'}</div>
+      <div style="font-size: 14px; opacity: 0.9;">${options.detail || ''}</div>
+    `
+
+    document.body.appendChild(toastDiv)
+
+    // 自动移除
+    const timeout = options.life || 3000
+    setTimeout(() => {
+      if (toastDiv.parentNode) {
+        toastDiv.parentNode.removeChild(toastDiv)
+      }
+    }, timeout)
+  }
+}
 
 const emit = defineEmits<{
   save: []
@@ -354,37 +413,48 @@ const handleSubmit = async () => {
 
   try {
     // 处理设备配置
-    const equipment = { ...formData.value.equipment }
+    const equipment: any = {}
+
+    // 确保所有设备字段都是布尔值
+    equipment.projector = Boolean(formData.value.equipment.projector)
+    equipment.whiteboard = Boolean(formData.value.equipment.whiteboard)
+    equipment.videoConf = Boolean(formData.value.equipment.videoConf)
+    equipment.airCondition = Boolean(formData.value.equipment.airCondition)
+    equipment.wifi = Boolean(formData.value.equipment.wifi)
+    equipment.tv = Boolean(formData.value.equipment.tv)
 
     // 处理自定义设备
-    if (equipment.customEquipment) {
-      equipment.customList = equipment.customEquipment
+    if (formData.value.equipment.customEquipment) {
+      equipment.customList = formData.value.equipment.customEquipment
         .split(',')
-        .map(item => item.trim())
-        .filter(item => item)
+        .map((item: string) => item.trim())
+        .filter((item: string) => item)
     }
-    delete equipment.customEquipment
 
     // 处理规则配置
-    const rules = { ...formData.value.rules }
+    const rules: any = {}
 
-    // 清理空的规则字段
-    Object.keys(rules).forEach(key => {
-      if (rules[key] === '' || rules[key] === null) {
-        delete rules[key]
+    // 处理最短预约时长
+    if (formData.value.rules.minBookingDuration && formData.value.rules.minBookingDuration > 0) {
+      rules.minBookingDuration = formData.value.rules.minBookingDuration
+    }
+
+    // 处理最长预约时长
+    if (formData.value.rules.maxBookingDuration && formData.value.rules.maxBookingDuration > 0) {
+      rules.maxBookingDuration = formData.value.rules.maxBookingDuration
+    }
+
+    // 处理时间范围
+    if (formData.value.rules.allowedTimeRange) {
+      const timeRange: any = {}
+      if (formData.value.rules.allowedTimeRange.start && formData.value.rules.allowedTimeRange.start.trim()) {
+        timeRange.start = formData.value.rules.allowedTimeRange.start.trim()
       }
-    })
-
-    // 清理时间范围
-    if (rules.allowedTimeRange) {
-      if (!rules.allowedTimeRange.start && !rules.allowedTimeRange.end) {
-        delete rules.allowedTimeRange
-      } else {
-        Object.keys(rules.allowedTimeRange).forEach(key => {
-          if (!rules.allowedTimeRange[key]) {
-            delete rules.allowedTimeRange[key]
-          }
-        })
+      if (formData.value.rules.allowedTimeRange.end && formData.value.rules.allowedTimeRange.end.trim()) {
+        timeRange.end = formData.value.rules.allowedTimeRange.end.trim()
+      }
+      if (Object.keys(timeRange).length > 0) {
+        rules.allowedTimeRange = timeRange
       }
     }
 
@@ -393,7 +463,7 @@ const handleSubmit = async () => {
       description: formData.value.description?.trim() || undefined,
       capacity: formData.value.capacity,
       location: formData.value.location?.trim() || undefined,
-      status: formData.value.status,
+      status: formData.value.status as 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'RESERVED' | 'DISABLED',
       equipment: Object.keys(equipment).length > 0 ? equipment : undefined,
       rules: Object.keys(rules).length > 0 ? rules : undefined,
       requiresApproval: formData.value.requiresApproval
@@ -403,7 +473,7 @@ const handleSubmit = async () => {
       // 更新会议室
       await updateRoom(props.room.id, submitData)
 
-      $toast.add({
+      toast.add({
         severity: 'success',
         summary: '更新成功',
         detail: `会议室 ${submitData.name} 已更新`,
@@ -413,7 +483,7 @@ const handleSubmit = async () => {
       // 创建会议室
       await createRoom(submitData)
 
-      $toast.add({
+      toast.add({
         severity: 'success',
         summary: '创建成功',
         detail: `会议室 ${submitData.name} 已创建`,
@@ -421,22 +491,22 @@ const handleSubmit = async () => {
       })
     }
 
-    emit('save')
+    // 确保弹窗关闭
+    setTimeout(() => {
+      emit('save')
+    }, 100)
   } catch (error) {
     console.error('保存会议室失败:', error)
 
-    let errorMessage = '保存失败，请重试'
-    if (error && typeof error === 'object' && 'data' in error && (error as any).data?.message) {
-      errorMessage = (error as any).data.message
-    } else if (error && typeof error === 'object' && 'message' in error) {
-      errorMessage = (error as Error).message
-    }
+    // 使用友好的错误处理工具
+    const { parseApiError } = await import('~/utils/api-error-handler')
+    const errorMessage = parseApiError(error)
 
-    $toast.add({
+    toast.add({
       severity: 'error',
       summary: '保存失败',
       detail: errorMessage,
-      life: 3000
+      life: 5000 // 增加显示时间，让用户有足够时间阅读详细错误
     })
   } finally {
     isSubmitting.value = false
@@ -501,7 +571,7 @@ watch(() => props.room, () => {
 
 .grid {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 @media (min-width: 768px) {
@@ -515,6 +585,16 @@ watch(() => props.room, () => {
 
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+
+  .lg\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

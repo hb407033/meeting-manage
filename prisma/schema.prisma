@@ -130,6 +130,13 @@ model MeetingRoom {
   reservations     Reservation[]
   roomHistory      RoomHistory[]
 
+  // 添加索引以优化搜索性能
+  @@index([name])
+  @@index([location])
+  @@index([status])
+  @@index([capacity])
+  @@index([createdAt])
+  @@index([deletedAt])
   @@map("meeting_rooms")
 }
 

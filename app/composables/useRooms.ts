@@ -1,6 +1,7 @@
 /**
  * 会议室相关的组合式函数
  */
+import { computed } from 'vue'
 import { useRoomStore } from '../stores/rooms'
 
 export function useRooms() {
@@ -27,6 +28,7 @@ export function useRooms() {
     deleteRoom: roomStore.deleteRoom.bind(roomStore),
     updateRoomStatus: roomStore.updateRoomStatus.bind(roomStore),
     uploadRoomImage: roomStore.uploadRoomImage.bind(roomStore),
+    exportRooms: roomStore.exportRooms.bind(roomStore),
     setLoading: roomStore.setLoading.bind(roomStore),
     setError: roomStore.setError.bind(roomStore),
     setCurrentRoom: roomStore.setCurrentRoom.bind(roomStore),

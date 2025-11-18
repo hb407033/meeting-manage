@@ -71,6 +71,21 @@ export default defineEventHandler(async (event) => {
       ]
     }
 
+    // 设备筛选
+    if (query.equipment) {
+      Object.entries(query.equipment).forEach(([key, value]) => {
+        if (value !== undefined) {
+          where.AND = where.AND || []
+          where.AND.push({
+            equipment: {
+              path: [key],
+              equals: value
+            }
+          })
+        }
+      })
+    }
+
     // 计算分页参数
     const skip = (query.page - 1) * query.limit
 

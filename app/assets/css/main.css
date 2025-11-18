@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+
+
+/* 全局样式 */
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+/* 自定义组件样式 */
+.room-management {
+  padding: 1rem;
+}
+
+@media (max-width: 768px) {
+  .room-management {
+    padding: 0.5rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
 /* 自定义基础样式 */
 @layer base {
   html {

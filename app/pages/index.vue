@@ -1,12 +1,12 @@
 <template>
-  <div class="p-8 bg-blue-50 min-h-screen">
+  <div class="p-3 bg-blue-50 min-h-screen">
     <div class="max-w-6xl mx-auto">
       <!-- 欢迎区域 -->
       <div class="text-center mb-12">
-        <h1 class="text-5xl font-bold text-blue-600 mb-4">
+        <h1 class="text-xl font-bold text-blue-600 mb-4">
           会议室管理系统
         </h1>
-        <p class="text-xl text-gray-700 mb-8">
+        <p class="text-base text-gray-700 mb-6">
           轻松预约和管理会议室，提升工作效率
         </p>
       </div>
@@ -14,9 +14,9 @@
       <!-- 主要功能卡片 -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
         <!-- 会议室管理 -->
-        <div class="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow">
+        <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
           <div class="text-blue-600 mb-4">
-            <i class="pi pi-building text-4xl"></i>
+            <i class="pi pi-building text-3xl"></i>
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-3">会议室管理</h3>
           <p class="text-gray-600 mb-6">
@@ -32,9 +32,9 @@
         </div>
 
         <!-- 快速预约 -->
-        <div class="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow">
+        <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
           <div class="text-green-600 mb-4">
-            <i class="pi pi-calendar-plus text-4xl"></i>
+            <i class="pi pi-calendar-plus text-3xl"></i>
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-3">快速预约</h3>
           <p class="text-gray-600 mb-6">
@@ -50,9 +50,9 @@
         </div>
 
         <!-- 个人中心 -->
-        <div class="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow">
+        <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
           <div class="text-purple-600 mb-4">
-            <i class="pi pi-user text-4xl"></i>
+            <i class="pi pi-user text-3xl"></i>
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-3">个人中心</h3>
           <p class="text-gray-600 mb-6">
@@ -69,8 +69,8 @@
       </div>
 
       <!-- 功能特色 -->
-      <div class="bg-white rounded-lg shadow-lg p-8">
-        <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">系统特色</h2>
+      <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4 text-center">系统特色</h2>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div class="text-center">
             <div class="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
@@ -103,47 +103,6 @@
         </div>
       </div>
 
-、    <!-- 页面标题 -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        欢迎回来，{{ user?.name }}！
-      </h1>
-      <p class="mt-1 text-gray-600 dark:text-gray-400">
-        这是您的会议室管理仪表盘
-      </p>
-    </div>
-
-    <!-- 用户信息卡片 -->
-    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-      <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">账户信息</h2>
-      <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-        <div>
-          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">用户名</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user?.name }}</dd>
-        </div>
-        <div>
-          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">邮箱</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user?.email }}</dd>
-        </div>
-        <div>
-          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">角色</dt>
-          <dd class="mt-1">
-            <span
-              class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-              :class="roleBadgeClass"
-            >
-              {{ userRole }}
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">最后登录</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-            {{ lastLoginTime }}
-          </dd>
-        </div>
-      </dl>
-    </div>
     </div>
   </div>
 </template>

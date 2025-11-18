@@ -43,6 +43,7 @@ export default defineEventHandler(async (event) => {
         equipment: body.equipment,
         images: body.images,
         rules: body.rules,
+        requiresApproval: body.requiresApproval || false,
         status: body.status || 'AVAILABLE'
       }
     })

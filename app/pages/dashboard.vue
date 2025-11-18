@@ -1,8 +1,8 @@
 <template>
-  <div class="p-6">
+  <div class="p-3">
     <!-- 页面标题 -->
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-xl font-bold text-gray-900 dark:text-white">
         欢迎回来，{{ user?.name }}！
       </h1>
       <p class="mt-1 text-gray-600 dark:text-gray-400">

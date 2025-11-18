@@ -438,6 +438,8 @@
 </template>
 
 <script setup lang="ts">
+import {ref} from 'vue'
+import {useAuth} from '~/composables/useAuth'
 // 响应式数据
 const activeTab = ref(0)
 const loadingPermissions = ref(false)
@@ -860,13 +862,13 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3rem;
+  padding: 2.25rem; /* py-9 (3rem * 0.75) */
   text-align: center;
   color: #6b7280;
 }
 
 .empty-icon {
-  font-size: 3rem;
+  font-size: 2.25rem; /* text-3xl equivalent */
   margin-bottom: 1rem;
   opacity: 0.5;
 }

@@ -1,0 +1,105 @@
+<story-context id="1-8-ui-theme-optimization" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>8</storyId>
+    <title>UI主题优化 - 元素尺寸精简</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-18</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/1-8-ui-theme-optimization.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>作为系统用户</asA>
+    <iWant>UI元素尺寸更紧凑精致</iWant>
+    <soThat>我能获得更好的信息密度和用户体验</soThat>
+    <tasks>1. 分析和规划 2. 核心组件尺寸调整 3. 样式文件优化 4. 测试和验证 5. 文档更新</tasks>
+  </story>
+
+  <acceptanceCriteria>AC1: 字体大小优化 - 调整页面标题、对话框标题、空状态图标
+AC2: 间距和内边距优化 - 调整页面容器、卡片、对话框、空状态、筛选表单的间距
+AC3: 按钮尺寸优化 - 调整操作按钮尺寸和图标大小，保持移动端可用性
+AC4: 表格和列表优化 - 调整表格行高和表头内边距
+AC5: 对话框尺寸优化 - 调整各种对话框的宽度
+AC6: 响应式优化 - 确保移动端可用性和触摸友好性
+AC7: 视觉一致性 - 统一尺寸规范，保持品牌一致性</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="产品需求文档" section="用户体验原则">
+        用户体验原则：简约高效、一致性、可访问性、响应式。性能要求：页面加载时间&lt;3秒，API响应时间&lt;500ms。可访问性要求：遵循WCAG 2.1 AA标准，支持200%字体缩放。
+      </doc>
+      <doc path="docs/sprint-artifacts/tech-spec-epic-1.md" title="技术规范 Epic 1" section="UI库与样式框架">
+        UI库：PrimeVue 4.x + FormKit企业级表单验证。样式框架：Tailwind CSS 3.x + PrimeVue主题定制。前端技术栈：Nuxt 4 + Vue 3 + TypeScript + PrimeVue + Pinia。
+      </doc>
+      <doc path="docs/architecture.md" title="系统架构文档" section="前端架构">
+        前端架构：Nuxt 4 + PrimeVue 4.4.1 + Tailwind CSS 3.4.18。组件库策略：PrimeVue Styled Mode + Aura主题 + 企业定制。响应式设计：支持多端访问，触屏设备优化。
+      </doc>
+      <doc path="docs/ux-design-specification.md" title="UX设计规范" section="设计系统与色彩体系">
+        设计系统：PrimeVue Styled Mode + Aura主题 + 企业定制。色彩体系：专业商务蓝主题(#1e40af主色调)。响应式策略：Mobile(&lt;768px)、Tablet(768-1024px)、Desktop(&gt;1024px)。可访问性：WCAG 2.1 AA级合规，44px最小触控区域。
+      </doc>
+      <doc path="docs/epics.md" title="Epic文档" section="Epic 1基础设施与用户认证">
+        Epic 1范围：基础设施与用户认证，包含8个stories。主题定制要求：FR32 - 系统支持企业品牌主题的定制。UI组件：配置PrimeVue Aura主题，应用企业品牌色彩。
+      </doc>
+    </docs>
+    <code>
+      <code path="tailwind.config.js" kind="configuration" symbol="theme.extend.colors" lines="15-22" reason="自定义商务蓝主题色彩配置，可调整主色调">
+        colors: { primary: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' } }
+      </code>
+      <code path="app/plugins/primevue.client.ts" kind="theme-configuration" symbol="definePreset" lines="10-45" reason="PrimeVue主题配置，定义了完整的色彩体系和按钮样式">
+        专业商务蓝主题配置，包含primary、surface、text等色彩定义，以及Button组件的outlined、text、iconOnly状态样式
+      </code>
+      <code path="app/assets/css/main.css" kind="global-styles" symbol="@layer components" lines="16-34" reason="全局组件样式，包含按钮、卡片、输入框等基础组件样式">
+        .btn-primary, .btn-secondary, .card, .input-field等自定义组件类定义
+      </code>
+      <code path="app/components/features/rooms/RoomManagement.vue" kind="vue-component" symbol="template" lines="1-50" reason="主要UI组件，包含大量需要调整的元素：text-2xl标题、py-8间距、85vw对话框等">
+        包含：text-2xl页面标题、32px操作按钮、py-8空状态间距、gap-4网格间距、85vw对话框宽度等需要优化的元素
+      </code>
+      <code path="app/components/features/rooms/RoomManagement.vue" kind="vue-component" symbol="style" lines="549-624" reason="自定义CSS样式，定义了操作按钮、表格、对话框等的具体尺寸">
+        操作按钮32px尺寸、表格0.75rem内边距、对话框1.5rem内边距等具体数值定义
+      </code>
+      <code path="app/pages/rooms/index.vue" kind="vue-page" symbol="template" lines="1-30" reason="页面级样式，包含p-6边距、text-3xl标题等需要调整的页面元素">
+        页面级布局：p-6边距、text-3xl页面标题、响应式grid布局
+      </code>
+      <code path="app/pages/index.vue" kind="vue-page" symbol="template" lines="1-20" reason="主页样式，包含text-5xl超大标题、p-8大间距等需要精简的元素">
+        text-5xl超大标题、p-8大区块内边距、p-6卡片内边距等过大的UI元素
+      </code>
+    </code>
+    <dependencies>
+      <dependency ecosystem="vue" name="primevue" version="4.4.1" reason="UI组件库，提供Styled Mode主题系统"/>
+      <dependency ecosystem="vue" name="primeicons" version="latest" reason="PrimeVue配套图标库"/>
+      <dependency ecosystem="css" name="tailwindcss" version="3.4.18" reason="CSS框架，提供原子化样式类"/>
+      <dependency ecosystem="css" name="@tailwindcss/forms" version="latest" reason="Tailwind表单样式插件"/>
+      <dependency ecosystem="css" name="@tailwindcss/typography" version="latest" reason="Tailwind排版插件"/>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="compatibility" description="必须保持与PrimeVue 4.4.1 Styled Mode的兼容性"/>
+    <constraint type="accessibility" description="必须遵循WCAG 2.1 AA级可访问性标准，保持44px最小触控区域"/>
+    <constraint type="brand" description="必须保持专业商务蓝主题(#1e40af)的品牌一致性"/>
+    <constraint type="performance" description="UI调整不应影响现有的性能标准(&lt;3秒页面加载时间)"/>
+    <constraint type="responsive" description="必须支持Mobile(&lt;768px)、Tablet(768-1024px)、Desktop(&gt;1024px)三种断点"/>
+    <constraint type="framework" description="必须正确使用Tailwind CSS 3.x的原子化类，避免直接CSS覆盖"/>
+    <constraint type="touch" description="移动端按钮仍需保持足够的触摸区域(最小44px)"/>
+  </constraints>
+  <interfaces>
+    <interface name="PrimeVue Button API" kind="component" signature="Button(label?, icon?, size?, severity?, outlined?, text?, rounded?)" path="primevue/button"/>
+    <interface name="PrimeVue Dialog API" kind="component" signature="Dialog(visible?, modal?, header?, style?, maximizable?)" path="primevue/dialog"/>
+    <interface name="PrimeVue DataTable API" kind="component" signature="DataTable(value?, paginator?, rows?, lazy?, class?)" path="primevue/datatable"/>
+    <interface name="Tailwind CSS API" kind="framework" signature="原子化CSS类系统(text-*, p-*, gap-*, w-*, h-*)" path="tailwindcss"/>
+  </interfaces>
+  <tests>
+    <standards>测试标准：1) 可访问性测试 - 验证WCAG 2.1 AA级合规性，包括色彩对比度、键盘导航、屏幕阅读器支持；2) 响应式测试 - 验证Mobile(&lt;768px)、Tablet(768-1024px)、Desktop(&gt;1024px)三种断点的适配效果；3) 交互测试 - 验证按钮点击区域(最小44px)、表单可用性、对话框操作；4) 视觉回归测试 - 确保UI调整不影响现有功能的视觉一致性；5) 性能测试 - 验证CSS调整不影响页面加载时间(&lt;3秒)。</standards>
+    <locations>测试文件位置：1) 单元测试：tests/components/**/*.test.ts；2) 集成测试：tests/integration/**/*.test.ts；3) E2E测试：tests/e2e/**/*.spec.ts；4) 视觉回归测试：tests/visual/**/*；5) 可访问性测试：tests/accessibility/**/*.test.ts；6) 性能测试：tests/performance/**/*.test.ts。</locations>
+    <ideas>
+      <idea ac="AC1" description="字体大小优化测试 - 验证text-2xl→text-xl、text-4xl→text-2xl调整后的可读性"/>
+      <idea ac="AC2" description="间距优化测试 - 验证padding和gap调整后的布局效果和空间利用"/>
+      <idea ac="AC3" description="按钮尺寸测试 - 验证28px按钮在移动端的触控友好性(≥44px实际点击区域)"/>
+      <idea ac="AC4" description="表格优化测试 - 验证表格行高调整后的信息密度和可读性"/>
+      <idea ac="AC5" description="对话框尺寸测试 - 验证75vw/80vw/350px对话框在不同屏幕下的适配"/>
+      <idea ac="AC6" description="响应式测试 - 在多个设备尺寸上验证UI元素的可用性和视觉效果"/>
+      <idea ac="AC7" description="视觉一致性测试 - 验证调整后的元素与整体设计系统的一致性"/>
+    </ideas>
+  </tests>
+</story-context>

@@ -1,7 +1,7 @@
 <template>
   <div class="room-management">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">会议室管理</h1>
+      <h1 class="text-xl font-bold text-gray-800">会议室管理</h1>
       <div class="flex gap-2">
           <Button
           label="导出数据"
@@ -22,11 +22,10 @@
     <!-- 筛选和搜索 -->
     <Card class="mb-6">
       <template #content>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="flex flex-col">
             <label class="text-sm font-medium text-gray-700 mb-1">搜索会议室</label>
             <span class="p-input-icon-left">
-              <i class="pi pi-search"></i>
               <InputText
                 v-model="searchQuery"
                 placeholder="输入会议室名称或位置"
@@ -100,8 +99,8 @@
           class="p-datatable-sm"
         >
           <template #empty>
-            <div class="text-center py-8">
-              <i class="pi pi-info-circle text-4xl text-gray-400"></i>
+            <div class="text-center py-6">
+              <i class="pi pi-info-circle text-3xl text-gray-400"></i>
               <p class="mt-4 text-gray-600">暂无会议室数据</p>
               <Button
                 label="新增会议室"
@@ -152,19 +151,27 @@
             <template #body="{ data }">
               <div class="flex gap-1">
                 <Button
+                  icon="pi pi-eye"
+                  size="small"
+                  rounded
+                  class="action-button"
+                  @click="viewRoom(data)"
+                  v-tooltip="'查看详情'"
+                />
+                <Button
                   icon="pi pi-pencil"
                   size="small"
-                  text
                   rounded
+                  class="action-button"
                   @click="editRoom(data)"
                   v-tooltip="'编辑'"
                 />
                 <Button
                   icon="pi pi-trash"
                   size="small"
-                  text
                   rounded
                   severity="danger"
+                  class="action-button"
                   @click="deleteRoom(data)"
                   v-tooltip="'删除'"
                 />
@@ -181,7 +188,7 @@
       v-model:visible="showCreateDialog"
       modal
       :header="editingRoom ? '编辑会议室' : '新增会议室'"
-      :style="{ width: '60vw', maxWidth: '600px' }"
+      :style="{ width: '85vw', maxWidth: '850px' }"
       @hide="resetForm"
     >
       <RoomForm
@@ -197,7 +204,7 @@
       v-model:visible="showDeleteDialog"
       modal
       header="确认删除"
-      :style="{ width: '400px' }"
+      :style="{ width: '350px' }"
     >
       <div class="text-center py-4">
         <i class="pi pi-exclamation-triangle text-4xl text-orange-500"></i>
@@ -224,29 +231,46 @@
         />
       </template>
     </Dialog>
+
+    <!-- 查看详情对话框 -->
+    <Dialog
+      v-model:visible="showDetailDialog"
+      modal
+      header="会议室详情"
+      :style="{ width: '85vw', maxWidth: '1000px' }"
+      :maximizable="true"
+    >
+      <RoomDetail
+        v-if="viewingRoom"
+        :room="viewingRoom"
+      />
+      <template #footer>
+        <div class="flex justify-between">
+          <Button
+            label="编辑"
+            icon="pi pi-pencil"
+            @click="editRoomFromDetail"
+            class="p-button-outlined"
+          />
+          <Button
+            label="关闭"
+            icon="pi pi-times"
+            @click="showDetailDialog = false"
+            autofocus
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { useNuxtApp } from '#app'
 import { useRooms } from '~/composables/useRooms'
 import RoomForm from './RoomForm.vue'
-
-interface Room {
-  id: string
-  name: string
-  description?: string
-  capacity: number
-  location?: string
-  status: string
-  equipment?: any
-  images?: any
-  rules?: any
-  requiresApproval: boolean
-  createdAt: string
-  updatedAt: string
-}
+import RoomDetail from './RoomDetail.vue'
+import type { MeetingRoom } from '~/types/room'
 
 interface StatusOption {
   label: string
@@ -263,7 +287,8 @@ const {
   pagination,
   filters: storeFilters,
   fetchRooms,
-  deleteRoom: deleteRoomFromStore
+  deleteRoom: deleteRoomFromStore,
+  exportRooms: exportRoomsFromStore
 } = useRooms()
 
 // 响应式数据
@@ -287,10 +312,12 @@ const sortOrder = ref(-1)
 // 对话框状态
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showDetailDialog = ref(false)
 
 // 表单相关
-const editingRoom = ref<Room | null>(null)
-const deletingRoom = ref<Room | null>(null)
+const editingRoom = ref<MeetingRoom | null>(null)
+const deletingRoom = ref<MeetingRoom | null>(null)
+const viewingRoom = ref<MeetingRoom | null>(null)
 
 // 状态选项
 const statusOptions: StatusOption[] = [
@@ -327,12 +354,15 @@ const loadRooms = async () => {
     await fetchRooms(params)
   } catch (error) {
     console.error('加载会议室列表失败:', error)
-    useToast().add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: '无法加载会议室列表',
-      life: 3000
-    })
+    const { $toast } = useNuxtApp() as any
+    if ($toast) {
+      $toast.add({
+        severity: 'error',
+        summary: '加载失败',
+        detail: '无法加载会议室列表',
+        life: 3000
+      })
+    }
   }
 }
 
@@ -359,58 +389,66 @@ const resetFilters = () => {
 
 const exportRooms = async () => {
   isExporting.value = true
+
   try {
-    const params: any = {}
-
-    // 添加筛选条件
-    if (selectedStatus.value) {
-      params.status = selectedStatus.value
-    }
-    if (minCapacity.value) {
-      params.minCapacity = minCapacity.value
-    }
-    if (maxCapacity.value) {
-      params.maxCapacity = maxCapacity.value
+    // 构建导出参数
+    const exportParams = {
+      status: selectedStatus.value,
+      minCapacity: minCapacity.value || undefined,
+      maxCapacity: maxCapacity.value || undefined
     }
 
-    const { $apiFetch } = useNuxtApp() as any
-    const response = await $apiFetch('/api/v1/rooms/export', { params })
+    // 调用store的导出方法
+    const result = await exportRoomsFromStore(exportParams)
 
-    // 创建下载链接
-    const blob = new Blob([response as string], { type: 'text/csv;charset=utf-8' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `meeting-rooms-export-${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-    window.URL.revokeObjectURL(url)
-
-    useToast().add({
-      severity: 'success',
-      summary: '导出成功',
-      detail: '会议室数据已成功导出',
-      life: 3000
-    })
+    // 显示成功消息
+    const { $toast } = useNuxtApp() as any
+    if ($toast && result.success) {
+      $toast.add({
+        severity: 'success',
+        summary: '导出成功',
+        detail: `会议室数据已成功导出到 ${result.filename}`,
+        life: 3000
+      })
+    }
   } catch (error) {
     console.error('导出失败:', error)
-    useToast().add({
-      severity: 'error',
-      summary: '导出失败',
-      detail: '无法导出会议室数据',
-      life: 3000
-    })
+
+    // 显示错误消息
+    const { $toast } = useNuxtApp() as any
+    if ($toast) {
+      $toast.add({
+        severity: 'error',
+        summary: '导出失败',
+        detail: '无法导出会议室数据，请稍后重试',
+        life: 5000
+      })
+    }
   } finally {
     isExporting.value = false
   }
 }
 
 
-const editRoom = (room: Room) => {
+const viewRoom = (room: MeetingRoom) => {
+  viewingRoom.value = room
+  showDetailDialog.value = true
+}
+
+const editRoom = (room: MeetingRoom) => {
   editingRoom.value = { ...room }
   showCreateDialog.value = true
 }
 
-const deleteRoom = (room: Room) => {
+const editRoomFromDetail = () => {
+  if (viewingRoom.value) {
+    editingRoom.value = { ...viewingRoom.value }
+    showDetailDialog.value = false
+    showCreateDialog.value = true
+  }
+}
+
+const deleteRoom = (room: MeetingRoom) => {
   deletingRoom.value = room
   showDeleteDialog.value = true
 }
@@ -423,24 +461,30 @@ const confirmDelete = async () => {
     const success = await deleteRoomFromStore(deletingRoom.value.id)
 
     if (success) {
-      useToast().add({
-        severity: 'success',
-        summary: '删除成功',
-        detail: `会议室 ${deletingRoom.value.name} 已删除`,
-        life: 3000
-      })
+      const { $toast } = useNuxtApp() as any
+      if ($toast) {
+        $toast.add({
+          severity: 'success',
+          summary: '删除成功',
+          detail: `会议室 ${deletingRoom.value.name} 已删除`,
+          life: 3000
+        })
+      }
     }
 
     showDeleteDialog.value = false
     deletingRoom.value = null
   } catch (error) {
     console.error('删除失败:', error)
-    useToast().add({
-      severity: 'error',
-      summary: '删除失败',
-      detail: '无法删除会议室',
-      life: 3000
-    })
+    const { $toast } = useNuxtApp() as any
+    if ($toast) {
+      $toast.add({
+        severity: 'error',
+        summary: '删除失败',
+        detail: '无法删除会议室',
+        life: 3000
+      })
+    }
   } finally {
     isDeleting.value = false
   }
@@ -505,24 +549,94 @@ onMounted(() => {
   }
 }
 
+/* 操作按钮样式 - 确保图标按钮可见 */
+:deep(.action-button) {
+  width: 28px !important;
+  height: 28px !important;
+  background-color: rgba(30, 64, 175, 0.05) !important;
+  border: 1px solid rgba(30, 64, 175, 0.2) !important;
+  color: #1e40af !important;
+}
+
+:deep(.action-button:hover) {
+  background-color: rgba(30, 64, 175, 0.1) !important;
+  border-color: rgba(30, 64, 175, 0.3) !important;
+  color: #1e40af !important;
+}
+
+:deep(.action-button:active) {
+  background-color: rgba(30, 64, 175, 0.15) !important;
+  border-color: rgba(30, 64, 175, 0.4) !important;
+  color: #1e40af !important;
+}
+
+:deep(.action-button.p-button-danger) {
+  color: #dc2626 !important;
+  border-color: rgba(220, 38, 38, 0.2) !important;
+  background-color: rgba(220, 38, 38, 0.05) !important;
+}
+
+:deep(.action-button.p-button-danger:hover) {
+  background-color: rgba(220, 38, 38, 0.1) !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+  color: #dc2626 !important;
+}
+
+:deep(.action-button.p-button-danger:active) {
+  background-color: rgba(220, 38, 38, 0.15) !important;
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  color: #dc2626 !important;
+}
+
+/* 确保图标按钮有合适的尺寸 */
+:deep(.action-button .p-button-icon) {
+  font-size: 12px !important;
+}
+
+/* 确保按钮内容居中 */
+:deep(.action-button .p-button-label) {
+  display: none;
+}
+
+/* 针对圆形图标按钮的样式优化 */
+:deep(.action-button.p-button-rounded) {
+  border-radius: 50% !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+}
+
+/* 移动端优化：确保小按钮有足够的触控区域 */
+@media (max-width: 768px) {
+  :deep(.action-button) {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  :deep(.action-button .p-button-icon) {
+    font-size: 14px !important;
+  }
+}
+
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
-  padding: 0.75rem;
+  padding: 0.5rem;
 }
 
 :deep(.p-datatable .p-datatable-thead > tr > th) {
-  padding: 0.75rem;
+  padding: 0.5rem;
   font-weight: 600;
 }
 
 :deep(.p-dialog .p-dialog-header) {
-  padding: 1.5rem 1.5rem 0 1.5rem;
+  padding: 1rem 1rem 0 1rem;
 }
 
 :deep(.p-dialog .p-dialog-content) {
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 :deep(.p-card .p-card-content) {
-  padding: 1.5rem;
+  padding: 1rem;
 }
 </style>

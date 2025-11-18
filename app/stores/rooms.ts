@@ -93,8 +93,15 @@ export interface RoomQuery {
   capacityMin?: number
   capacityMax?: number
   search?: string
-  sortBy?: 'name' | 'capacity' | 'createdAt' | 'updatedAt'
+  sortBy?: 'name' | 'capacity' | 'location' | 'createdAt' | 'updatedAt'
   sortOrder?: 'asc' | 'desc'
+  equipment?: {
+    projector?: boolean
+    whiteboard?: boolean
+    videoConf?: boolean
+    airCondition?: boolean
+    wifi?: boolean
+  }
 }
 
 export interface PaginationMeta {
@@ -130,8 +137,27 @@ export const useRoomStore = defineStore('rooms', {
       location: '',
       capacityMin: undefined as number | undefined,
       capacityMax: undefined as number | undefined,
-      search: ''
-    } as RoomQuery
+      search: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      equipment: {}
+    } as RoomQuery,
+    // 搜索相关状态
+    searchQuery: '',
+    searchHistory: [] as string[],
+    searchLoading: false,
+    searchError: null as string | null,
+    searchSuggestions: [] as string[],
+    viewMode: 'grid' as 'grid' | 'table',
+    // 搜索结果元信息
+    searchMeta: {
+      searchKeyword: '',
+      filters: {} as any,
+      sort: {
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      }
+    }
   }),
 
   getters: {
@@ -175,6 +201,29 @@ export const useRoomStore = defineStore('rooms', {
         'DISABLED': 'gray'
       }
       return colorMap[status as keyof typeof colorMap] || 'gray'
+    },
+
+    // 检查是否有搜索查询
+    hasSearchQuery: (state) => !!state.searchQuery.trim(),
+
+    // 检查是否有活跃的筛选条件
+    hasActiveFilters: (state) => {
+      const { filters } = state
+      return !!(filters.status || filters.location || filters.capacityMin || filters.capacityMax ||
+        Object.keys(filters.equipment || {}).some(key => filters.equipment![key]))
+    },
+
+    // 获取搜索结果显示信息
+    searchResultsInfo: (state) => {
+      return {
+        query: state.searchQuery,
+        loading: state.searchLoading || state.loading,
+        error: state.searchError || state.error,
+        total: state.pagination.total,
+        page: state.pagination.page,
+        limit: state.pagination.limit,
+        hasFilters: state.filters && Object.keys(state.filters).length > 0
+      }
     }
   },
 
@@ -206,7 +255,232 @@ export const useRoomStore = defineStore('rooms', {
         location: '',
         capacityMin: undefined,
         capacityMax: undefined,
-        search: ''
+        search: '',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        equipment: {}
+      }
+    },
+
+    // 设置搜索查询
+    setSearchQuery(query: string) {
+      this.searchQuery = query
+      this.filters.search = query
+    },
+
+    // 清除搜索
+    clearSearch() {
+      this.searchQuery = ''
+      this.filters.search = ''
+      this.resetFilters()
+    },
+
+    // 设置视图模式
+    setViewMode(mode: 'grid' | 'table') {
+      this.viewMode = mode
+      // 保存到本地存储
+      try {
+        localStorage.setItem('room-view-mode', mode)
+      } catch (error) {
+        console.warn('Failed to save view mode:', error)
+      }
+    },
+
+    // 加载搜索历史
+    loadSearchHistory() {
+      try {
+        const history = localStorage.getItem('room-search-history')
+        if (history) {
+          this.searchHistory = JSON.parse(history)
+        }
+      } catch (error) {
+        console.warn('Failed to load search history:', error)
+      }
+    },
+
+    // 保存搜索历史
+    saveSearchHistory() {
+      try {
+        localStorage.setItem('room-search-history', JSON.stringify(this.searchHistory))
+      } catch (error) {
+        console.warn('Failed to save search history:', error)
+      }
+    },
+
+    // 添加到搜索历史
+    addToSearchHistory(query: string) {
+      if (!query.trim()) return
+
+      // 移除重复项
+      const index = this.searchHistory.indexOf(query)
+      if (index > -1) {
+        this.searchHistory.splice(index, 1)
+      }
+
+      // 添加到开头
+      this.searchHistory.unshift(query)
+
+      // 限制历史记录数量
+      if (this.searchHistory.length > 10) {
+        this.searchHistory = this.searchHistory.slice(0, 10)
+      }
+
+      this.saveSearchHistory()
+    },
+
+    // 执行搜索
+    async performSearch(params?: RoomQuery) {
+      this.searchLoading = true
+      this.searchError = null
+
+      try {
+        // 合并搜索参数
+        const searchParams = {
+          ...this.filters,
+          ...params
+        }
+
+        // 构建查询参数
+        const queryParams: any = {
+          page: searchParams.page || this.pagination.page,
+          limit: searchParams.limit || this.pagination.limit,
+          sortBy: searchParams.sortBy || 'createdAt',
+          sortOrder: searchParams.sortOrder || 'desc'
+        }
+
+        // 添加搜索关键词
+        if (searchParams.search) {
+          queryParams.search = searchParams.search
+        }
+
+        // 添加筛选条件
+        if (searchParams.status) queryParams.status = searchParams.status
+        if (searchParams.location) queryParams.location = searchParams.location
+        if (searchParams.capacityMin) queryParams.capacityMin = searchParams.capacityMin
+        if (searchParams.capacityMax) queryParams.capacityMax = searchParams.capacityMax
+
+        // 添加设备筛选
+        if (searchParams.equipment && Object.keys(searchParams.equipment).length > 0) {
+          queryParams.equipment = searchParams.equipment
+        }
+
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<RoomListResponse>('/api/v1/rooms', {
+          query: queryParams
+        })
+
+        this.rooms = response.data.items
+        this.pagination = response.meta
+
+        // 更新搜索元信息
+        this.searchMeta = {
+          searchKeyword: searchParams.search || '',
+          filters: { ...searchParams },
+          sort: {
+            sortBy: searchParams.sortBy || 'createdAt',
+            sortOrder: searchParams.sortOrder || 'desc'
+          }
+        }
+
+        // 添加到搜索历史
+        if (searchParams.search) {
+          this.addToSearchHistory(searchParams.search)
+        }
+
+        return response
+
+      } catch (error: any) {
+        this.searchError = error.message || '搜索失败，请稍后重试'
+        console.error('Search failed:', error)
+        return null
+      } finally {
+        this.searchLoading = false
+      }
+    },
+
+    // 高级搜索（POST接口）
+    async performAdvancedSearch(searchData: {
+      keyword: string
+      filters?: any
+      pagination?: any
+      sort?: any
+    }) {
+      this.searchLoading = true
+      this.searchError = null
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<RoomListResponse>('/api/v1/rooms/search', {
+          method: 'POST',
+          body: searchData
+        })
+
+        this.rooms = response.data.items
+        this.pagination = response.meta
+        this.searchQuery = searchData.keyword
+
+        // 更新搜索元信息
+        this.searchMeta = {
+          searchKeyword: searchData.keyword,
+          filters: searchData.filters || {},
+          sort: searchData.sort || { sortBy: 'createdAt', sortOrder: 'desc' }
+        }
+
+        // 添加到搜索历史
+        this.addToSearchHistory(searchData.keyword)
+
+        return response
+
+      } catch (error: any) {
+        this.searchError = error.message || '搜索失败，请稍后重试'
+        console.error('Advanced search failed:', error)
+        return null
+      } finally {
+        this.searchLoading = false
+      }
+    },
+
+    // 获取搜索建议
+    async getSearchSuggestions(query: string): Promise<string[]> {
+      if (!query.trim()) return []
+
+      try {
+        // 从历史记录中获取建议
+        const historySuggestions = this.searchHistory
+          .filter(item => item.toLowerCase().includes(query.toLowerCase()))
+          .slice(0, 5)
+
+        // 添加一些通用建议
+        const commonSuggestions = [
+          `${query} 会议室`,
+          `${query} 大型`,
+          `${query} 小型`,
+          `${query} 投影仪`,
+          `${query} 白板`
+        ]
+
+        this.searchSuggestions = [...historySuggestions, ...commonSuggestions.slice(0, 5 - historySuggestions.length)]
+        return this.searchSuggestions
+
+      } catch (error) {
+        console.error('Failed to get search suggestions:', error)
+        return []
+      }
+    },
+
+    // 初始化搜索功能
+    initSearch() {
+      // 加载搜索历史
+      this.loadSearchHistory()
+
+      // 加载保存的视图模式
+      try {
+        const savedViewMode = localStorage.getItem('room-view-mode')
+        if (savedViewMode && ['grid', 'table'].includes(savedViewMode)) {
+          this.viewMode = savedViewMode as 'grid' | 'table'
+        }
+      } catch (error) {
+        console.warn('Failed to load view mode:', error)
       }
     },
 
@@ -285,7 +559,9 @@ export const useRoomStore = defineStore('rooms', {
         return data
 
       } catch (error: any) {
-        this.setError(error.message || '创建会议室失败')
+        const { parseApiError } = await import('~/utils/api-error-handler')
+        const errorMessage = parseApiError(error)
+        this.setError(errorMessage)
         console.error('创建会议室失败:', error)
         return null
       } finally {
@@ -318,7 +594,9 @@ export const useRoomStore = defineStore('rooms', {
         return data
 
       } catch (error: any) {
-        this.setError(error.message || '更新会议室失败')
+        const { parseApiError } = await import('~/utils/api-error-handler')
+        const errorMessage = parseApiError(error)
+        this.setError(errorMessage)
         console.error('更新会议室失败:', error)
         return null
       } finally {
@@ -395,6 +673,75 @@ export const useRoomStore = defineStore('rooms', {
         this.setError(error.message || '上传图片失败')
         console.error('上传图片失败:', error)
         return null
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 导出会议室数据
+    async exportRooms(params?: {
+      status?: string
+      minCapacity?: number
+      maxCapacity?: number
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        // 构建查询参数
+        const queryParams = new URLSearchParams()
+
+        // 添加筛选条件
+        if (params?.status && params.status !== 'all') {
+          queryParams.append('status', params.status)
+        }
+        if (params?.minCapacity) {
+          queryParams.append('minCapacity', params.minCapacity.toString())
+        }
+        if (params?.maxCapacity) {
+          queryParams.append('maxCapacity', params.maxCapacity.toString())
+        }
+
+        // 构建完整的URL
+        const queryString = queryParams.toString()
+        const exportUrl = `/api/v1/rooms/export${queryString ? '?' + queryString : ''}`
+
+        // 使用 $fetch.raw 发起请求
+        const response = await apiFetch.raw(exportUrl)
+
+        // 检查响应是否成功
+        if (!response.ok) {
+          throw new Error(`导出失败: ${response.statusText}`)
+        }
+
+        // 获取响应数据
+        const csvContent = response._data as string
+
+        // 创建下载链接
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `meeting-rooms-export-${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+        window.URL.revokeObjectURL(url)
+
+        return {
+          success: true,
+          filename: link.download,
+          size: csvContent.length
+        }
+
+      } catch (error: any) {
+        const { parseApiError } = await import('~/utils/api-error-handler')
+        const errorMessage = parseApiError(error)
+        this.setError(errorMessage)
+        console.error('导出会议室数据失败:', error)
+        return {
+          success: false,
+          error: errorMessage
+        }
       } finally {
         this.setLoading(false)
       }
