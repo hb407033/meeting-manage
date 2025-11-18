@@ -1,15 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    './components/**/*.{js,vue,ts}',
-    './app/layouts/**/*.vue',
-    './pages/**/*.vue',
-    './app/pages/**/*.vue',
-    './plugins/**/*.{js,ts}',
-    './app.vue',
-    './error.vue',
-    './nuxt.config.{js,ts}',
-  ],
+  // Nuxt 会自动处理 content 路径，无需手动配置
   theme: {
     extend: {
       colors: {

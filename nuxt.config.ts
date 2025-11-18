@@ -17,11 +17,7 @@ export default defineNuxtConfig({
     'primeicons/primeicons.css'
   ],
 
-  // 构建配置
-  build: {
-    transpile: ['primevue'],
-  },
-
+  
   // 模块配置
   modules: [
     '@nuxtjs/tailwindcss',
@@ -30,28 +26,10 @@ export default defineNuxtConfig({
 
   // TypeScript配置
   typescript: {
-    typeCheck: false, // 暂时禁用以避免构建问题，后面会重新启用
     strict: true,
   },
 
-  // 开发工具配置
-  sourcemap: {
-    server: true,
-    client: true,
-  },
-
-  // Vite配置
-  vite: {
-    define: {
-      __VUE_I18N_FULL_INSTALL__: true,
-      __VUE_I18N_LEGACY_API__: false,
-      __INTLIFY_PROD_DEVTOOLS__: false,
-    },
-    optimizeDeps: {
-      include: ['primevue'],
-    },
-  },
-
+  
   // 运行时配置
   runtimeConfig: {
     // 私有配置 - 服务端可用
@@ -66,22 +44,7 @@ export default defineNuxtConfig({
     },
   },
 
-  // Nitro配置
-  nitro: {
-    esbuild: {
-      options: {
-        target: 'esnext',
-      },
-    },
-  },
-
-  // 路由配置
-  router: {
-    options: {
-      strict: false,
-    },
-  },
-
+  
   // 应用配置
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
