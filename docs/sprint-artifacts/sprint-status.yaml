@@ -33,7 +33,7 @@ generated: 2025-11-15
 project: meeting-manage
 project_key: meeting-manage
 tracking_system: file-system
-story_location: {project-root}/docs/sprint-artifacts
+story_location: "{project-root}/docs/sprint-artifacts"
 
 development_status:
   # Epic 1: 基础设施与用户认证
