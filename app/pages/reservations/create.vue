@@ -10,6 +10,9 @@ import TimeSlotSelector from '~/components/features/reservations/TimeSlotSelecto
 import { useReservationStore } from '~/stores/reservations'
 import { useRoomStore } from '~/stores/rooms'
 
+// 导入认证composable
+import { useAuth } from '~/composables/useAuth'
+
 // 页面设置
 definePageMeta({
   layout: 'default',
@@ -43,6 +46,9 @@ const isSubmitting = ref(false)
 // 使用store
 const reservationStore = useReservationStore()
 const roomStore = useRoomStore()
+
+// 使用认证composable
+const { canAccess } = useAuth()
 
 // 生成时间槽数据 - 基于选择的日期和会议室设置
 const generateTimeSlots = async (roomId: string, targetDate: Date): Promise<TimeSlot[]> => {
