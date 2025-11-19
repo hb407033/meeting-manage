@@ -59,6 +59,31 @@ export function generateTokenPair(payload: Omit<JWTPayload, 'iat' | 'exp'>): Tok
 }
 
 /**
+ * 验证JWT令牌（通用函数）
+ */
+export function verifyJWT(token: string): JWTPayload | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      issuer: 'meeting-manage-api',
+      audience: 'meeting-manage-client'
+    }) as JWTPayload
+
+    return decoded
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      // 令牌过期，返回null让调用方处理
+      return null
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      // 令牌无效，返回null让调用方处理
+      return null
+    } else {
+      // 其他验证错误，返回null让调用方处理
+      return null
+    }
+  }
+}
+
+/**
  * 验证访问令牌
  */
 export function verifyAccessToken(token: string): JWTPayload {

@@ -37,14 +37,14 @@
                   仪表盘
                 </NuxtLink>
                 <NuxtLink
-                  to="/rooms"
+                  to="/admin/rooms"
                   class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  :class="route.path.startsWith('/rooms')
+                  :class="route.path.startsWith('/admin/rooms')
                     ? 'border-blue-500 text-gray-900 dark:text-white'
                     : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100'"
-                  v-if="canAccess('room')"
+                  v-if="canAccess('room', 'read')"
                 >
-                  会议室
+                  会议室管理
                 </NuxtLink>
                 <NuxtLink
                   to="/reservations"

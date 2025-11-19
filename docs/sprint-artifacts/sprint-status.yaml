@@ -61,7 +61,7 @@ development_status:
 
   # Epic 3: 预约系统核心
   epic-3: contexted
-  3-1-calendar-view-and-availability-query: in-progress
+  3-1-calendar-view-and-availability-query: done
   3-2-quick-reservation-feature: backlog
   3-3-detailed-reservation-configuration: backlog
   3-4-reservation-conflict-detection-and-resolution: backlog

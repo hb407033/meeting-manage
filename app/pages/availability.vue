@@ -3,45 +3,19 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { format, addDays, startOfWeek, endOfWeek, isToday, isAfter, isBefore } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 
-// 模拟会议室数据
-const rooms = ref([
-  {
-    id: '1',
-    name: '会议室 A',
-    capacity: 10,
-    location: '1楼东侧',
-    operatingHours: {
-      start: '09:00',
-      end: '18:00'
-    },
-    equipment: ['投影仪', '白板', '音响'],
-    status: 'available'
-  },
-  {
-    id: '2',
-    name: '会议室 B',
-    capacity: 6,
-    location: '2楼西侧',
-    operatingHours: {
-      start: '08:00',
-      end: '20:00'
-    },
-    equipment: ['电视', '视频会议设备'],
-    status: 'available'
-  },
-  {
-    id: '3',
-    name: '会议室 C',
-    capacity: 20,
-    location: '3楼中央',
-    operatingHours: {
-      start: '08:30',
-      end: '17:30'
-    },
-    equipment: ['投影仪', '音响', '麦克风', '视频会议设备'],
-    status: 'maintenance'
-  }
-])
+// 导入store
+import { useReservationStore } from '~/stores/reservations'
+import { useRoomStore } from '~/stores/rooms'
+
+// 使用store
+const reservationStore = useReservationStore()
+const roomStore = useRoomStore()
+
+// 页面设置
+definePageMeta({
+  layout: 'AdminLayout',
+  middleware: 'auth'
+})
 
 // 选择的条件
 const selectedRoom = ref<string>('')
@@ -62,69 +36,113 @@ interface TimeSlot {
 
 const timeSlots = ref<TimeSlot[]>([])
 
-// 生成时间槽数据
-const generateTimeSlots = () => {
+// 生成时间槽数据 - 从store获取真实数据
+const generateTimeSlots = async (): Promise<TimeSlot[]> => {
   const slots: TimeSlot[] = []
   const targetDate = new Date(selectedDate.value)
+  const startTime = new Date(targetDate.setHours(0, 0, 0, 0)).toISOString()
+  const endTime = new Date(targetDate.setHours(23, 59, 59, 999)).toISOString()
 
-  rooms.value.forEach(room => {
-    const { start: startHourStr, end: endHourStr } = room.operatingHours
-    const startHour = parseInt(startHourStr.split(':')[0])
-    const startMinute = parseInt(startHourStr.split(':')[1])
-    const endHour = parseInt(endHourStr.split(':')[0])
-    const endMinute = parseInt(endHourStr.split(':')[1])
+  if (!selectedRoom.value || selectedRoom.value === '') {
+    // 如果选择了全部会议室，为每个会议室获取数据
+    const roomIds = roomStore.rooms.map(room => room.id)
 
-    let currentTime = new Date(targetDate)
-    currentTime.setHours(startHour, startMinute, 0, 0)
-    const endTime = new Date(targetDate)
-    endTime.setHours(endHour, endMinute, 0, 0)
-
-    while (currentTime < endTime) {
-      const slotEndTime = new Date(currentTime.getTime() + 30 * 60 * 1000)
-
-      if (slotEndTime > endTime) break
-
-      let status: 'available' | 'occupied' | 'maintenance' = 'available'
-      let reservation
-
-      // 模拟一些占用时间
-      const currentHour = currentTime.getHours()
-      const randomValue = Math.random()
-
-      if (room.status === 'maintenance' || (currentHour >= 12 && currentHour < 13 && randomValue < 0.8)) {
-        status = 'maintenance'
-      } else if (randomValue < 0.4) {
-        status = 'occupied'
-        reservation = {
-          title: '部门会议',
-          organizer: '张经理'
-        }
-      }
-
-      slots.push({
-        roomId: room.id,
-        startTime: new Date(currentTime),
-        endTime: slotEndTime,
-        status,
-        reservation
+    try {
+      await reservationStore.fetchAvailability({
+        roomIds,
+        startTime,
+        endTime
       })
 
-      currentTime = slotEndTime
+      // 从store获取可用性数据并转换为TimeSlot格式
+      roomIds.forEach(roomId => {
+        const roomAvailability = reservationStore.getRoomAvailability(roomId)
+        if (roomAvailability) {
+          // 添加可用时间段
+          roomAvailability.availableSlots?.forEach((slot, index) => {
+            slots.push({
+              roomId,
+              startTime: new Date(slot.startTime),
+              endTime: new Date(slot.endTime),
+              status: 'available'
+            })
+          })
+
+          // 添加已预约时间段
+          roomAvailability.reservations?.forEach((reservation, index) => {
+            slots.push({
+              roomId,
+              startTime: new Date(reservation.startTime),
+              endTime: new Date(reservation.endTime),
+              status: 'occupied',
+              reservation: {
+                title: reservation.title,
+                organizer: reservation.organizer?.name || reservation.organizerName || '未知'
+              }
+            })
+          })
+        }
+      })
+    } catch (error) {
+      console.error('获取可用性数据失败:', error)
     }
-  })
+  } else {
+    // 为特定会议室获取数据
+    try {
+      await reservationStore.fetchAvailability({
+        roomIds: [selectedRoom.value],
+        startTime,
+        endTime
+      })
+
+      const roomAvailability = reservationStore.getRoomAvailability(selectedRoom.value)
+      if (roomAvailability) {
+        // 添加可用时间段
+        roomAvailability.availableSlots?.forEach((slot, index) => {
+          slots.push({
+            roomId: selectedRoom.value,
+            startTime: new Date(slot.startTime),
+            endTime: new Date(slot.endTime),
+            status: 'available'
+          })
+        })
+
+        // 添加已预约时间段
+        roomAvailability.reservations?.forEach((reservation, index) => {
+          slots.push({
+            roomId: selectedRoom.value,
+            startTime: new Date(reservation.startTime),
+            endTime: new Date(reservation.endTime),
+            status: 'occupied',
+            reservation: {
+              title: reservation.title,
+              organizer: reservation.organizer?.name || reservation.organizerName || '未知'
+            }
+          })
+        })
+      }
+    } catch (error) {
+      console.error('获取可用性数据失败:', error)
+    }
+  }
 
   return slots
 }
 
 // 刷新时间槽
-function refreshTimeSlots() {
-  timeSlots.value = generateTimeSlots()
+async function refreshTimeSlots() {
+  try {
+    timeSlots.value = await generateTimeSlots()
+  } catch (error) {
+    console.error('刷新时间槽失败:', error)
+    timeSlots.value = []
+  }
 }
 
 // 计算属性
 const filteredRooms = computed(() => {
-  if (!selectedRoom.value) return rooms.value
-  return rooms.value.filter(room => room.id === selectedRoom.value)
+  if (!selectedRoom.value) return roomStore.rooms
+  return roomStore.rooms.filter(room => room.id === selectedRoom.value)
 })
 
 const timeSlotsByRoom = computed(() => {
@@ -204,15 +222,27 @@ function getStatusIcon(status: 'available' | 'occupied' | 'maintenance'): string
   }
 }
 
+// 加载会议室数据
+async function loadRooms() {
+  try {
+    await roomStore.fetchRooms()
+  } catch (err: any) {
+    console.error('加载会议室失败:', err)
+  }
+}
+
 // 生命周期
-onMounted(() => {
-  refreshTimeSlots()
-  console.log('✅ Room availability page mounted successfully!')
+onMounted(async () => {
+  console.log('✅ Admin room availability page mounted successfully!')
+
+  // 先加载会议室数据，再刷新时间槽
+  await loadRooms()
+  await refreshTimeSlots()
 })
 
 // 监听日期变化
-watch([selectedDate, selectedRoom], () => {
-  refreshTimeSlots()
+watch([selectedDate, selectedRoom], async () => {
+  await refreshTimeSlots()
 })
 </script>
 
@@ -223,10 +253,17 @@ watch([selectedDate, selectedRoom], () => {
       <div class="container mx-auto px-4 py-6">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">会议室可用时间</h1>
-            <p class="mt-1 text-gray-600">查看各会议室的时间安排和可用情况</p>
+            <h1 class="text-2xl font-bold text-gray-900">会议室可用时间管理</h1>
+            <p class="mt-1 text-gray-600">查看和管理各会议室的时间安排和可用情况</p>
           </div>
           <div class="flex gap-3">
+            <NuxtLink
+              to="/admin/rooms"
+              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <i class="pi pi-arrow-left"></i>
+              返回会议室管理
+            </NuxtLink>
             <NuxtLink
               to="/reservations/create"
               class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2"
@@ -240,20 +277,6 @@ watch([selectedDate, selectedRoom], () => {
             >
               <i class="pi pi-list"></i>
               预约列表
-            </NuxtLink>
-            <NuxtLink
-              to="/rooms"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-home"></i>
-              会议室管理
-            </NuxtLink>
-            <NuxtLink
-              to="/dashboard"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-th-large"></i>
-              控制台
             </NuxtLink>
           </div>
         </div>
@@ -278,7 +301,7 @@ watch([selectedDate, selectedRoom], () => {
             >
               <option value="">全部会议室</option>
               <option
-                v-for="room in rooms"
+                v-for="room in roomStore.rooms"
                 :key="room.id"
                 :value="room.id"
               >
@@ -301,10 +324,11 @@ watch([selectedDate, selectedRoom], () => {
           <div class="flex items-end">
             <button
               @click="refreshTimeSlots"
-              class="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+              :disabled="reservationStore.availabilityLoading"
+              class="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 text-blue-700 disabled:text-gray-500 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
-              <i class="pi pi-refresh"></i>
-              刷新数据
+              <i :class="['pi', reservationStore.availabilityLoading ? 'pi-spin pi-spinner' : 'pi-refresh']"></i>
+              {{ reservationStore.availabilityLoading ? '加载中...' : '刷新数据' }}
             </button>
           </div>
         </div>
@@ -335,8 +359,8 @@ watch([selectedDate, selectedRoom], () => {
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-900">{{ room.name }}</h3>
             <span class="px-2 py-1 text-xs font-medium rounded-full"
-                  :class="room.status === 'available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
-              {{ room.status === 'available' ? '可用' : '维护中' }}
+                  :class="room.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+              {{ room.status === 'AVAILABLE' ? '可用' : '维护中' }}
             </span>
           </div>
 
@@ -347,15 +371,15 @@ watch([selectedDate, selectedRoom], () => {
             </div>
             <div class="flex items-center gap-2">
               <i class="pi pi-map-marker text-gray-400"></i>
-              <span>位置：{{ room.location }}</span>
+              <span>位置：{{ room.location || '未设置' }}</span>
             </div>
             <div class="flex items-center gap-2">
               <i class="pi pi-clock text-gray-400"></i>
-              <span>营业时间：{{ room.operatingHours.start }} - {{ room.operatingHours.end }}</span>
+              <span>营业时间：{{ room.operatingHours?.start || '09:00' }} - {{ room.operatingHours?.end || '18:00' }}</span>
             </div>
             <div class="flex items-center gap-2">
               <i class="pi pi-cog text-gray-400"></i>
-              <span>设备：{{ room.equipment.join('、') }}</span>
+              <span>设备：{{ (room.equipment && room.equipment.length > 0) ? room.equipment.join('、') : '基础设备' }}</span>
             </div>
           </div>
 
@@ -410,10 +434,28 @@ watch([selectedDate, selectedRoom], () => {
             :key="room.id"
             class="p-6"
           >
-            <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <i class="pi pi-home text-blue-600"></i>
-              {{ room.name }} - {{ formatDate(selectedDate) }}
-            </h3>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <i class="pi pi-home text-blue-600"></i>
+                {{ room.name }} - {{ formatDate(selectedDate) }}
+              </h3>
+              <div class="flex gap-2">
+                <NuxtLink
+                  :to="`/admin/rooms/${room.id}`"
+                  class="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <i class="pi pi-eye"></i>
+                  查看详情
+                </NuxtLink>
+                <NuxtLink
+                  :to="`/admin/rooms/${room.id}/edit`"
+                  class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <i class="pi pi-pencil"></i>
+                  编辑
+                </NuxtLink>
+              </div>
+            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
               <div

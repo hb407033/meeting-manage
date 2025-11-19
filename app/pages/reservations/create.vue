@@ -6,6 +6,10 @@ import { zhCN } from 'date-fns/locale'
 // 导入时间选择器组件
 import TimeSlotSelector from '~/components/features/reservations/TimeSlotSelectorSimple.vue'
 
+// 导入store
+import { useReservationStore } from '~/stores/reservations'
+import { useRoomStore } from '~/stores/rooms'
+
 // 页面设置
 definePageMeta({
   layout: 'default',
@@ -36,101 +40,164 @@ const attendeeInput = ref('')
 const reservationDescription = ref('')
 const isSubmitting = ref(false)
 
-// 模拟会议室数据
-const mockRooms = ref([
-  {
-    id: '1',
-    name: '会议室 A',
-    capacity: 10,
-    status: 'available',
-    operatingHours: {
-      start: '09:00',  // 上午9点开始
-      end: '18:00'     // 下午6点结束
-    }
-  },
-  {
-    id: '2',
-    name: '会议室 B',
-    capacity: 6,
-    status: 'available',
-    operatingHours: {
-      start: '08:00',  // 上午8点开始
-      end: '20:00'     // 晚上8点结束
-    }
-  },
-  {
-    id: '3',
-    name: '会议室 C',
-    capacity: 20,
-    status: 'available',
-    operatingHours: {
-      start: '08:30',  // 上午8:30开始
-      end: '17:30'     // 下午5:30结束
-    }
-  }
-])
+// 使用store
+const reservationStore = useReservationStore()
+const roomStore = useRoomStore()
 
-// 生成模拟时间槽数据 - 基于选择的日期和会议室设置
-const generateTimeSlots = (roomId: string, targetDate: Date): TimeSlot[] => {
+// 生成时间槽数据 - 基于选择的日期和会议室设置
+const generateTimeSlots = async (roomId: string, targetDate: Date): Promise<TimeSlot[]> => {
   const slots: TimeSlot[] = []
 
-  // 获取会议室的营业时间设置
-  const room = mockRooms.value.find(r => r.id === roomId)
-  if (!room) return slots
+  try {
+    // 获取会议室的可用性数据
+    const startTime = startOfDay(targetDate)
+    const endTime = addDays(startTime, 1)
 
-  const { start: startHourStr, end: endHourStr } = room.operatingHours
-  const startHour = parseInt(startHourStr.split(':')[0])
-  const startMinute = parseInt(startHourStr.split(':')[1])
-  const endHour = parseInt(endHourStr.split(':')[0])
-  const endMinute = parseInt(endHourStr.split(':')[1])
-
-  // 生成指定日期的时间槽 - 根据会议室的营业时间
-  let currentTime = addMinutes(addHours(targetDate, startHour), startMinute)
-  const endTime = addMinutes(addHours(targetDate, endHour), endMinute)
-
-  while (currentTime < endTime) {
-    const slotEndTime = addMinutes(currentTime, 30)
-
-    // 确保不超出营业时间
-    if (slotEndTime > endTime) break
-
-    // 随机生成一些不可用的时间段（工作时间的30%不可用）
-    const currentHour = currentTime.getHours()
-    let isUnavailable = Math.random() < 0.3
-
-    // 午餐时间（12:00-13:30）不可用性更高
-    if (currentHour >= 12 && currentHour < 13.5) {
-      isUnavailable = Math.random() < 0.7
-    }
-
-    // 清晨和傍晚时段不可用性较低
-    if ((currentHour >= startHour && currentHour < startHour + 1) ||
-        (currentHour >= endHour - 1 && currentHour < endHour)) {
-      isUnavailable = Math.random() < 0.1
-    }
-
-    const isMaintenance = Math.random() < 0.02
-
-    slots.push({
-      id: `${roomId}-${currentTime.getTime()}`,
-      startTime: currentTime,
-      endTime: slotEndTime,
-      status: isUnavailable ? 'unavailable' : (isMaintenance ? 'maintenance' : 'available'),
-      roomId
+    const response = await $fetch('/api/v1/reservations/availability', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: {
+        roomIds: [roomId],
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString()
+      }
     })
 
-    currentTime = slotEndTime
+    // 处理API返回的可用性数据
+    if (response && response.data && response.data[roomId]) {
+      const roomAvailability = response.data[roomId]
+
+      // 将时间段转换为TimeSlot格式
+      roomAvailability.availableSlots?.forEach((slot: any, index: number) => {
+        slots.push({
+          id: `${roomId}-${index}`,
+          startTime: new Date(slot.startTime),
+          endTime: new Date(slot.endTime),
+          status: 'available',
+          roomId
+        })
+      })
+
+      // 添加已预约的时间段
+      roomAvailability.reservations?.forEach((reservation: any, index: number) => {
+        slots.push({
+          id: `${roomId}-reserved-${index}`,
+          startTime: new Date(reservation.startTime),
+          endTime: new Date(reservation.endTime),
+          status: 'unavailable',
+          roomId,
+          reservationId: reservation.id
+        })
+      })
+    }
+
+    // 如果API调用失败，使用默认的时间段生成
+    if (slots.length === 0) {
+      // 默认营业时间 9:00-18:00
+      let currentTime = addHours(targetDate, 9)
+      const dayEndTime = addHours(targetDate, 18)
+
+      while (currentTime < dayEndTime) {
+        const slotEndTime = addMinutes(currentTime, 30)
+
+        slots.push({
+          id: `${roomId}-${currentTime.getTime()}`,
+          startTime: currentTime,
+          endTime: slotEndTime,
+          status: 'available',
+          roomId
+        })
+
+        currentTime = slotEndTime
+      }
+    }
+
+  } catch (error) {
+    console.error('获取可用性数据失败:', error)
+    // 返回默认时间段
+    let currentTime = addHours(targetDate, 9)
+    const dayEndTime = addHours(targetDate, 18)
+
+    while (currentTime < dayEndTime) {
+      const slotEndTime = addMinutes(currentTime, 30)
+
+      slots.push({
+        id: `${roomId}-${currentTime.getTime()}`,
+        startTime: currentTime,
+        endTime: slotEndTime,
+        status: 'available',
+        roomId
+      })
+
+      currentTime = slotEndTime
+    }
   }
 
   return slots
 }
 
-// 计算可用时间槽 - 基于选择的日期
-const availableTimeSlots = computed(() => {
-  if (!selectedRoom.value || !reservationDate.value) return []
+// 可用时间槽数据
+const availableTimeSlots = ref<TimeSlot[]>([])
+
+// 生成可用时间槽的函数
+const generateAvailableTimeSlots = async () => {
+  if (!selectedRoom.value || !reservationDate.value) {
+    availableTimeSlots.value = []
+    return
+  }
+
   const targetDate = new Date(reservationDate.value)
-  return generateTimeSlots(selectedRoom.value, targetDate)
-})
+  const startTime = new Date(targetDate.setHours(0, 0, 0, 0)).toISOString()
+  const endTime = new Date(targetDate.setHours(23, 59, 59, 999)).toISOString()
+
+  try {
+    await reservationStore.fetchAvailability({
+      roomIds: [selectedRoom.value],
+      startTime,
+      endTime
+    })
+
+    const roomAvailability = reservationStore.getRoomAvailability(selectedRoom.value)
+    if (roomAvailability) {
+      // 转换为TimeSlot格式
+      const slots: TimeSlot[] = []
+
+      // 添加可用时间段
+      roomAvailability.availableSlots?.forEach((slot, index) => {
+        slots.push({
+          id: `${selectedRoom.value}-${index}`,
+          startTime: new Date(slot.startTime),
+          endTime: new Date(slot.endTime),
+          status: 'available',
+          roomId: selectedRoom.value
+        })
+      })
+
+      // 添加已预约时间段
+      roomAvailability.reservations?.forEach((reservation, index) => {
+        slots.push({
+          id: `${selectedRoom.value}-reserved-${index}`,
+          startTime: new Date(reservation.startTime),
+          endTime: new Date(reservation.endTime),
+          status: 'unavailable',
+          roomId: selectedRoom.value,
+          reservationId: reservation.id
+        })
+      })
+
+      availableTimeSlots.value = slots.sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    } else {
+      // 如果没有数据，生成默认时间段
+      const slots = await generateTimeSlots(selectedRoom.value, targetDate)
+      availableTimeSlots.value = slots.sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    }
+  } catch (error) {
+    console.error('生成时间槽失败:', error)
+    availableTimeSlots.value = []
+  }
+}
 
 // 方法
 function handleTimeSlotSelection(slots: TimeSlot[]) {
@@ -140,19 +207,25 @@ function handleTimeSlotSelection(slots: TimeSlot[]) {
   }
 }
 
-function handleRoomChange() {
+async function handleRoomChange() {
   // 清空之前的时间选择
   selectedTimeSlots.value = []
-  const room = mockRooms.value.find(r => r.id === selectedRoom.value)
+  const room = roomStore.rooms.find(r => r.id === selectedRoom.value)
   if (room) {
-    message.value = `已选择会议室：${room.name} (${room.operatingHours.start} - ${room.operatingHours.end})`
+    message.value = `已选择会议室：${room.name}`
   }
+
+  // 重新生成可用时间槽
+  await generateAvailableTimeSlots()
 }
 
-function handleDateChange() {
+async function handleDateChange() {
   // 日期变更时清空时间选择
   selectedTimeSlots.value = []
   message.value = `已选择日期：${format(new Date(reservationDate.value), 'MM月dd日', { locale: zhCN })}`
+
+  // 重新生成可用时间槽
+  await generateAvailableTimeSlots()
 }
 
 function addAttendee() {
@@ -200,21 +273,23 @@ async function handleReservationSubmit() {
   message.value = '正在提交预约...'
 
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // 获取最早和最晚时间作为开始和结束时间
+    const startTime = new Date(Math.min(...selectedTimeSlots.value.map(slot => slot.startTime.getTime())))
+    const endTime = new Date(Math.max(...selectedTimeSlots.value.map(slot => slot.endTime.getTime())))
 
-    const reservation = {
+    // 使用store创建预约
+    const response = await reservationStore.createReservation({
+      title: reservationTitle.value.trim(),
       roomId: selectedRoom.value,
-      title: reservationTitle.value,
-      date: reservationDate.value,
-      host: reservationHost.value,
-      attendees: reservationAttendees.value,
-      description: reservationDescription.value,
-      timeSlots: selectedTimeSlots.value,
-      createdAt: new Date()
-    }
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      attendeeCount: reservationAttendees.value.length + 1, // +1 for host
+      description: reservationDescription.value.trim(),
+      organizerName: reservationHost.value.trim(),
+      attendees: reservationAttendees.value.map(name => ({ name }))
+    })
 
-    console.log('预约创建成功:', reservation)
+    console.log('预约创建成功:', response)
 
     // 重置表单
     selectedRoom.value = ''
@@ -227,9 +302,9 @@ async function handleReservationSubmit() {
 
     message.value = '预约创建成功！'
 
-  } catch (error) {
-    console.error('预约创建失败:', error)
-    message.value = '预约创建失败，请重试'
+  } catch (err: any) {
+    console.error('预约创建失败:', err)
+    message.value = `创建预约失败: ${err.message || '未知错误'}`
   } finally {
     isSubmitting.value = false
   }
@@ -262,10 +337,23 @@ watch(reservationDate, (newDate) => {
   }
 })
 
+// 加载会议室数据
+async function loadRooms() {
+  try {
+    await roomStore.fetchRooms()
+  } catch (err: any) {
+    console.error('加载会议室失败:', err)
+    message.value = `加载会议室失败: ${err.message}`
+  }
+}
+
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   console.log('✅ Reservations page mounted successfully!')
   message.value = '页面加载成功！请填写左侧表单并选择时间'
+
+  // 加载会议室数据
+  await loadRooms()
 })
 </script>
 
@@ -288,15 +376,17 @@ onMounted(() => {
               预约列表
             </NuxtLink>
             <NuxtLink
-              to="/rooms/availability"
+              to="/admin/rooms/availability"
               class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
+              v-if="canAccess('room', 'read')"
             >
               <i class="pi pi-clock"></i>
               会议室可用时间
             </NuxtLink>
             <NuxtLink
-              to="/rooms"
+              to="/admin/rooms"
               class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
+              v-if="canAccess('room', 'read')"
             >
               <i class="pi pi-home"></i>
               会议室管理
@@ -349,7 +439,7 @@ onMounted(() => {
               >
                 <option value="">请选择会议室</option>
                 <option
-                  v-for="room in mockRooms.filter(r => r.status === 'available')"
+                  v-for="room in roomStore.rooms.filter(r => r.status === 'AVAILABLE')"
                   :key="room.id"
                   :value="room.id"
                 >

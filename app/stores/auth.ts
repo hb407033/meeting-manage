@@ -111,6 +111,11 @@ export const useAuthStore = defineStore('auth', {
         // 只在客户端执行
         if (typeof window === 'undefined') return
 
+        // 如果已经有认证状态，避免重复初始化
+        if (this.isAuthenticated && this.accessToken) {
+          return
+        }
+
         const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)
         const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
         const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA)
@@ -126,6 +131,7 @@ export const useAuthStore = defineStore('auth', {
 
             // 检查令牌是否过期
             if (this.isTokenExpiringSoon) {
+              // 异步刷新令牌，不阻塞初始化
               this.refreshTokens().catch(() => {
                 console.warn('Token refresh failed during init, clearing auth state')
                 this.clearAuth()

@@ -23,11 +23,20 @@
             查看所有可用会议室，了解会议室设施和状态
           </p>
           <NuxtLink
-            to="/rooms"
+            v-if="canAccess('room', 'read')"
+            to="/admin/rooms"
             class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <i class="pi pi-eye mr-2"></i>
             查看会议室
+          </NuxtLink>
+          <NuxtLink
+            v-else
+            to="/reservations/create"
+            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <i class="pi pi-calendar mr-2"></i>
+            查看可用会议室
           </NuxtLink>
         </div>
 

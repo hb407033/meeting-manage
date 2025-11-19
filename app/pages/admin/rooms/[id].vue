@@ -3,11 +3,11 @@
     <!-- 返回按钮 -->
     <div class="room-detail-header">
       <Button
-        label="返回列表"
+        label="返回会议室管理"
         icon="pi pi-arrow-left"
         severity="secondary"
         text
-        @click="navigateTo('/rooms')"
+        @click="navigateTo('/admin/rooms')"
       />
     </div>
 
@@ -25,10 +25,10 @@
       <div class="error-actions">
         <Button label="重试" icon="pi pi-refresh" @click="loadRoom" />
         <Button
-          label="返回列表"
+          label="返回会议室管理"
           icon="pi pi-arrow-left"
           severity="secondary"
-          @click="navigateTo('/rooms')"
+          @click="navigateTo('/admin/rooms')"
         />
       </div>
     </div>
@@ -61,6 +61,12 @@
                 severity="danger"
                 @click="handleDelete"
                 v-if="hasPermission(user?.id || '', 'room:delete')"
+              />
+              <Button
+                label="查看可用时间"
+                icon="pi pi-calendar"
+                severity="secondary"
+                @click="handleViewAvailability"
               />
             </div>
           </div>
@@ -127,6 +133,48 @@
               <div class="image-overlay">
                 <i class="pi pi-eye"></i>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 管理功能区域 -->
+        <div class="room-management">
+          <h3>管理功能</h3>
+          <div class="management-grid">
+            <div class="management-item" @click="handleViewAvailability">
+              <i class="pi pi-calendar management-icon"></i>
+              <div class="management-content">
+                <div class="management-title">查看可用时间</div>
+                <div class="management-desc">查看会议室的时间安排和可用情况</div>
+              </div>
+              <i class="pi pi-arrow-right management-arrow"></i>
+            </div>
+
+            <div class="management-item" @click="handleEdit">
+              <i class="pi pi-pencil management-icon"></i>
+              <div class="management-content">
+                <div class="management-title">编辑会议室</div>
+                <div class="management-desc">修改会议室信息和配置</div>
+              </div>
+              <i class="pi pi-arrow-right management-arrow"></i>
+            </div>
+
+            <div class="management-item" @click="handleViewReservations">
+              <i class="pi pi-list management-icon"></i>
+              <div class="management-content">
+                <div class="management-title">预约记录</div>
+                <div class="management-desc">查看该会议室的所有预约记录</div>
+              </div>
+              <i class="pi pi-arrow-right management-arrow"></i>
+            </div>
+
+            <div class="management-item" @click="handleMaintenanceMode" v-if="hasPermission(user?.id || '', 'room:update')">
+              <i class="pi pi-wrench management-icon"></i>
+              <div class="management-content">
+                <div class="management-title">维护模式</div>
+                <div class="management-desc">设置会议室维护状态</div>
+              </div>
+              <i class="pi pi-arrow-right management-arrow"></i>
             </div>
           </div>
         </div>
@@ -204,11 +252,15 @@
 </template>
 
 <script setup lang="ts">
+// 页面设置
+definePageMeta({
+  layout: 'AdminLayout',
+  middleware: 'auth'
+})
+
 // 动态路由参数
 const route = useRoute()
 const roomId = route.params.id as string
-
-// 组件导入 - Nuxt会自动导入
 
 // 认证和权限
 const { user } = useAuth()
@@ -226,13 +278,6 @@ const historyLoading = ref(false)
 const showEditDialog = ref(false)
 const showImagePreview = ref(false)
 const previewImage = ref<string | null>(null)
-
-// 页面元数据
-definePageMeta({
-  title: '会议室详情',
-  layout: 'default',
-  middleware: 'auth'
-})
 
 // 页面头部信息
 useHead({
@@ -277,6 +322,28 @@ const loadHistory = async () => {
   }
 }
 
+// 管理功能处理
+const handleViewAvailability = () => {
+  navigateTo(`/admin/rooms/availability?room=${roomId}`)
+}
+
+const handleViewReservations = () => {
+  navigateTo(`/reservations?room=${roomId}`)
+}
+
+const handleMaintenanceMode = () => {
+  if (!room.value) return
+
+  const newStatus = room.value.status === 'MAINTENANCE' ? 'AVAILABLE' : 'MAINTENANCE'
+  const action = newStatus === 'MAINTENANCE' ? '设置为维护模式' : '取消维护模式'
+
+  const confirmed = confirm(`确定要${action}吗？`)
+  if (confirmed) {
+    console.log(`${action}:`, roomId)
+    // TODO: 调用状态更新API
+  }
+}
+
 // 处理编辑
 const handleEdit = () => {
   showEditDialog.value = true
@@ -302,7 +369,7 @@ const handleDelete = () => {
   if (!confirmed) return
 
   // 导航到删除API或调用删除方法
-  navigateTo(`/rooms?delete=${roomId}`)
+  navigateTo(`/admin/rooms?delete=${roomId}`)
 }
 
 // 打开图片预览
@@ -668,6 +735,72 @@ watch(() => route.params.id, async (newId) => {
   font-size: 1.5rem;
 }
 
+/* 管理功能 */
+.room-management {
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+.room-management h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1rem 0;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.management-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  background-color: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.management-item:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.management-icon {
+  font-size: 1.5rem;
+  color: #3b82f6;
+  width: 2rem;
+  text-align: center;
+}
+
+.management-content {
+  flex: 1;
+}
+
+.management-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.management-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.management-arrow {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
 /* 操作历史 */
 .room-history {
   background-color: #ffffff;
@@ -784,6 +917,10 @@ watch(() => route.params.id, async (newId) => {
 
   .images-gallery {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .management-grid {
+    grid-template-columns: 1fr;
   }
 
   .history-item {

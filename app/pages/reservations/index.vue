@@ -3,76 +3,26 @@ import { ref, computed, onMounted } from 'vue'
 import { format, addDays, startOfWeek, endOfWeek, isAfter, isBefore, isToday } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 
-// 模拟预约数据
-const reservations = ref([
-  {
-    id: '1',
-    title: '产品设计会议',
-    roomName: '会议室 A',
-    roomId: '1',
-    organizerName: '张三',
-    startTime: new Date(2025, 10, 19, 9, 0),
-    endTime: new Date(2025, 10, 19, 11, 0),
-    status: 'confirmed',
-    description: '讨论新产品的设计需求',
-    attendees: ['张三', '李四', '王五']
-  },
-  {
-    id: '2',
-    title: '技术评审',
-    roomName: '会议室 B',
-    roomId: '2',
-    organizerName: '李四',
-    startTime: new Date(2025, 10, 19, 14, 0),
-    endTime: new Date(2025, 10, 19, 16, 0),
-    status: 'confirmed',
-    description: '技术方案评审会议',
-    attendees: ['李四', '赵六']
-  },
-  {
-    id: '3',
-    title: '客户演示',
-    roomName: '会议室 C',
-    roomId: '3',
-    organizerName: '王五',
-    startTime: new Date(2025, 10, 20, 10, 0),
-    endTime: new Date(2025, 10, 20, 12, 0),
-    status: 'pending',
-    description: '重要客户产品演示',
-    attendees: ['王五', '客户代表']
-  },
-  {
-    id: '4',
-    title: '团队周会',
-    roomName: '会议室 A',
-    roomId: '1',
-    organizerName: '赵六',
-    startTime: new Date(2025, 10, 21, 15, 0),
-    endTime: new Date(2025, 10, 21, 16, 0),
-    status: 'confirmed',
-    description: '每周团队同步会议',
-    attendees: ['全体团队成员']
-  }
-])
+// 导入store
+import { useReservationStore } from '~/stores/reservations'
+import { useRoomStore } from '~/stores/rooms'
+
+// 使用store
+const reservationStore = useReservationStore()
+const roomStore = useRoomStore()
 
 // 筛选状态
 const selectedRoom = ref<string>('')
 const selectedStatus = ref<string>('')
 const selectedDateRange = ref<string>('today')
 
-// 模拟会议室数据
-const rooms = ref([
-  { id: '1', name: '会议室 A' },
-  { id: '2', name: '会议室 B' },
-  { id: '3', name: '会议室 C' }
-])
-
 // 状态选项
 const statusOptions = [
   { value: '', label: '全部状态' },
-  { value: 'confirmed', label: '已确认' },
-  { value: 'pending', label: '待确认' },
-  { value: 'cancelled', label: '已取消' }
+  { value: 'CONFIRMED', label: '已确认' },
+  { value: 'PENDING', label: '待确认' },
+  { value: 'CANCELLED', label: '已取消' },
+  { value: 'COMPLETED', label: '已完成' }
 ]
 
 // 日期范围选项
@@ -85,11 +35,11 @@ const dateRangeOptions = [
 
 // 过滤后的预约列表
 const filteredReservations = computed(() => {
-  let filtered = reservations.value
+  let filtered = reservationStore.reservations
 
   // 按会议室筛选
   if (selectedRoom.value) {
-    filtered = filtered.filter(r => r.roomId === selectedRoom.value)
+    filtered = filtered.filter(r => r.room?.id === selectedRoom.value || r.roomId === selectedRoom.value)
   }
 
   // 按状态筛选
@@ -125,12 +75,14 @@ const filteredReservations = computed(() => {
 // 获取状态显示样式
 function getStatusStyle(status: string): string {
   switch (status) {
-    case 'confirmed':
+    case 'CONFIRMED':
       return 'bg-green-100 text-green-800 border border-green-200'
-    case 'pending':
+    case 'PENDING':
       return 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-    case 'cancelled':
+    case 'CANCELLED':
       return 'bg-red-100 text-red-800 border border-red-200'
+    case 'COMPLETED':
+      return 'bg-blue-100 text-blue-800 border border-blue-200'
     default:
       return 'bg-gray-100 text-gray-800 border border-gray-200'
   }
@@ -138,12 +90,14 @@ function getStatusStyle(status: string): string {
 
 function getStatusText(status: string): string {
   switch (status) {
-    case 'confirmed':
+    case 'CONFIRMED':
       return '已确认'
-    case 'pending':
+    case 'PENDING':
       return '待确认'
-    case 'cancelled':
+    case 'CANCELLED':
       return '已取消'
+    case 'COMPLETED':
+      return '已完成'
     default:
       return '未知状态'
   }
@@ -179,9 +133,33 @@ function isCurrentReservation(startTime: Date, endTime: Date): boolean {
   return isAfter(now, startTime) && isBefore(now, endTime)
 }
 
+// 加载预约数据
+async function loadReservations() {
+  try {
+    await reservationStore.fetchReservations()
+  } catch (err: any) {
+    console.error('加载预约列表失败:', err)
+  }
+}
+
+// 加载会议室数据
+async function loadRooms() {
+  try {
+    await roomStore.fetchRooms()
+  } catch (err: any) {
+    console.error('加载会议室失败:', err)
+  }
+}
+
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   console.log('✅ Reservation list page mounted successfully!')
+
+  // 并行加载数据
+  await Promise.all([
+    loadReservations(),
+    loadRooms()
+  ])
 })
 </script>
 
@@ -204,14 +182,14 @@ onMounted(() => {
               新建预约
             </NuxtLink>
             <NuxtLink
-              to="/rooms/availability"
+              to="/availability"
               class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
             >
               <i class="pi pi-clock"></i>
               会议室可用时间
             </NuxtLink>
             <NuxtLink
-              to="/rooms"
+              to="/admin/rooms"
               class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
             >
               <i class="pi pi-home"></i>
@@ -247,7 +225,7 @@ onMounted(() => {
             >
               <option value="">全部会议室</option>
               <option
-                v-for="room in rooms"
+                v-for="room in roomStore.rooms"
                 :key="room.id"
                 :value="room.id"
               >
@@ -304,7 +282,12 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="filteredReservations.length === 0" class="p-8 text-center">
+        <div v-if="reservationStore.loading" class="p-8 text-center">
+          <i class="pi pi-spinner pi-spin text-4xl text-blue-400 mb-4"></i>
+          <p class="text-gray-500">正在加载预约列表...</p>
+        </div>
+
+        <div v-else-if="filteredReservations.length === 0" class="p-8 text-center">
           <i class="pi pi-calendar-times text-4xl text-gray-400 mb-4"></i>
           <p class="text-gray-500">暂无符合条件的预约记录</p>
         </div>
@@ -340,29 +323,29 @@ onMounted(() => {
                   <div class="space-y-1">
                     <div class="flex items-center gap-2">
                       <i class="pi pi-home text-gray-400"></i>
-                      <span>会议室：{{ reservation.roomName }}</span>
+                      <span>会议室：{{ reservation.room?.name || reservation.roomName || '未知' }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-user text-gray-400"></i>
-                      <span>组织者：{{ reservation.organizerName }}</span>
+                      <span>组织者：{{ reservation.organizer?.name || reservation.organizerName || '未知' }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-users text-gray-400"></i>
-                      <span>参与人：{{ reservation.attendees.join(', ') }}</span>
+                      <span>参与人：{{ (reservation.attendees || []).join(', ') || reservation.attendeeCount || 0 }}人</span>
                     </div>
                   </div>
                   <div class="space-y-1">
                     <div class="flex items-center gap-2">
                       <i class="pi pi-calendar text-gray-400"></i>
-                      <span>日期：{{ formatDateTime(reservation.startTime) }}</span>
+                      <span>日期：{{ formatDateTime(new Date(reservation.startTime)) }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-clock text-gray-400"></i>
-                      <span>时间：{{ formatTime(reservation.startTime) }} - {{ formatTime(reservation.endTime) }}</span>
+                      <span>时间：{{ formatTime(new Date(reservation.startTime)) }} - {{ formatTime(new Date(reservation.endTime)) }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-hourglass text-gray-400"></i>
-                      <span>时长：{{ getDuration(reservation.startTime, reservation.endTime) }}</span>
+                      <span>时长：{{ getDuration(new Date(reservation.startTime), new Date(reservation.endTime)) }}</span>
                     </div>
                   </div>
                 </div>

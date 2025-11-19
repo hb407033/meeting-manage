@@ -3,20 +3,15 @@ import { useAuthStore } from '../stores/auth'
 export default defineNuxtPlugin((nuxtApp) => {
   const authStore = useAuthStore()
 
-  // 只在客户端初始化认证状态
+  // 只在客户端初始化认证状态，确保只初始化一次
   if (process.client) {
-    // 确保在插件中正确初始化认证状态
-    authStore.initAuth()
-
-    // 在页面刷新时自动恢复认证状态
-  const router = useRouter()
-
-  // 监听路由变化，确保认证状态正确
-  router.beforeEach(() => {
-    if (!authStore.isAuthenticated && authStore.accessToken) {
-      authStore.initAuth()
-    }
-  })
+    // 延迟初始化，确保所有插件都已加载
+    nuxtApp.hook('app:mounted', () => {
+      // 检查是否已经初始化过，避免重复初始化
+      if (!authStore.isAuthenticated && !authStore.accessToken) {
+        authStore.initAuth()
+      }
+    })
   }
 
   // 创建一个组合式函数来使用
