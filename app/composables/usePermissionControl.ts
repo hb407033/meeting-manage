@@ -397,11 +397,20 @@ export const PERMISSION_COMBINATIONS = {
     'reservation:approve'
   ],
 
+  // 审计日志相关权限
+  AUDIT_MANAGEMENT: [
+    'audit:read',
+    'audit:export',
+    'audit:stats',
+    'audit:analyze'
+  ],
+
   // 系统管理权限（管理员专用）
   SYSTEM_ADMIN: [
     'admin:access',
     'system:manage',
     'audit:read',
+    'audit:export',
     'config:manage'
   ]
 } as const

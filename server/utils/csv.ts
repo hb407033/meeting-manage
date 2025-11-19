@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { z } from 'zod'
-
-const prisma = new PrismaClient()
+import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 /**
  * 解析CSV内容为数组

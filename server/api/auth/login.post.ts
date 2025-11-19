@@ -1,10 +1,10 @@
-import { successResponse, errorResponse } from '~~/server/utils/response'
-import { generateTokenPair } from '~~/server/utils/jwt'
-import { verifyPassword } from '~~/server/utils/password'
+import { loginRateLimit } from '~~/server/api/middleware/rateLimit'
 import prisma from '~~/server/services/database'
 import { auditLogger } from '~~/server/utils/audit'
-import { LoginAttemptTracker, IPRateLimiter, SecurityUtils } from '~~/server/utils/csrf'
-import { loginRateLimit } from '~~/server/api/middleware/rateLimit'
+import { IPRateLimiter, LoginAttemptTracker, SecurityUtils } from '~~/server/utils/csrf'
+import { generateTokenPair } from '~~/server/utils/jwt'
+import { verifyPassword } from '~~/server/utils/password'
+import { successResponse } from '~~/server/utils/response'
 
 export default defineEventHandler(async (event) => {
   // 应用限流
@@ -12,22 +12,22 @@ export default defineEventHandler(async (event) => {
 
   try {
     const body = await readBody(event)
-    const { email, password } = body
+    const { email, password } = body as { email?: string, password?: string }
 
     // 输入验证
     if (!email || !password) {
       throw createError({
         statusCode: 400,
-        statusMessage: '邮箱和密码不能为空'
+        statusMessage: '邮箱和密码不能为空',
       })
     }
 
     // 邮箱格式验证
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       throw createError({
         statusCode: 400,
-        statusMessage: '邮箱格式不正确'
+        statusMessage: '邮箱格式不正确',
       })
     }
 
@@ -38,27 +38,28 @@ export default defineEventHandler(async (event) => {
     const attemptResult = attemptTracker.recordAttempt(normalizedEmail)
 
     if (!attemptResult.success) {
-      if (attemptResult.lockedUntil) {
+      if (attemptResult.lockedUntil && attemptResult.lockedUntil > 0) {
         const lockTimeRemaining = Math.ceil((attemptResult.lockedUntil - Date.now()) / 60000)
         throw createError({
           statusCode: 429,
-          statusMessage: `账户已被锁定，请 ${lockTimeRemaining} 分钟后再试`
+          statusMessage: `账户已被锁定，请 ${lockTimeRemaining} 分钟后再试`,
         })
-      } else {
+      }
+      else {
         throw createError({
           statusCode: 429,
-          statusMessage: `登录尝试次数过多，还剩 ${attemptResult.attemptsLeft} 次机会`
+          statusMessage: `登录尝试次数过多，还剩 ${attemptResult.attemptsLeft} 次机会`,
         })
       }
     }
 
     // IP 限制检查
     const ipLimiter = IPRateLimiter.getInstance(15 * 60 * 1000, 20) // 15分钟20次请求
-    const clientIP = getClientIP(event)
+    const clientIP = getClientIP(event) || 'unknown'
     if (!ipLimiter.isAllowed(clientIP)) {
       throw createError({
         statusCode: 429,
-        statusMessage: 'IP请求频率过高，请稍后再试'
+        statusMessage: 'IP请求频率过高，请稍后再试',
       })
     }
 
@@ -69,7 +70,7 @@ export default defineEventHandler(async (event) => {
       console.warn('Suspicious activity detected:', {
         ip: clientIP,
         userAgent,
-        reasons: suspiciousActivity.reasons
+        reasons: suspiciousActivity.reasons,
       })
     }
 
@@ -91,18 +92,18 @@ export default defineEventHandler(async (event) => {
                 name: true,
                 code: true,
                 level: true,
-                isActive: true
-              }
-            }
-          }
-        }
-      }
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!user) {
       throw createError({
         statusCode: 401,
-        statusMessage: '邮箱或密码错误'
+        statusMessage: '邮箱或密码错误',
       })
     }
 
@@ -110,7 +111,7 @@ export default defineEventHandler(async (event) => {
     if (!user.isActive) {
       throw createError({
         statusCode: 401,
-        statusMessage: '账户已被禁用，请联系管理员'
+        statusMessage: '账户已被禁用，请联系管理员',
       })
     }
 
@@ -119,7 +120,7 @@ export default defineEventHandler(async (event) => {
     if (!isPasswordValid) {
       throw createError({
         statusCode: 401,
-        statusMessage: '邮箱或密码错误'
+        statusMessage: '邮箱或密码错误',
       })
     }
 
@@ -130,7 +131,7 @@ export default defineEventHandler(async (event) => {
     if (user.userRoles && user.userRoles.length > 0) {
       // 按角色级别排序，取最高级别
       const sortedRoles = user.userRoles
-        .filter(ur => ur.role.isActive)
+        .filter(ur => ur.role && ur.role.isActive)
         .sort((a, b) => (b.role?.level || 0) - (a.role?.level || 0))
 
       if (sortedRoles.length > 0) {
@@ -140,28 +141,64 @@ export default defineEventHandler(async (event) => {
         if (userRole === 'ADMIN') {
           // 管理员拥有所有权限
           permissions = [
-            'user:read', 'user:create', 'user:update', 'user:delete',
-            'role:read', 'role:create', 'role:update', 'role:delete', 'role:assign',
-            'room:read', 'room:create', 'room:update', 'room:delete', 'room:manage-status',
-            'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel', 'reservation:approve', 'reservation:read-others',
-            'analytics:read', 'analytics:export',
-            'system:read', 'system:update', 'audit:read',
-            'device:manage', 'device:read-data'
+            'user:read',
+            'user:create',
+            'user:update',
+            'user:delete',
+            'role:read',
+            'role:create',
+            'role:update',
+            'role:delete',
+            'role:assign',
+            'room:read',
+            'room:create',
+            'room:update',
+            'room:delete',
+            'room:manage-status',
+            'reservation:read',
+            'reservation:create',
+            'reservation:update',
+            'reservation:cancel',
+            'reservation:approve',
+            'reservation:read-others',
+            'analytics:read',
+            'analytics:export',
+            'system:read',
+            'system:update',
+            'audit:read',
+            'device:manage',
+            'device:read-data',
           ]
-        } else if (userRole === 'MANAGER') {
+        }
+        else if (userRole === 'MANAGER') {
           // 部门经理拥有部门内权限
           permissions = [
-            'user:read', 'user:create', 'user:update',
-            'room:read', 'room:create', 'room:update', 'room:manage-status',
-            'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel', 'reservation:approve', 'reservation:read-others',
-            'analytics:read', 'analytics:export',
-            'device:read-data'
+            'user:read',
+            'user:create',
+            'user:update',
+            'room:read',
+            'room:create',
+            'room:update',
+            'room:manage-status',
+            'reservation:read',
+            'reservation:create',
+            'reservation:update',
+            'reservation:cancel',
+            'reservation:approve',
+            'reservation:read-others',
+            'analytics:read',
+            'analytics:export',
+            'device:read-data',
           ]
-        } else {
+        }
+        else {
           // 普通用户只有基础权限
           permissions = [
             'room:read',
-            'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel'
+            'reservation:read',
+            'reservation:create',
+            'reservation:update',
+            'reservation:cancel',
           ]
         }
       }
@@ -171,7 +208,7 @@ export default defineEventHandler(async (event) => {
     const tokenPair = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: userRole
+      role: userRole,
     })
 
     // 清除登录尝试记录
@@ -184,12 +221,12 @@ export default defineEventHandler(async (event) => {
         lastLoginAt: new Date(),
         lastLoginIP: clientIP,
         loginAttempts: 0,
-        lockedUntil: null
-      }
+        lockedUntil: null,
+      },
     })
 
     // 移除敏感字段后返回用户信息
-    const { password: _, userRoles, ...userWithoutSensitive } = user
+    const { password: _, userRoles: _userRoles, ...userWithoutSensitive } = user
 
     // 记录登录成功审计日志
     await auditLogger.logLogin(
@@ -197,23 +234,23 @@ export default defineEventHandler(async (event) => {
       true,
       clientIP,
       userAgent,
-      user.id
+      user.id,
     )
 
     return successResponse({
       user: {
         ...userWithoutSensitive,
         role: userRole,
-        permissions
+        permissions,
       },
       tokens: {
         accessToken: tokenPair.accessToken,
         refreshToken: tokenPair.refreshToken,
-        expiresIn: tokenPair.expiresIn
-      }
+        expiresIn: tokenPair.expiresIn,
+      },
     }, '登录成功')
-
-  } catch (error: any) {
+  }
+  catch (error: any) {
     const clientIP = getClientIP(event)
     const userAgent = getHeader(event, 'user-agent') || ''
 
@@ -223,7 +260,8 @@ export default defineEventHandler(async (event) => {
       try {
         const body = await readBody(event)
         email = body.email || ''
-      } catch {
+      }
+      catch {
         // 忽略读取body的错误
       }
     }
@@ -233,12 +271,12 @@ export default defineEventHandler(async (event) => {
         email || 'unknown',
         error.statusMessage || '登录失败',
         clientIP,
-        userAgent
+        userAgent,
       )
     }
 
     // 处理已知错误
-    if (error.statusCode) {
+    if (error.statusCode && typeof error.statusCode === 'number') {
       throw error
     }
 
@@ -246,7 +284,7 @@ export default defineEventHandler(async (event) => {
     if (error.code === 'P2025') {
       throw createError({
         statusCode: 401,
-        statusMessage: '邮箱或密码错误'
+        statusMessage: '邮箱或密码错误',
       })
     }
 
@@ -256,7 +294,7 @@ export default defineEventHandler(async (event) => {
     // 处理其他错误
     throw createError({
       statusCode: 500,
-      statusMessage: '登录失败，请稍后重试'
+      statusMessage: '登录失败，请稍后重试',
     })
   }
 })

@@ -1,4 +1,4 @@
-import { DatabaseService } from '../services/database'
+import  prisma from '../services/database'
 
 export interface AuditLogData {
   userId?: string
@@ -8,6 +8,8 @@ export interface AuditLogData {
   details?: any
   ipAddress?: string
   userAgent?: string
+  result?: 'SUCCESS' | 'FAILURE' | 'PARTIAL' | 'ERROR'
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 }
 
 /**
@@ -30,9 +32,9 @@ export class AuditLogger {
    */
   async log(data: AuditLogData): Promise<void> {
     try {
-      const db = new DatabaseService()
+      
 
-      await db.getClient().auditLog.create({
+      await prisma.auditLog.create({
         data: {
           userId: data.userId,
           action: data.action,
@@ -41,17 +43,21 @@ export class AuditLogger {
           details: data.details ? JSON.stringify(data.details) : null,
           ipAddress: data.ipAddress,
           userAgent: data.userAgent,
+          result: data.result || 'SUCCESS',
+          riskLevel: data.riskLevel || 'LOW',
           timestamp: new Date()
         }
       })
 
       // 对于重要事件，也输出到控制台
-      if (data.action.includes('login') || data.action.includes('delete')) {
+      if (data.action.includes('login') || data.action.includes('delete') || data.riskLevel === 'HIGH' || data.riskLevel === 'CRITICAL') {
         console.log(`[AUDIT]: ${data.action}`, {
           userId: data.userId,
           resourceType: data.resourceType,
           resourceId: data.resourceId,
-          ipAddress: data.ipAddress
+          ipAddress: data.ipAddress,
+          result: data.result,
+          riskLevel: data.riskLevel
         })
       }
 
@@ -200,6 +206,80 @@ export class AuditLogger {
       resourceType,
       resourceId,
       details: { ...details, adminAction: true },
+      result: 'SUCCESS',
+      riskLevel: this.getRiskLevelForAction(action),
+      ipAddress,
+      userAgent
+    })
+  }
+
+  /**
+   * 检测操作的风险级别
+   */
+  private getRiskLevelForAction(action: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+    const criticalActions = ['delete', 'reset', 'destroy', 'purge']
+    const highActions = ['create', 'update', 'modify', 'change', 'assign', 'grant', 'revoke']
+    const mediumActions = ['login', 'access', 'view', 'read', 'export']
+
+    const actionLower = action.toLowerCase()
+
+    if (criticalActions.some(ca => actionLower.includes(ca))) {
+      return 'CRITICAL'
+    }
+    if (highActions.some(ha => actionLower.includes(ha))) {
+      return 'HIGH'
+    }
+    if (mediumActions.some(ma => actionLower.includes(ma))) {
+      return 'MEDIUM'
+    }
+    return 'LOW'
+  }
+
+  /**
+   * 记录敏感操作
+   */
+  async logSensitiveOperation(
+    userId: string,
+    action: string,
+    resourceType: string,
+    resourceId?: string,
+    details?: any,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    await this.log({
+      userId,
+      action: `sensitive.${action}`,
+      resourceType,
+      resourceId,
+      details: { ...details, sensitive: true },
+      result: 'SUCCESS',
+      riskLevel: 'HIGH',
+      ipAddress,
+      userAgent
+    })
+  }
+
+  /**
+   * 记录失败操作
+   */
+  async logFailedOperation(
+    userId: string,
+    action: string,
+    resourceType: string,
+    reason: string,
+    resourceId?: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    await this.log({
+      userId,
+      action: `${action}.failed`,
+      resourceType,
+      resourceId,
+      details: { reason, failure: true },
+      result: 'FAILURE',
+      riskLevel: 'MEDIUM',
       ipAddress,
       userAgent
     })
@@ -217,7 +297,6 @@ export class AuditLogger {
     ipAddress?: string
   } = {}): Promise<any[]> {
     try {
-      const db = new DatabaseService()
       const where: any = {}
 
       if (filters.userId) {
@@ -244,7 +323,7 @@ export class AuditLogger {
         where.ipAddress = filters.ipAddress
       }
 
-      const logs = await db.getClient().auditLog.findMany({
+      const logs = await prisma.auditLog.findMany({
         where,
         orderBy: {
           timestamp: 'desc'
@@ -276,11 +355,11 @@ export class AuditLogger {
     }>
   }> {
     try {
-      const db = new DatabaseService()
+     
       const startDate = new Date()
       startDate.setDate(startDate.getDate() - days)
 
-      const logs = await db.getClient().auditLog.findMany({
+      const logs = await prisma.auditLog.findMany({
         where: {
           userId,
           timestamp: {

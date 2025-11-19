@@ -1,8 +1,23 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+
+  // 路径解析配置
+  resolve: {
+    alias: {
+      '~': resolve(__dirname, '.'),
+      '~~': resolve(__dirname, '.'),
+      '@': resolve(__dirname, '.'),
+      '@/components': resolve(__dirname, 'app/components'),
+      '@/pages': resolve(__dirname, 'app/pages'),
+      '@/layouts': resolve(__dirname, 'app/layouts'),
+      '@/server': resolve(__dirname, 'server'),
+      '@/utils': resolve(__dirname, 'server/utils')
+    }
+  },
   test: {
     environment: 'jsdom',
     globals: true,

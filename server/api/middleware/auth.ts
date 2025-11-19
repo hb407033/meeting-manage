@@ -95,8 +95,8 @@ export async function authMiddleware(
     if (user.userRoles && user.userRoles.length > 0) {
       // 按角色级别排序，取最高级别
       const sortedRoles = user.userRoles
-        .filter(ur => ur.role.isActive)
-        .sort((a, b) => (b.role?.level || 0) - (a.role?.level || 0))
+        .filter((ur: { role: { isActive: any } }) => ur.role.isActive)
+        .sort((a: { role: { level: any } }, b: { role: { level: any } }) => (b.role?.level || 0) - (a.role?.level || 0))
 
       if (sortedRoles.length > 0) {
         userRole = sortedRoles[0].role?.code || 'USER'
@@ -253,8 +253,8 @@ export async function canAccessResource(
   let userRole = 'USER'
   if (user.userRoles && user.userRoles.length > 0) {
     const sortedRoles = user.userRoles
-      .filter(ur => ur.role.isActive)
-      .sort((a, b) => (b.role?.level || 0) - (a.role?.level || 0))
+      .filter((ur: { role: { isActive: any } }) => ur.role.isActive)
+      .sort((a: { role: { level: any } }, b: { role: { level: any } }) => (b.role?.level || 0) - (a.role?.level || 0))
 
     if (sortedRoles.length > 0) {
       userRole = sortedRoles[0].role?.code || 'USER'
@@ -325,7 +325,7 @@ async function canAccessRoom(
 
   // 检查是否有管理员角色
   const adminRoles = user.userRoles.filter(
-    ur => ur.role.code === 'ADMIN' && ur.role.isActive
+    (    ur: { role: { code: string; isActive: any } }) => ur.role.code === 'ADMIN' && ur.role.isActive
   )
 
   return adminRoles.length > 0 && ['update', 'delete'].includes(action)

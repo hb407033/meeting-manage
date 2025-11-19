@@ -214,7 +214,7 @@ model PermissionRequest {
 }
 
 model AuditLog {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String?
   action       String
   resourceType String
@@ -222,8 +222,19 @@ model AuditLog {
   details      Json?
   ipAddress    String?
   userAgent    String?
-  timestamp    DateTime @default(now())
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  result       AuditResult?  @default(SUCCESS)
+  riskLevel    RiskLevel?    @default(LOW)
+  timestamp    DateTime      @default(now())
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // 优化查询性能的索引
+  @@index([userId, timestamp])
+  @@index([action, timestamp])
+  @@index([resourceType, resourceId])
+  @@index([riskLevel, timestamp])
+  @@index([result, timestamp])
+  @@index([ipAddress])
+  @@index([timestamp])
 
   @@map("audit_logs")
 }
@@ -241,4 +252,18 @@ enum ReservationStatus {
   CONFIRMED
   CANCELED
   COMPLETED
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+  PARTIAL
+  ERROR
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

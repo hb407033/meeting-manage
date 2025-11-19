@@ -1,4 +1,4 @@
-import { hasPermission, hasRole, hasAnyPermission, clearUserPermissionCache } from '~/composables/usePermissions'
+import { hasPermission, hasRole, hasAnyPermission } from '~~/server/utils/auth'
 
 export interface PermissionMiddlewareOptions {
   permissions?: string[]
@@ -47,7 +47,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
       if (requireAll) {
         // 需要所有角色
         for (const role of roles) {
-          const roleResult = await hasRole(userId, role)
+          const roleResult = await hasRole({ context: { user: { id: userId } } }, role)
           if (!roleResult) {
             hasAccess = false
             break
@@ -55,15 +55,12 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
           hasAccess = true
         }
       } else {
-        // 需要任一角色
-        hasAccess = await hasAnyPermission(userId, roles.map(r => `role:${r}`))
-        if (!hasAccess) {
-          for (const role of roles) {
-            const roleResult = await hasRole(userId, role)
-            if (roleResult) {
-              hasAccess = true
-              break
-            }
+        // 需要任一角色 - 先检查具体角色
+        for (const role of roles) {
+          const roleResult = await hasRole({ context: { user: { id: userId } } }, role)
+          if (roleResult) {
+            hasAccess = true
+            break
           }
         }
       }
@@ -74,7 +71,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
       if (requireAll) {
         // 需要所有权限
         for (const permission of permissions) {
-          const permResult = await hasPermission(userId, permission)
+          const permResult = await hasPermission({ context: { user: { id: userId } } }, permission)
           if (!permResult) {
             hasAccess = false
             break
@@ -83,7 +80,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
         }
       } else {
         // 需要任一权限
-        hasAccess = await hasAnyPermission(userId, permissions)
+        hasAccess = await hasAnyPermission({ context: { user: { id: userId } } }, permissions)
       }
     }
 
@@ -206,7 +203,7 @@ export function requireOwnerOrAdmin(getResourceId: (event: any) => Promise<strin
     }
 
     // 检查是否是管理员
-    const isAdmin = await hasRole(user.id, 'ADMIN')
+    const isAdmin = await hasRole({ context: { user } }, 'ADMIN')
     if (isAdmin) {
       return
     }

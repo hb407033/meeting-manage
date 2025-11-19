@@ -606,3 +606,4 @@ Claude Sonnet 4.5 (model ID: 'claude-sonnet-4-5-20250929')
 ### Change Log
 
 - **2025-11-19**: 完成会议室管理路由架构优化，将 /rooms 功能迁移至 /admin/rooms，提升安全性和权限分离
+- **2025-11-19**: 修复预约列表数据加载问题，优化日期筛选逻辑，提交ID: 6e6d43e
