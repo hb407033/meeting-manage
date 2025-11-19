@@ -1,8 +1,0 @@
-uid=3_0 RootWebArea url="http://localhost:3001/api/test-status"
-  uid=3_1 StaticText "{
-  "success": true,
-  "message": "Server is running",
-  "timestamp": "2025-11-18T05:41:44.131Z"
-}"
-  uid=3_2 StaticText "美观输出"
-  uid=3_3 checkbox "美观输出"
