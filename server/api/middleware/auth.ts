@@ -1,6 +1,6 @@
 import { verifyAccessToken, extractUserFromToken } from '~~/server/utils/jwt'
 import { errorResponse, unauthorizedResponse, forbiddenResponse } from '~~/server/utils/response'
-import { DatabaseService } from '~~/server/services/database'
+import prisma from '~~/server/services/database'
 
 export interface AuthenticatedRequest {
   user?: {
@@ -56,8 +56,7 @@ export async function authMiddleware(
     const payload = verifyAccessToken(token)
 
     // 从数据库获取用户信息（确保用户仍然存在且活跃）
-    const db = new DatabaseService()
-    const user = await db.getClient().user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {
         id: true,
@@ -234,8 +233,7 @@ export async function canAccessResource(
   resourceId: string,
   action: string = 'read'
 ): Promise<boolean> {
-  const db = new DatabaseService()
-  const user = await db.getClient().user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       role: true,
@@ -287,8 +285,7 @@ async function canAccessReservation(
   reservationId: string,
   action: string
 ): Promise<boolean> {
-  const db = new DatabaseService()
-  const reservation = await db.getClient().reservation.findUnique({
+  const reservation = await prisma.reservation.findUnique({
     where: { id: reservationId },
     select: { organizerId: true }
   })
@@ -311,7 +308,7 @@ async function canAccessRoom(
   if (['read', 'create'].includes(action)) return true
 
   // 只有管理员可以修改或删除会议室
-  const user = await db.getClient().user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       userRoles: {

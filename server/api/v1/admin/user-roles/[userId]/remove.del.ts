@@ -1,8 +1,9 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { requireAdmin } from '~~/server/middleware/permission'
 import { clearUserPermissionCache } from '~/composables/usePermissions'
+import { auditLogger } from '~~/server/utils/audit'
 
-const prisma = new PrismaClient()
+
 
 export default defineEventHandler(async (event) => {
   // 权限检查：只有管理员可以移除用户角色
@@ -71,24 +72,23 @@ export default defineEventHandler(async (event) => {
     clearUserPermissionCache(userId)
 
     // 记录审计日志
-    await prisma.auditLog.create({
-      data: {
-        userId: event.context.user?.id,
-        action: 'REMOVE_USER_ROLE',
-        resourceType: 'USER_ROLE',
-        resourceId: userRole.id,
-        details: {
-          targetUserId: userId,
-          targetUserName: userRole.user.name,
-          targetUserEmail: userRole.user.email,
-          roleName: userRole.role.name,
-          roleCode: userRole.role.code,
-          reason: '管理员移除用户角色'
-        },
-        ipAddress: getClientIP(event),
-        userAgent: event.node.req.headers['user-agent']
-      }
-    })
+    await auditLogger.logAdminAction(
+      event.context.user?.id,
+      'remove_role',
+      'user_role',
+      userId,
+      {
+        targetUserId: userId,
+        targetUserName: userRole.user.name,
+        targetUserEmail: userRole.user.email,
+        roleName: userRole.role.name,
+        roleCode: userRole.role.code,
+        roleAssociationId: userRole.id,
+        reason: '管理员移除用户角色'
+      },
+      getClientIP(event),
+      event.node.req.headers['user-agent'] as string
+    )
 
     return {
       code: 200,

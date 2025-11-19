@@ -1,6 +1,6 @@
 import { successResponse, errorResponse } from '~~/server/utils/response'
 import { verifyAccessToken } from '~~/server/utils/jwt'
-import { getPrismaClient } from '~~/server/services/database'
+import prisma from '~~/server/services/database'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -43,8 +43,6 @@ export default defineEventHandler(async (event) => {
     }
 
     // 从数据库获取用户信息
-    const prisma = getPrismaClient()
-
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {

@@ -1,7 +1,8 @@
 import { successResponse, errorResponse } from '~~/server/utils/response'
 import { generateTokenPair } from '~~/server/utils/jwt'
 import { verifyPassword } from '~~/server/utils/password'
-import { getPrismaClient } from '~~/server/services/database'
+import prisma from '~~/server/services/database'
+import { auditLogger } from '~~/server/utils/audit'
 import { LoginAttemptTracker, IPRateLimiter, SecurityUtils } from '~~/server/utils/csrf'
 import { loginRateLimit } from '~~/server/api/middleware/rateLimit'
 
@@ -73,8 +74,6 @@ export default defineEventHandler(async (event) => {
     }
 
     // 使用Prisma客户端
-    const prisma = getPrismaClient()
-
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
       select: {
@@ -192,6 +191,15 @@ export default defineEventHandler(async (event) => {
     // 移除敏感字段后返回用户信息
     const { password: _, userRoles, ...userWithoutSensitive } = user
 
+    // 记录登录成功审计日志
+    await auditLogger.logLogin(
+      user.email,
+      true,
+      clientIP,
+      userAgent,
+      user.id
+    )
+
     return successResponse({
       user: {
         ...userWithoutSensitive,
@@ -206,6 +214,29 @@ export default defineEventHandler(async (event) => {
     }, '登录成功')
 
   } catch (error: any) {
+    const clientIP = getClientIP(event)
+    const userAgent = getHeader(event, 'user-agent') || ''
+
+    // 记录登录失败审计日志
+    let email = ''
+    if (error.statusCode === 401) {
+      try {
+        const body = await readBody(event)
+        email = body.email || ''
+      } catch {
+        // 忽略读取body的错误
+      }
+    }
+
+    if (email || error.statusCode === 401) {
+      await auditLogger.logLoginFailure(
+        email || 'unknown',
+        error.statusMessage || '登录失败',
+        clientIP,
+        userAgent
+      )
+    }
+
     // 处理已知错误
     if (error.statusCode) {
       throw error

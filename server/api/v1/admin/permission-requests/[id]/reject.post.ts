@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 
-const prisma = new PrismaClient()
+
 
 /**
  * 拒绝权限申请

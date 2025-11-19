@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { filterByUserOrganization, getUserOrganizationPath } from '~~/server/services/organization-service'
 
-const prisma = new PrismaClient()
+
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user
@@ -147,7 +147,7 @@ export default defineEventHandler(async (event) => {
  * 检查用户是否是管理员
  */
 async function isAdminUser(user: any): Promise<boolean> {
-  const prisma = new PrismaClient()
+  
   const adminRole = await prisma.userRole.findFirst({
     where: {
       userId: user.id,

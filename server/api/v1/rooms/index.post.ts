@@ -3,12 +3,12 @@
  * POST /api/v1/rooms
  */
 
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { createSuccessResponse, createErrorResponse, API_CODES } from '~~/server/utils/response'
 import { CreateRoomSchema } from '~~/server/schemas/room'
 import { requirePermission } from '~~/server/middleware/permission'
 
-const prisma = new PrismaClient()
+
 
 export default defineEventHandler(async (event) => {
   // 权限验证：需要 room:create 权限

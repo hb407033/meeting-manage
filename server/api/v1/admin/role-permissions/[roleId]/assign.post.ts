@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { requireAdmin } from '~~/server/middleware/permission'
 import { clearUserPermissionCache } from '~/composables/usePermissions'
 
-const prisma = new PrismaClient()
+
 
 export default defineEventHandler(async (event) => {
   // 权限检查：只有管理员可以分配角色权限

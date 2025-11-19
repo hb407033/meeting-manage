@@ -3,14 +3,7 @@
  * POST /api/v1/upload/rooms
  */
 
-import { PrismaClient } from '@prisma/client'
-import { createSuccessResponse, createErrorResponse, API_CODES } from '~~/server/utils/response'
-import { FileUploadSchema } from '~~/server/schemas/room'
-import { createHash } from 'crypto'
-import { join } from 'path'
-import { requirePermission } from '~~/server/middleware/permission'
-
-const prisma = new PrismaClient()
+import prisma from '~~/server/services/database'
 
 export default defineEventHandler(async (event) => {
   // 权限验证：需要 room:update 权限（上传文件属于更新操作）

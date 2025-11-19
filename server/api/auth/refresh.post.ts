@@ -1,6 +1,6 @@
 import { successResponse, errorResponse } from '~~/server/utils/response'
 import { verifyRefreshToken, generateTokenPair } from '~~/server/utils/jwt'
-import { DatabaseService } from '~~/server/services/database'
+import prisma from '~~/server/services/database'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -26,8 +26,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 验证用户仍然存在且活跃
-    const dbService = new DatabaseService()
-    const user = await dbService.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {
         id: true,

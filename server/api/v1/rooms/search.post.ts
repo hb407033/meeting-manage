@@ -4,12 +4,8 @@
  * 基于数据库的搜索API，支持模糊查询和复杂筛选条件
  */
 
-import { PrismaClient } from '@prisma/client'
-import { createPaginatedResponse, createErrorResponse, API_CODES } from '~~/server/utils/response'
 import { z } from 'zod'
-import { requirePermission } from '~~/server/middleware/permission'
-
-const prisma = new PrismaClient()
+import prisma from '~~/server/services/database'
 
 // 搜索请求体 schema
 const SearchRoomSchema = z.object({

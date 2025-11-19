@@ -1,12 +1,12 @@
-import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { requirePermission } from '~~/server/middleware/permission'
 import { createSuccessResponse, createErrorResponse } from '~~/server/utils/response'
 import { parseCSV, validateCSVData, generateCSVTemplate } from '~~/server/utils/csv'
-import { RoomStatus } from '@prisma/client'
 import { createAuditLog } from '~~/server/utils/audit'
+import prisma from '~~/server/services/database'
 
-const prisma = new PrismaClient()
+
+import { RoomStatus } from '@prisma/client'
 
 // CSV导入数据验证Schema
 const csvImportSchema = z.object({

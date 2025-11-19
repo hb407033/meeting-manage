@@ -2,7 +2,7 @@ import { successResponse, errorResponse, validationErrorResponse } from '~~/serv
 import { validate, ValidationSchemas } from '~~/server/utils/validation'
 import { generateTokenPair } from '~~/server/utils/jwt'
 import { hashPassword, validatePasswordStrength } from '~~/server/utils/password'
-import { DatabaseService } from '~~/server/services/database'
+import prisma from '~~/server/services/database'
 import { CacheService } from '~~/server/services/redis'
 import { AppErrors, asyncHandler } from '~~/server/api/middleware/errorHandler'
 import { registerRateLimit } from '~~/server/api/middleware/rateLimit'
@@ -33,12 +33,11 @@ export default defineEventHandler(async (event) => {
     }
 
     // 初始化服务
-    const db = new DatabaseService()
     const cache = new CacheService()
 
     // 检查邮箱是否已存在（规范化处理）
     const normalizedEmail = email.toLowerCase().trim()
-    const existingUser = await db.getClient().user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     })
 
@@ -50,7 +49,7 @@ export default defineEventHandler(async (event) => {
     const hashedPassword = await hashPassword(password)
 
     // 创建用户
-    const newUser = await db.getClient().user.create({
+    const newUser = await prisma.user.create({
       data: {
         email: normalizedEmail,
         password: hashedPassword,

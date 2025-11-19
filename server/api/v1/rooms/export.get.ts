@@ -1,10 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '~~/server/middleware/permission'
-import { createErrorResponse } from '~~/server/utils/response'
-import { generateCSV } from '~~/server/utils/csv'
-import { createAuditLog } from '~~/server/utils/audit'
-
-const prisma = new PrismaClient()
+import prisma from '~~/server/services/database'
 
 export default defineEventHandler(async (event) => {
   try {

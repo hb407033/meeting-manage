@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { requirePermission } from '~~/server/middleware/permission'
 import { createSuccessResponse, createErrorResponse, API_CODES } from '~~/server/utils/response'
 
-const prisma = new PrismaClient()
+
 
 export default defineEventHandler(async (event) => {
   try {

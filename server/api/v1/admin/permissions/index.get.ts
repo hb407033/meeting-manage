@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import prisma from '~~/server/services/database'
 import { requireAdmin } from '~~/server/middleware/permission'
 
-const prisma = new PrismaClient()
+
 
 export default defineEventHandler(async (event) => {
   // 权限检查：只有管理员可以查看权限列表
