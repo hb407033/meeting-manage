@@ -1,7 +1,6 @@
 import prisma from '~~/server/services/database'
 import { requireAdmin } from '~~/server/middleware/permission'
-import { clearUserPermissionCache } from '~/composables/usePermissions'
-
+import { clearUserPermissionCache } from '~~/server/services/permission-cache'
 
 
 export default defineEventHandler(async (event) => {
@@ -83,7 +82,7 @@ export default defineEventHandler(async (event) => {
     })
 
     for (const userRole of usersWithRole) {
-      clearUserPermissionCache(userRole.userId)
+      await clearUserPermissionCache(userRole.userId)
     }
 
     // 记录审计日志

@@ -258,7 +258,7 @@
                 />
                 <Button
                   v-if="!data.resolved"
-                  @click="showResolveDialog(data)"
+                  @click="handleResolveDialog(data)"
                   icon="pi pi-times"
                   size="small"
                   severity="danger"
@@ -570,7 +570,7 @@ const acknowledgeAlert = async (alert: Alert) => {
   }
 }
 
-const showResolveDialog = (alert: Alert) => {
+const handleResolveDialog = (alert: Alert) => {
   selectedAlert.value = alert
   resolveReason.value = ''
   showResolveDialog.value = true

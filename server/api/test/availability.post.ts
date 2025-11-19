@@ -10,11 +10,11 @@ export default defineEventHandler(async (event) => {
 
     // 验证请求参数
     if (!body.roomIds || !Array.isArray(body.roomIds) || body.roomIds.length === 0) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, 'roomIds 参数是必需的')
+      return createErrorResponse('BAD_REQUEST', 'roomIds 参数是必需的')
     }
 
     if (!body.startTime || !body.endTime) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, 'startTime 和 endTime 参数是必需的')
+      return createErrorResponse('BAD_REQUEST', 'startTime 和 endTime 参数是必需的')
     }
 
     const startTime = new Date(body.startTime as string)
@@ -97,6 +97,6 @@ export default defineEventHandler(async (event) => {
 
   } catch (error) {
     console.error('❌ 调试查询可用性失败:', error)
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '查询失败: ' + error.message)
+    return createErrorResponse('INTERNAL_ERROR', '查询失败: ' + error.message)
   }
 })

@@ -182,10 +182,10 @@ export default defineEventHandler(async (event) => {
 
     // 验证错误
     if (error.name === 'ZodError') {
-      return createErrorResponse(API_CODES.VALIDATION_ERROR, '请求参数验证失败', error.errors)
+      return createErrorResponse('VALIDATION_ERROR', '请求参数验证失败', error.errors)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '会议室搜索失败')
+    return createErrorResponse('INTERNAL_ERROR', '会议室搜索失败')
   } finally {
     await prisma.$disconnect()
   }

@@ -6,15 +6,20 @@
 import { authMiddleware } from '~~/server/api/middleware/auth'
 
 export default defineEventHandler(async (event) => {
+  // 获取请求路径
+  const path = getRequestPath(event)
+
   // 只对 /api/v1/ 路径进行认证处理
-  if (event.node.req.url?.startsWith('/api/v1/')) {
+  if (path?.startsWith('/api/v1/')) {
     try {
       // 执行认证并设置用户上下文
-      const auth = await authMiddleware(event)
-      event.context.user = auth.user
+      const auth = await authMiddleware(event, { required: false })
+      if (auth.user) {
+        event.context.user = auth.user
+      }
     } catch (error: any) {
-      // 如果认证失败，抛出错误
-      throw error
+      // 如果认证失败，继续处理（让具体API处理认证）
+      console.warn('API认证中间件警告:', error.message)
     }
   }
 })

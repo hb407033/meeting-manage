@@ -5,7 +5,7 @@
 
 import { ref, computed, reactive, watch } from 'vue'
 import { useDebounce, debounce } from './useDebounce'
-import type { MeetingRoom } from '~/types/room'
+import type { MeetingRoom } from '~~/types/room'
 
 interface SearchFilters {
   location?: string

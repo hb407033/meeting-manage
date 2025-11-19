@@ -1,16 +1,11 @@
 <template>
   <div class="audit-management">
-    <div class="flex justify-between items-center mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">审计与安全管理</h1>
-        <p class="text-gray-600 mt-1">全面监控系统操作，确保安全合规</p>
-      </div>
-    </div>
+    <UniversalHeader />
 
     <!-- Tab导航 -->
     <div class="bg-white rounded-lg shadow mb-6">
       <TabView v-model:activeIndex="activeTab">
-        <TabPanel header="审计日志">
+        <TabPanel header="审计日志" :value="0">
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-list text-blue-600"></i>
@@ -20,7 +15,7 @@
           <AuditLogViewer />
         </TabPanel>
 
-        <TabPanel header="统计分析">
+        <TabPanel header="统计分析" :value="1">
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-chart-bar text-green-600"></i>
@@ -30,7 +25,7 @@
           <AuditLogStats ref="statsComponent" />
         </TabPanel>
 
-        <TabPanel header="异常检测">
+        <TabPanel header="异常检测" :value="2">
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-exclamation-triangle text-yellow-600"></i>
@@ -40,7 +35,7 @@
           <AnomalyDetection ref="anomalyComponent" />
         </TabPanel>
 
-        <TabPanel header="安全告警">
+        <TabPanel header="安全告警" :value="3">
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-shield text-red-600"></i>
@@ -51,7 +46,7 @@
           <RiskAlert />
         </TabPanel>
 
-        <TabPanel header="系统健康">
+        <TabPanel header="系统健康" :value="4">
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-heart text-pink-600"></i>
@@ -310,6 +305,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
+
+// 导入自定义组件
+import UniversalHeader from '~/components/UniversalHeader.vue'
+import AuditLogViewer from '~/components/admin/AuditLogViewer.vue'
+import AuditLogStats from '~/components/admin/AuditLogStats.vue'
+import AnomalyDetection from '~/components/admin/AnomalyDetection.vue'
+import RiskAlert from '~/components/admin/RiskAlert.vue'
+import SystemHealthMonitor from '~/components/admin/SystemHealthMonitor.vue'
 
 interface AlertStats {
   total: number

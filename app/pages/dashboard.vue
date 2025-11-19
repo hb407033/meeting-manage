@@ -1,5 +1,6 @@
 <template>
   <div class="p-3">
+    
     <!-- 页面标题 -->
     <div class="mb-6">
       <h1 class="text-xl font-bold text-gray-900 dark:text-white">
@@ -180,6 +181,7 @@
 <script setup lang="ts">
 // 页面设置
 definePageMeta({
+  layout: 'admin',
   middleware: 'auth' // 使用认证中间件
 })
 
@@ -204,10 +206,4 @@ const lastLoginTime = computed(() => {
   if (!user.value?.lastLoginAt) return '未知'
   return new Date(user.value.lastLoginAt).toLocaleString('zh-CN')
 })
-
-// 处理新建预约
-const handleNewReservation = () => {
-  // 跳转到预约页面，用户可以在那里查看和创建预约
-  navigateTo('/reservations')
-}
 </script>

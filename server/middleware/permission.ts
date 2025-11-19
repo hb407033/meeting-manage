@@ -23,7 +23,7 @@ export function createPermissionMiddleware(options: PermissionMiddlewareOptions 
  */
 async function checkPermissions(event: any, options: PermissionMiddlewareOptions = {}) {
   const { permissions = [], roles = [], requireAll = false, skipOnNoAuth = false } = options
-
+  debugger
   // 获取当前用户
   const user = event.context.user
 
@@ -47,7 +47,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
       if (requireAll) {
         // 需要所有角色
         for (const role of roles) {
-          const roleResult = await hasRole({ context: { user: { id: userId } } }, role)
+          const roleResult = await hasRole(event, role)
           if (!roleResult) {
             hasAccess = false
             break
@@ -57,7 +57,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
       } else {
         // 需要任一角色 - 先检查具体角色
         for (const role of roles) {
-          const roleResult = await hasRole({ context: { user: { id: userId } } }, role)
+          const roleResult = await hasRole(event, role)
           if (roleResult) {
             hasAccess = true
             break
@@ -71,7 +71,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
       if (requireAll) {
         // 需要所有权限
         for (const permission of permissions) {
-          const permResult = await hasPermission({ context: { user: { id: userId } } }, permission)
+          const permResult = await hasPermission(event, permission)
           if (!permResult) {
             hasAccess = false
             break
@@ -80,7 +80,7 @@ async function checkPermissions(event: any, options: PermissionMiddlewareOptions
         }
       } else {
         // 需要任一权限
-        hasAccess = await hasAnyPermission({ context: { user: { id: userId } } }, permissions)
+        hasAccess = await hasAnyPermission(event, permissions)
       }
     }
 
@@ -253,7 +253,7 @@ export const createPermissionFile = (
 ) => {
   return `
 // ${name} - 自动生成的权限中间件
-import { checkPermissions } from '~/server/middleware/permission'
+import { checkPermissions } from '~~/server/middleware/permission'
 
 export default defineEventHandler(async (event) => {
   await checkPermissions(event, ${JSON.stringify(options)})

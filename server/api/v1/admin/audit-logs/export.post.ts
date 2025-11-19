@@ -1,5 +1,5 @@
 import { auditLogger } from '~~/server/utils/audit'
-import { hasPermission } from '~~/server/utils/auth'
+import { getCurrentUser, hasPermission } from '~~/server/utils/auth'
 import * as XLSX from 'xlsx'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -7,8 +7,8 @@ import * as path from 'path'
 export default defineEventHandler(async (event) => {
   try {
     // 验证用户权限
-    const user = await getServerSession(event)
-    if (!user || !await hasPermission(user.id, 'audit:export')) {
+    const user = await getCurrentUser(event)
+    if (!user || !await hasPermission(event, 'audit:export')) {
       throw createError({
         statusCode: 403,
         statusMessage: '权限不足，需要审计日志导出权限'

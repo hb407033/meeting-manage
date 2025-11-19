@@ -32,7 +32,7 @@ export default defineEventHandler(async (event: H3Event) => {
   const ipAddress = getClientIP(event) || getHeader(event, 'x-forwarded-for') as string || 'unknown'
 
   // 获取用户信息
-  const user = await getServerSession(event)
+  const user = await getCurrentUser(event)
   const userId = user?.id
 
   // 解析资源类型和ID

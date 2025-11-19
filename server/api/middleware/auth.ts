@@ -6,7 +6,8 @@ export interface AuthenticatedRequest {
   user?: {
     id: string
     email: string
-    role: string
+    role: string        // 主要角色，向后兼容
+    roles?: string[]    // 完整角色列表
     permissions?: string[]
   }
   headers: {
@@ -30,21 +31,20 @@ export async function authMiddleware(
 ): Promise<AuthenticatedRequest> {
   const { required = true, roles = [], permissions = [], checkLockStatus = true } = options
 
-  // 获取Authorization头
-  const authHeader = event.node.req.headers.authorization
+  // 获取Authorization头 - 使用现代H3方法
+  const authHeader = getHeader(event, 'authorization')
   const result: AuthenticatedRequest = {
     headers: {
       authorization: authHeader
     }
   }
 
-  // 如果不需要认证，直接返回
-  if (!required) {
-    return result
-  }
-
   // 检查Authorization头
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 如果不需要认证，直接返回
+    if (!required) {
+      return result
+    }
     throw unauthorizedResponse('Missing or invalid authorization header')
   }
 
@@ -88,23 +88,34 @@ export async function authMiddleware(
       throw forbiddenResponse('Account has been locked due to multiple failed login attempts')
     }
 
-    // 确定用户角色和权限
-    let userRole = 'USER'
-    let userPermissions: string[] = []
+    // 确定用户角色和权限 - 支持多角色
+    let userRoles: string[] = []
+    let userPermissions: Set<string> = new Set()
+    let primaryRole = 'USER' // 主要角色，用于向后兼容
 
     if (user.userRoles && user.userRoles.length > 0) {
-      // 按角色级别排序，取最高级别
+      // 收集所有角色（Role模型没有isActive字段，默认所有角色都是激活的）
+      userRoles = user.userRoles.map((ur: any) => ur.role?.code || 'USER')
+
+      // 确定主要角色（按级别排序后的最高级角色，用于向后兼容）
       const sortedRoles = user.userRoles
-        .filter((ur: { role: { isActive: any } }) => ur.role.isActive)
-        .sort((a: { role: { level: any } }, b: { role: { level: any } }) => (b.role?.level || 0) - (a.role?.level || 0))
+        .sort((a: any, b: any) => (b.role?.level || 0) - (a.role?.level || 0))
 
       if (sortedRoles.length > 0) {
-        userRole = sortedRoles[0].role?.code || 'USER'
+        primaryRole = sortedRoles[0].role?.code || 'USER'
+      }
 
-        // 根据角色分配相应权限
-        if (userRole === 'ADMIN') {
+      // 聚合所有角色的权限
+      const allPermissions: string[] = []
+
+      for (const userRole of user.userRoles) {
+        const roleCode = userRole.role?.code
+        if (!roleCode) continue
+
+        // 根据每个角色分配权限
+        if (roleCode === 'ADMIN') {
           // 管理员拥有所有权限
-          userPermissions = [
+          const adminPermissions = [
             'user:read', 'user:create', 'user:update', 'user:delete',
             'role:read', 'role:create', 'role:update', 'role:delete', 'role:assign',
             'room:read', 'room:create', 'room:update', 'room:delete', 'room:manage-status',
@@ -113,35 +124,42 @@ export async function authMiddleware(
             'system:read', 'system:update', 'audit:read',
             'device:manage', 'device:read-data'
           ]
-        } else if (userRole === 'MANAGER') {
+          allPermissions.push(...adminPermissions)
+        } else if (roleCode === 'MANAGER') {
           // 部门经理拥有部门内权限
-          userPermissions = [
+          const managerPermissions = [
             'user:read', 'user:create', 'user:update',
             'room:read', 'room:create', 'room:update', 'room:manage-status',
             'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel', 'reservation:approve', 'reservation:read-others',
             'analytics:read', 'analytics:export',
             'device:read-data'
           ]
+          allPermissions.push(...managerPermissions)
         } else {
           // 普通用户只有基础权限
-          userPermissions = [
+          const userPermissions = [
             'room:read',
             'reservation:read', 'reservation:create', 'reservation:update', 'reservation:cancel'
           ]
+          allPermissions.push(...userPermissions)
         }
       }
+
+      // 使用Set去重权限
+      userPermissions = new Set(allPermissions)
     }
 
-    // 角色检查
-    if (roles.length > 0 && !roles.includes(userRole)) {
+    // 角色检查 - 检查用户是否有任一要求的角色
+    if (roles.length > 0 && !roles.some(role => userRoles.includes(role))) {
       throw forbiddenResponse('Insufficient permissions')
     }
 
     result.user = {
       id: user.id,
       email: user.email,
-      role: userRole,
-      permissions: userPermissions
+      role: primaryRole, // 保持向后兼容
+      roles: userRoles,   // 新增：完整角色列表
+      permissions: Array.from(userPermissions) // 转换为数组
     }
 
     return result
@@ -236,7 +254,6 @@ export async function canAccessResource(
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      role: true,
       userRoles: {
         include: {
           role: {
@@ -247,23 +264,13 @@ export async function canAccessResource(
     }
   })
 
-  if (!user) return false
+  if (!user || !user.userRoles || user.userRoles.length === 0) return false
 
-  // 确定用户角色
-  let userRole = 'USER'
-  if (user.userRoles && user.userRoles.length > 0) {
-    const sortedRoles = user.userRoles
-      .filter((ur: { role: { isActive: any } }) => ur.role.isActive)
-      .sort((a: { role: { level: any } }, b: { role: { level: any } }) => (b.role?.level || 0) - (a.role?.level || 0))
+  // 检查是否有管理员角色 - 如果有管理员角色，拥有所有权限
+  const hasAdminRole = user.userRoles.some((ur: any) => ur.role?.code === 'ADMIN')
+  if (hasAdminRole) return true
 
-    if (sortedRoles.length > 0) {
-      userRole = sortedRoles[0].role?.code || 'USER'
-    }
-  }
-
-  // 管理员有所有权限
-  if (userRole === 'ADMIN') return true
-
+  
   // 根据资源类型和操作检查权限
   switch (resourceType) {
     case 'reservation':
@@ -324,11 +331,9 @@ async function canAccessRoom(
   if (!user || !user.userRoles || user.userRoles.length === 0) return false
 
   // 检查是否有管理员角色
-  const adminRoles = user.userRoles.filter(
-    (    ur: { role: { code: string; isActive: any } }) => ur.role.code === 'ADMIN' && ur.role.isActive
-  )
+  const hasAdminRole = user.userRoles.some((ur: any) => ur.role?.code === 'ADMIN')
 
-  return adminRoles.length > 0 && ['update', 'delete'].includes(action)
+  return hasAdminRole && ['update', 'delete'].includes(action)
 }
 
 /**

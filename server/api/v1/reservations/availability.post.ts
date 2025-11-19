@@ -145,28 +145,28 @@ export default defineEventHandler(async (event) => {
 
     // 验证请求参数
     if (!body.roomIds || !Array.isArray(body.roomIds) || body.roomIds.length === 0) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, 'roomIds 参数是必需的')
+      return createErrorResponse('BAD_REQUEST', 'roomIds 参数是必需的')
     }
 
     if (!body.startTime || !body.endTime) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, 'startTime 和 endTime 参数是必需的')
+      return createErrorResponse('BAD_REQUEST', 'startTime 和 endTime 参数是必需的')
     }
 
     const startTime = new Date(body.startTime)
     const endTime = new Date(body.endTime)
 
     if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '时间格式无效')
+      return createErrorResponse('BAD_REQUEST', '时间格式无效')
     }
 
     if (startTime >= endTime) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '开始时间必须早于结束时间')
+      return createErrorResponse('BAD_REQUEST', '开始时间必须早于结束时间')
     }
 
     // 查询时间范围限制（最多查询30天）
     const maxQueryRange = 30 * 24 * 60 * 60 * 1000 // 30天
     if (endTime.getTime() - startTime.getTime() > maxQueryRange) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '查询时间范围不能超过30天')
+      return createErrorResponse('BAD_REQUEST', '查询时间范围不能超过30天')
     }
 
     // TODO: 实现缓存服务
@@ -200,7 +200,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (rooms.length === 0) {
-      return createErrorResponse(API_CODES.NOT_FOUND, '未找到有效的会议室')
+      return createErrorResponse('NOT_FOUND', '未找到有效的会议室')
     }
 
     // 查询指定时间段内的所有预约
@@ -291,9 +291,9 @@ export default defineEventHandler(async (event) => {
     console.error('❌ Availability query error:', error)
 
     if (error instanceof Error) {
-      return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, error.message)
+      return createErrorResponse('INTERNAL_ERROR', error.message)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, '查询可用性失败')
+    return createErrorResponse('INTERNAL_ERROR', '查询可用性失败')
   }
 })

@@ -1,5 +1,6 @@
 import { auditLogger } from '~~/server/utils/audit'
 import type { AuditLogData } from '~~/server/utils/audit'
+import prisma from './database'
 
 /**
  * 审计服务
@@ -87,10 +88,8 @@ export class AuditService {
   private async writeBatch(logs: AuditLogData[]): Promise<void> {
     if (logs.length === 0) return
 
-    const db = new (await import('./database')).DatabaseService()
-
     // 使用事务批量插入
-    await db.getClient().$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       for (const log of logs) {
         await tx.auditLog.create({
           data: {

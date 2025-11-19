@@ -1,6 +1,18 @@
-// 简化的 Vitest全局设置
 import 'jsdom-global'
-import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
+import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, reactive, toRef, toRefs } from 'vue'
+
+// Stub Vue globals
+globalThis.ref = ref
+globalThis.computed = computed
+globalThis.watch = watch
+globalThis.nextTick = nextTick
+globalThis.onMounted = onMounted
+globalThis.onUnmounted = onUnmounted
+globalThis.reactive = reactive
+globalThis.toRef = toRef
+globalThis.toRefs = toRefs
+
 
 // 全局测试工具
 declare global {

@@ -1,5 +1,6 @@
 <template>
-  <div class="p-3 bg-gray-50 min-h-screen">
+  <div class="min-h-screen bg-gray-50">
+    <UniversalHeader />
     <RoomManagement />
   </div>
 </template>
@@ -7,7 +8,7 @@
 <script setup lang="ts">
 // 页面设置
 definePageMeta({
-  layout: 'AdminLayout',
+  layout: 'admin',
   middleware: 'auth'
 })
 
@@ -16,5 +17,4 @@ import RoomManagement from '~/components/features/rooms/RoomManagement.vue'
 </script>
 
 <style scoped>
-/* 页面样式由 RoomManagement 组件处理 */
 </style>

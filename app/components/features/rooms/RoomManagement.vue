@@ -1,7 +1,7 @@
 <template>
-  <div class="room-management">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-xl font-bold text-gray-800">会议室管理</h1>
+  <div class="container mx-auto px-4 py-6">
+    <!-- 操作按钮区域 -->
+    <div class="flex justify-end mb-6">
       <div class="flex gap-2">
           <Button
           label="导出数据"
@@ -20,11 +20,14 @@
     </div>
 
     <!-- 筛选和搜索 -->
-    <Card class="mb-6">
-      <template #content>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div class="flex flex-col">
-            <label class="text-sm font-medium text-gray-700 mb-1">搜索会议室</label>
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <i class="pi pi-filter text-blue-600"></i>
+        筛选条件
+      </h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">搜索会议室</label>
             <span class="p-input-icon-left">
               <InputText
                 v-model="searchQuery"
@@ -33,8 +36,8 @@
               />
             </span>
           </div>
-          <div class="flex flex-col">
-            <label class="text-sm font-medium text-gray-700 mb-1">状态筛选</label>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">状态筛选</label>
             <Dropdown
               v-model="selectedStatus"
               :options="statusOptions"
@@ -45,8 +48,8 @@
               showClear
             />
           </div>
-          <div class="flex flex-col">
-            <label class="text-sm font-medium text-gray-700 mb-1">最小容量</label>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">最小容量</label>
             <InputNumber
               v-model="minCapacity"
               placeholder="最小容量"
@@ -54,8 +57,8 @@
               :min="1"
             />
           </div>
-          <div class="flex flex-col">
-            <label class="text-sm font-medium text-gray-700 mb-1">最大容量</label>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">最大容量</label>
             <InputNumber
               v-model="maxCapacity"
               placeholder="最大容量"
@@ -78,12 +81,18 @@
             class="p-button-outlined p-button-secondary ml-2"
           />
         </div>
-      </template>
-    </Card>
+    </div>
 
     <!-- 会议室列表 -->
-    <Card>
-      <template #content>
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            会议室列表 ({{ rooms.length }})
+          </h2>
+        </div>
+      </div>
+      <div class="p-6">
         <DataTable
           :value="rooms"
           :loading="isLoading"
@@ -179,8 +188,8 @@
             </template>
           </Column>
         </DataTable>
-      </template>
-    </Card>
+      </div>
+    </div>
 
   
     <!-- 创建/编辑对话框 -->
@@ -270,7 +279,7 @@ import { useNuxtApp } from '#app'
 import { useRooms } from '~/composables/useRooms'
 import RoomForm from './RoomForm.vue'
 import RoomDetail from './RoomDetail.vue'
-import type { MeetingRoom } from '~/types/room'
+import type { MeetingRoom } from '~~/types/room'
 
 interface StatusOption {
   label: string
@@ -535,19 +544,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.room-management {
-  padding: 1rem;
-}
-
-@media (max-width: 768px) {
-  .room-management {
-    padding: 0.5rem;
-  }
-
-  .grid {
-    grid-template-columns: 1fr !important;
-  }
-}
 
 /* 操作按钮样式 - 确保图标按钮可见 */
 :deep(.action-button) {

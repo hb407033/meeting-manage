@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     // 获取路由参数
     const reservationId = getRouterParam(event, 'id')
     if (!reservationId) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '预约ID是必需的')
+      return createErrorResponse('BAD_REQUEST', '预约ID是必需的')
     }
 
     // 获取请求数据
@@ -49,18 +49,18 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!existingReservation) {
-      return createErrorResponse(API_CODES.NOT_FOUND, '预约不存在')
+      return createErrorResponse('NOT_FOUND', '预约不存在')
     }
 
     // 权限检查：只有预约组织者或管理员可以修改预约
     // 这里简化处理，假设预约组织者可以修改自己的预约
     if (existingReservation.organizerId !== user.id) {
-      return createErrorResponse(API_CODES.FORBIDDEN, '只能修改自己的预约')
+      return createErrorResponse('FORBIDDEN', '只能修改自己的预约')
     }
 
     // 检查预约状态：已取消或已完成的预约不能修改时间信息
     if (existingReservation.status === 'CANCELED' || existingReservation.status === 'COMPLETED') {
-      return createErrorResponse(API_CODES.BUSINESS_ERROR, '已取消或已完成的预约不能修改')
+      return createErrorResponse('ROOM_NOT_AVAILABLE', '已取消或已完成的预约不能修改')
     }
 
     // 构建更新数据
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
 
     if (body.title !== undefined) {
       if (!body.title?.trim()) {
-        return createErrorResponse(API_CODES.INVALID_REQUEST, '预约标题不能为空')
+        return createErrorResponse('BAD_REQUEST', '预约标题不能为空')
       }
       updateData.title = body.title.trim()
     }
@@ -79,12 +79,12 @@ export default defineEventHandler(async (event) => {
 
     if (body.attendeeCount !== undefined) {
       if (body.attendeeCount < 1 || body.attendeeCount > 999) {
-        return createErrorResponse(API_CODES.INVALID_REQUEST, '参会人数必须在1-999之间')
+        return createErrorResponse('BAD_REQUEST', '参会人数必须在1-999之间')
       }
 
       // 检查参会人数不能超过会议室容量
       if (body.attendeeCount > existingReservation.room.capacity) {
-        return createErrorResponse(API_CODES.BUSINESS_ERROR,
+        return createErrorResponse('ROOM_NOT_AVAILABLE',
           `参会人数(${body.attendeeCount})超过会议室容量(${existingReservation.room.capacity})`)
       }
 
@@ -94,12 +94,12 @@ export default defineEventHandler(async (event) => {
     if (body.status !== undefined) {
       const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELED', 'COMPLETED']
       if (!validStatuses.includes(body.status)) {
-        return createErrorResponse(API_CODES.INVALID_REQUEST, '无效的预约状态')
+        return createErrorResponse('BAD_REQUEST', '无效的预约状态')
       }
 
       // 只有特定状态转换是允许的
       if (existingReservation.status === 'CANCELED' && body.status !== 'CANCELED') {
-        return createErrorResponse(API_CODES.BUSINESS_ERROR, '已取消的预约不能恢复')
+        return createErrorResponse('ROOM_NOT_AVAILABLE', '已取消的预约不能恢复')
       }
 
       updateData.status = body.status
@@ -112,16 +112,16 @@ export default defineEventHandler(async (event) => {
 
       // 验证时间格式
       if (isNaN(newStartTime.getTime()) || isNaN(newEndTime.getTime())) {
-        return createErrorResponse(API_CODES.INVALID_REQUEST, '时间格式无效')
+        return createErrorResponse('BAD_REQUEST', '时间格式无效')
       }
 
       if (newStartTime >= newEndTime) {
-        return createErrorResponse(API_CODES.INVALID_REQUEST, '开始时间必须早于结束时间')
+        return createErrorResponse('BAD_REQUEST', '开始时间必须早于结束时间')
       }
 
       // 检查预约时间不能是过去时间（对于已确认的预约）
       if (newStartTime < new Date() && existingReservation.status === 'CONFIRMED') {
-        return createErrorResponse(API_CODES.INVALID_REQUEST, '已确认的预约的开始时间不能修改为过去时间')
+        return createErrorResponse('BAD_REQUEST', '已确认的预约的开始时间不能修改为过去时间')
       }
 
       // 检查时间冲突（排除当前预约）
@@ -158,7 +158,7 @@ export default defineEventHandler(async (event) => {
       })
 
       if (conflictReservation) {
-        return createErrorResponse(API_CODES.BUSINESS_ERROR,
+        return createErrorResponse('ROOM_NOT_AVAILABLE',
           `该时间段已被预约，预约ID: ${conflictReservation.id}，标题: ${conflictReservation.title}`)
       }
 
@@ -168,7 +168,7 @@ export default defineEventHandler(async (event) => {
 
     // 如果没有需要更新的数据
     if (Object.keys(updateData).length === 0) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '没有提供需要更新的数据')
+      return createErrorResponse('BAD_REQUEST', '没有提供需要更新的数据')
     }
 
     // 更新预约
@@ -225,9 +225,9 @@ export default defineEventHandler(async (event) => {
     console.error('❌ 更新预约失败:', error)
 
     if (error instanceof Error) {
-      return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, error.message)
+      return createErrorResponse('INTERNAL_ERROR', error.message)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, '更新预约失败')
+    return createErrorResponse('INTERNAL_ERROR', '更新预约失败')
   }
 })

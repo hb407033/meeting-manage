@@ -1,0 +1,248 @@
+<story-context id="{bmad_folder}/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>2</storyId>
+    <title>universal-header-navigation-refactor</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-19T12:00:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/Users/houbin/code/youtong/youtong2/meeting/meeting-manage/docs/sprint-artifacts/3-2-universal-header-navigation-refactor.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>As a 用户</asA>
+    <iWant>I want 系统拥有统一的页面头部和清晰的导航菜单结构</iWant>
+    <soThat>So that 能够在任何页面都能快速导航到所需功能，提升整体用户体验和系统一致性</soThat>
+    <tasks>- [ ] Task 1: 通用头部组件设计开发 (AC: 1, 4, 9)
+  - [ ] Subtask 1.1: 创建 UniversalHeader.vue 组件基础结构
+  - [ ] Subtask 1.2: 实现左侧功能标题动态显示逻辑
+  - [ ] Subtask 1.3: 设计右侧主导航菜单布局
+  - [ ] Subtask 1.4: 应用企业级视觉风格和样式
+
+- [ ] Task 2: 导航菜单结构实现 (AC: 2, 3, 6)
+  - [ ] Subtask 2.1: 定义三主菜单结构：预约、会议室管理、系统管理
+  - [ ] Subtask 2.2: 整理现有页面功能，归类到对应主菜单下
+  - [ ] Subtask 2.3: 实现下拉子菜单组件，支持多级导航
+  - [ ] Subtask 2.4: 添加当前激活菜单项的视觉标识
+
+- [ ] Task 3: 页面导航与路由集成 (AC: 7)
+  - [ ] Subtask 3.1: 配置导航菜单与 Nuxt 路由的映射关系
+  - [ ] Subtask 3.2: 实现菜单点击跳转和页面路由更新
+  - [ ] Subtask 3.3: 添加路由变化时菜单状态同步逻辑
+  - [ ] Subtask 3.4: 处理权限相关的菜单显示控制
+
+- [ ] Task 4: 响应式设计适配 (AC: 5)
+  - [ ] Subtask 4.1: 实现移动端导航菜单适配（汉堡菜单）
+  - [ ] Subtask 4.2: 调整头部组件在不同屏幕尺寸下的显示效果
+  - [ ] Subtask 4.3: 优化触摸设备的菜单交互体验
+  - [ ] Subtask 4.4: 测试各种设备尺寸下的显示效果
+
+- [ ] Task 5: 用户信息与操作入口 (AC: 8)
+  - [ ] Subtask 5.1: 在头部组件中添加用户信息显示区域
+  - [ ] Subtask 5.2: 实现用户头像、姓名和角色显示
+  - [ ] Subtask 5.3: 添加快捷操作入口（如设置、退出登录）
+  - [ ] Subtask 5.4: 集成消息通知图标和计数显示
+
+- [ ] Task 6: 现有页面集成与重构 (AC: 4)
+  - [ ] Subtask 6.1: 将 UniversalHeader 组件集成到所有页面布局中
+  - [ ] Subtask 6.2: 重构现有页面布局，移除重复的导航代码
+  - [ ] Subtask 6.3: 确保页面功能标题与当前路由自动同步
+  - [ ] Subtask 6.4: 统一所有页面的视觉风格和布局结构</tasks>
+  </story>
+
+  <acceptanceCriteria>1. 创建通用的页面头部组件，左侧显示当前功能标题，右侧横向排列主导航菜单
+2. 主导航菜单包含三个主要模块：预约、会议室管理、系统管理
+3. 每个主菜单项下包含相应的子菜单功能，所有子功能都归类到对应主菜单下
+4. 头部组件在所有页面保持一致的样式和位置
+5. 导航菜单支持响应式设计，在移动端自适应显示
+6. 当前激活的菜单项有明显的视觉标识
+7. 点击导航菜单能够正确跳转到对应页面
+8. 头部组件包含用户信息和基础操作入口
+9. 整体设计简洁清晰，符合企业级应用的专业风格</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>Executive Summary</section>
+        <snippet>智能会议室管理系统是一个基于现代Web技术栈的企业级解决方案，旨在通过数字化转型优化企业会议室资源配置，提升会议体验和管理效率。该系统整合IoT设备控制、预约管理、数据分析等核心功能，为企业提供一站式的智能会议室管理平台。</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Decision Document</title>
+        <section>Project Structure</section>
+        <snippet>项目使用 Nuxt 4 标准 app/ 目录结构，包含 layouts/、pages/、components/ 等目录。采用 PrimeVue + Tailwind CSS 进行样式管理。</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: 预约系统核心</title>
+        <section>System Architecture Alignment</section>
+        <snippet>该史诗完全遵循现有的Nuxt 4全栈架构模式，使用MySQL + Prisma进行数据持久化，Redis进行缓存优化。预约系统将复用现有的认证中间件、RBAC权限体系和统一API响应格式。</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>app/layouts/default.vue</path>
+        <kind>layout</kind>
+        <symbol>default</symbol>
+        <lines>1-219</lines>
+        <reason>现有的默认布局包含导航栏实现，需要重构为通用头部组件。包含用户认证、导航菜单、用户菜单等功能。</reason>
+      </file>
+      <file>
+        <path>app/layouts/AdminLayout.vue</path>
+        <kind>layout</kind>
+        <symbol>AdminLayout</symbol>
+        <reason>管理员专用布局，包含管理后台导航，需要与通用头部组件保持一致。</reason>
+      </file>
+      <file>
+        <path>app/layouts/auth.vue</path>
+        <kind>layout</kind>
+        <symbol>auth</symbol>
+        <reason>认证页面布局，需要保持与通用头部组件的视觉一致性。</reason>
+      </file>
+      <file>
+        <path>app/composables/useAuth.ts</path>
+        <kind>composable</kind>
+        <symbol>useAuth</symbol>
+        <reason>认证相关的组合式函数，包含用户权限检查，头部组件需要集成权限控制。</reason>
+      </file>
+      <file>
+        <path>app/composables/usePermissions.ts</path>
+        <kind>composable</kind>
+        <symbol>usePermissions</symbol>
+        <reason>权限管理组合式函数，头部组件需要根据用户权限显示不同的菜单项。</reason>
+      </file>
+      <file>
+        <path>app/components/admin/PermissionManagement.vue</path>
+        <kind>component</kind>
+        <symbol>PermissionManagement</symbol>
+        <reason>权限管理组件，了解现有的权限控制实现方式。</reason>
+      </file>
+      <file>
+        <path>app/components/features/reservations/CalendarView.vue</path>
+        <kind>component</kind>
+        <symbol>CalendarView</symbol>
+        <reason>日历视图组件，了解预约系统相关组件的实现模式。</reason>
+      </file>
+    </code>
+    <dependencies>
+      <framework>
+        <name>nuxt</name>
+        <version>^4.2.1</version>
+        <purpose>Full-stack framework for the application</purpose>
+      </framework>
+      <framework>
+        <name>vue</name>
+        <version>^3.5.24</version>
+        <purpose>Vue.js framework for UI components</purpose>
+      </framework>
+      <framework>
+        <name>primevue</name>
+        <version>^4.4.1</version>
+        <purpose>Enterprise UI component library for styling</purpose>
+      </framework>
+      <framework>
+        <name>@primevue/themes</name>
+        <version>^4.4.1</version>
+        <purpose>Theme system for PrimeVue components</purpose>
+      </framework>
+      <framework>
+        <name>tailwindcss</name>
+        <version>^3.4.18</version>
+        <purpose>Utility-first CSS framework for styling</purpose>
+      </framework>
+      <framework>
+        <name>@vueuse/core</name>
+        <version>^14.0.0</version>
+        <purpose>Composition API utilities for Vue.js</purpose>
+      </framework>
+      <framework>
+        <name>@pinia/nuxt</name>
+        <version>^0.11.3</version>
+        <purpose>State management integration for Nuxt</purpose>
+      </framework>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>必须与现有的Nuxt 4 app/目录结构兼容，遵循标准的layouts/、pages/、components/目录组织方式</constraint>
+    <constraint>保持与现有认证中间件和RBAC权限体系的集成，使用useAuth()和usePermissions()组合式函数</constraint>
+    <constraint>确保与PrimeVue 4.4.1组件库的样式一致性，使用企业级商务蓝主题(#1e40af)</constraint>
+    <constraint>维护现有的页面级缓存和性能优化，使用Pinia进行状态管理</constraint>
+    <constraint>支持TypeScript严格模式，所有组件必须有完整的类型定义</constraint>
+    <constraint>遵循项目的ESLint和Prettier代码规范，保持代码质量一致性</constraint>
+    <constraint>响应式设计必须适配桌面端和移动端，使用Tailwind CSS进行响应式布局</constraint>
+    <constraint>导航菜单必须支持权限控制，不同角色用户看到不同的菜单项</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>useAuth</name>
+      <kind>composable</kind>
+      <signature>const { user, isAuthenticated, canAccess, logout } = useAuth()</signature>
+      <path>app/composables/useAuth.ts</path>
+    </interface>
+    <interface>
+      <name>usePermissions</name>
+      <kind>composable</kind>
+      <signature>const { hasPermission, checkPermission } = usePermissions()</signature>
+      <path>app/composables/usePermissions.ts</path>
+    </interface>
+    <interface>
+      <name>useRoute</name>
+      <kind>vue-router</kind>
+      <signature>const route = useRoute()</signature>
+      <path>vue-router built-in</path>
+    </interface>
+    <interface>
+      <name>useRouter</name>
+      <kind>vue-router</kind>
+      <signature>const router = useRouter()</signature>
+      <path>vue-router built-in</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>使用Vitest作为主要测试框架，配合Vue Test Utils进行组件测试。采用单元测试、集成测试和端到端测试相结合的策略。所有组件必须有对应的测试文件，测试覆盖率要求达到80%以上。</standards>
+    <locations>tests/unit/ - 单元测试目录，tests/integration/ - 集成测试目录，tests/components/ - 组件测试目录，tests/performance/ - 性能测试目录</locations>
+    <ideas>
+      <test>
+        <ac>1</ac>
+        <idea>测试UniversalHeader组件的基础渲染，验证左侧功能标题和右侧导航菜单正确显示</idea>
+      </test>
+      <test>
+        <ac>2</ac>
+        <idea>测试主导航菜单项显示，验证预约、会议室管理、系统管理三个模块正确展示</idea>
+      </test>
+      <test>
+        <ac>3</ac>
+        <idea>测试子菜单功能，验证每个主菜单项下的子菜单项正确归类和显示</idea>
+      </test>
+      <test>
+        <ac>4</ac>
+        <idea>测试样式一致性，验证头部组件在不同页面中的样式和位置保持一致</idea>
+      </test>
+      <test>
+        <ac>5</ac>
+        <idea>测试响应式设计，验证在不同屏幕尺寸下的菜单显示效果</idea>
+      </test>
+      <test>
+        <ac>6</ac>
+        <idea>测试激活状态标识，验证当前页面对应的菜单项有正确的视觉标识</idea>
+      </test>
+      <test>
+        <ac>7</ac>
+        <idea>测试导航跳转功能，验证点击菜单项能正确跳转到对应页面</idea>
+      </test>
+      <test>
+        <ac>8</ac>
+        <idea>测试用户信息显示，验证头部组件正确显示用户头像、姓名和角色信息</idea>
+      </test>
+      <test>
+        <ac>9</ac>
+        <idea>测试权限控制，验证不同权限用户看到对应的菜单项</idea>
+      </test>
+    </ideas>
+  </tests>
+</story-context>

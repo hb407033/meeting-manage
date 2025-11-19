@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     } = query
 
     if (!roomId) {
-      return createErrorResponse(API_CODES.BAD_REQUEST, '缺少会议室ID')
+      return createErrorResponse('BAD_REQUEST', '缺少会议室ID')
     }
 
     const pageNum = parseInt(page as string)
@@ -81,10 +81,10 @@ export default defineEventHandler(async (event) => {
     console.error('获取操作历史失败:', error)
 
     if (error.statusCode === 401 || error.statusCode === 403) {
-      return createErrorResponse(API_CODES.FORBIDDEN, '权限验证失败')
+      return createErrorResponse('FORBIDDEN', '权限验证失败')
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '服务器内部错误')
+    return createErrorResponse('INTERNAL_ERROR', '服务器内部错误')
   } finally {
     await prisma.$disconnect()
   }

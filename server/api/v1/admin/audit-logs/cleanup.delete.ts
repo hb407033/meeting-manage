@@ -1,12 +1,12 @@
 import { auditService } from '~~/server/services/audit-service'
 import { auditLogger } from '~~/server/utils/audit'
-import { hasPermission } from '~~/server/utils/auth'
+import { getCurrentUser, hasPermission } from '~~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
   try {
     // 验证用户权限
-    const user = await getServerSession(event)
-    if (!user || !await hasPermission(user.id, 'audit:cleanup')) {
+    const user = await getCurrentUser(event)
+    if (!user || !await hasPermission(event, 'audit:cleanup')) {
       throw createError({
         statusCode: 403,
         statusMessage: '权限不足，需要审计日志清理权限'

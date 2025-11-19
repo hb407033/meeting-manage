@@ -21,15 +21,15 @@ export default defineEventHandler(async (event) => {
 
     // 验证必需字段
     if (!body.title?.trim()) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '预约标题是必需的')
+      return createErrorResponse('BAD_REQUEST', '预约标题是必需的')
     }
 
     if (!body.startTime || !body.endTime) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '开始时间和结束时间是必需的')
+      return createErrorResponse('BAD_REQUEST', '开始时间和结束时间是必需的')
     }
 
     if (!body.roomId) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '会议室ID是必需的')
+      return createErrorResponse('BAD_REQUEST', '会议室ID是必需的')
     }
 
     // 验证时间格式
@@ -37,16 +37,16 @@ export default defineEventHandler(async (event) => {
     const endTime = new Date(body.endTime)
 
     if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '时间格式无效')
+      return createErrorResponse('BAD_REQUEST', '时间格式无效')
     }
 
     if (startTime >= endTime) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '开始时间必须早于结束时间')
+      return createErrorResponse('BAD_REQUEST', '开始时间必须早于结束时间')
     }
 
     // 检查预约时间不能是过去时间
     if (startTime < new Date()) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '预约开始时间不能是过去时间')
+      return createErrorResponse('BAD_REQUEST', '预约开始时间不能是过去时间')
     }
 
     // 验证会议室是否存在
@@ -58,17 +58,17 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!room) {
-      return createErrorResponse(API_CODES.NOT_FOUND, '会议室不存在')
+      return createErrorResponse('NOT_FOUND', '会议室不存在')
     }
 
     if (room.status !== 'AVAILABLE') {
-      return createErrorResponse(API_CODES.BUSINESS_ERROR, '会议室当前不可用')
+      return createErrorResponse('ROOM_NOT_AVAILABLE', '会议室当前不可用')
     }
 
     // 验证参会人数不能超过会议室容量
     const attendeeCount = body.attendeeCount || 1
     if (attendeeCount > room.capacity) {
-      return createErrorResponse(API_CODES.BUSINESS_ERROR, `参会人数(${attendeeCount})超过会议室容量(${room.capacity})`)
+      return createErrorResponse('ROOM_NOT_AVAILABLE', `参会人数(${attendeeCount})超过会议室容量(${room.capacity})`)
     }
 
     // 检查时间冲突
@@ -105,7 +105,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (conflictReservation) {
-      return createErrorResponse(API_CODES.BUSINESS_ERROR,
+      return createErrorResponse('ROOM_NOT_AVAILABLE',
         `该时间段已被预约，预约ID: ${conflictReservation.id}，标题: ${conflictReservation.title}`)
     }
 
@@ -166,9 +166,9 @@ export default defineEventHandler(async (event) => {
     console.error('❌ 创建预约失败:', error)
 
     if (error instanceof Error) {
-      return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, error.message)
+      return createErrorResponse('INTERNAL_ERROR', error.message)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, '创建预约失败')
+    return createErrorResponse('INTERNAL_ERROR', '创建预约失败')
   }
 })

@@ -65,6 +65,6 @@ export default defineEventHandler(async (event) => {
 
   } catch (error) {
     console.error('❌ 调试查询预约列表失败:', error)
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '查询失败: ' + error.message)
+    return createErrorResponse('INTERNAL_ERROR', '查询失败: ' + error.message)
   }
 })

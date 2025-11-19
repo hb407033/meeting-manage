@@ -1,11 +1,11 @@
 import { alertService } from '~~/server/services/alert-service'
-import { hasPermission } from '~~/server/utils/auth'
+import { getCurrentUser, hasPermission } from '~~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
   try {
     // 验证用户权限
-    const user = await getServerSession(event)
-    if (!user || !await hasPermission(user.id, 'audit:manage')) {
+    const user = await getCurrentUser(event)
+    if (!user || !await hasPermission(event, 'audit:manage')) {
       throw createError({
         statusCode: 403,
         statusMessage: '权限不足，需要告警管理权限'

@@ -11,15 +11,25 @@ import { requirePermission } from '~~/server/middleware/permission'
 
 
 export default defineEventHandler(async (event) => {
+  debugger // 调试断点：检查API入口
+
   // 权限验证：需要 room:create 权限
   await requirePermission('room:create')(event)
 
   // 获取当前用户ID
   const user = event.context.user
   const userId = user?.id
+
+  console.log('🔍 Debug - 用户信息:', { user: event.context.user, userId })
+
   try {
+    console.log('🔍 Debug - 开始处理请求')
+
     // 验证请求体
     const body = await readValidatedBody(event, CreateRoomSchema.parse)
+    console.log('🔍 Debug - 请求数据:', body)
+
+    debugger // 调试断点：检查数据库查询前
 
     // 检查会议室名称是否已存在
     const existingRoom = await prisma.meetingRoom.findFirst({
@@ -29,8 +39,11 @@ export default defineEventHandler(async (event) => {
       }
     })
 
+    console.log('🔍 Debug - 现有会议室检查结果:', existingRoom)
+
     if (existingRoom) {
-      return createErrorResponse(API_CODES.ROOM_ALREADY_EXISTS, '会议室名称已存在')
+      console.log('🔍 Debug - 会议室已存在，返回错误')
+      return createErrorResponse(API_CODES.DUPLICATE_RESOURCE, '会议室名称已存在')
     }
 
     // 创建会议室
@@ -72,7 +85,7 @@ export default defineEventHandler(async (event) => {
 
     // 数据库唯一约束错误
     if (error.code === 'P2002') {
-      return createErrorResponse(API_CODES.ROOM_ALREADY_EXISTS, '会议室名称已存在')
+      return createErrorResponse(API_CODES.DUPLICATE_RESOURCE, '会议室名称已存在')
     }
 
     return createErrorResponse(API_CODES.INTERNAL_ERROR, '创建会议室失败')

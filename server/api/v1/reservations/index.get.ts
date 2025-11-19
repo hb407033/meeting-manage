@@ -114,9 +114,9 @@ export default defineEventHandler(async (event) => {
     console.error('❌ 查询预约列表失败:', error)
 
     if (error instanceof Error) {
-      return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, error.message)
+      return createErrorResponse('INTERNAL_ERROR', error.message)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, '查询预约列表失败')
+    return createErrorResponse('INTERNAL_ERROR', '查询预约列表失败')
   }
 })

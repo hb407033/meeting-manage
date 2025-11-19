@@ -34,6 +34,8 @@ model User {
   permissionRequests   PermissionRequest[]
   reviewedRequests     PermissionRequest[] @relation("RequestReviewer")
   roomHistory          RoomHistory[]
+  recurringReservations RecurringReservation[] @relation("RecurringReservationOrganizer")
+  meetingMaterials     MeetingMaterial[]
 
   @@map("users")
 }
@@ -129,8 +131,8 @@ model MeetingRoom {
   updatedAt        DateTime      @updatedAt
   reservations     Reservation[]
   roomHistory      RoomHistory[]
+  recurringReservations RecurringReservation[] @relation("RecurringReservationRoom")
 
-  // 添加索引以优化搜索性能
   @@index([name])
   @@index([location])
   @@index([status])
@@ -158,19 +160,33 @@ model RoomHistory {
 }
 
 model Reservation {
-  id            String            @id @default(cuid())
-  title         String
-  description   String?
-  startTime     DateTime
-  endTime       DateTime
-  status        ReservationStatus @default(PENDING)
-  organizerId   String
-  attendeeCount Int               @default(1)
-  roomId        String
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  organizer     User              @relation(fields: [organizerId], references: [id])
-  room          MeetingRoom       @relation(fields: [roomId], references: [id])
+  id                      String              @id @default(cuid())
+  title                   String
+  description             String?
+  startTime               DateTime
+  endTime                 DateTime
+  status                  ReservationStatus   @default(PENDING)
+  organizerId             String
+  attendeeCount           Int                 @default(1)
+  roomId                  String
+  recurringReservationId  String?             // 关联的周期性预约ID
+  isException             Boolean             @default(false) // 是否为例外预约
+  // 详细预约配置字段
+  importanceLevel         ReservationImportance @default(NORMAL) // 会议重要性级别
+  equipment               Json?               // 设备需求清单 [{"id": "projector", "quantity": 1, "name": "投影仪"}]
+  services                Json?               // 服务需求配置 [{"id": "tea", "name": "茶水服务", "quantity": 10}]
+  attendeeList            Json?               // 参会人员列表 [{"id": "user-1", "name": "张三", "type": "internal", "email": "zhang@company.com"}]
+  // meetingMaterials 字段已移至关联的MeetingMaterial模型
+  isRecurring             Boolean             @default(false) // 是否为重复预约
+  recurringPattern        Json?               // rrule格式的重复模式
+  specialRequirements     String?             // 特殊要求说明
+  budgetAmount            Decimal?            @db.Decimal(10, 2) // 预算金额
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  organizer               User                @relation(fields: [organizerId], references: [id])
+  room                    MeetingRoom         @relation(fields: [roomId], references: [id])
+  recurringReservation    RecurringReservation? @relation("RecurringReservationInstances", fields: [recurringReservationId], references: [id])
+  meetingMaterials        MeetingMaterial[]   // 关联的会议材料
 
   @@map("reservations")
 }
@@ -214,7 +230,7 @@ model PermissionRequest {
 }
 
 model AuditLog {
-  id           String        @id @default(cuid())
+  id           String       @id @default(cuid())
   userId       String?
   action       String
   resourceType String
@@ -222,12 +238,11 @@ model AuditLog {
   details      Json?
   ipAddress    String?
   userAgent    String?
-  result       AuditResult?  @default(SUCCESS)
-  riskLevel    RiskLevel?    @default(LOW)
-  timestamp    DateTime      @default(now())
-  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  timestamp    DateTime     @default(now())
+  result       AuditResult? @default(SUCCESS)
+  riskLevel    RiskLevel?   @default(LOW)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  // 优化查询性能的索引
   @@index([userId, timestamp])
   @@index([action, timestamp])
   @@index([resourceType, resourceId])
@@ -235,7 +250,6 @@ model AuditLog {
   @@index([result, timestamp])
   @@index([ipAddress])
   @@index([timestamp])
-
   @@map("audit_logs")
 }
 
@@ -254,6 +268,13 @@ enum ReservationStatus {
   COMPLETED
 }
 
+enum ReservationImportance {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
 enum AuditResult {
   SUCCESS
   FAILURE
@@ -266,4 +287,131 @@ enum RiskLevel {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// 周期性预约相关模型
+model RecurringReservation {
+  id                   String                       @id @default(cuid())
+  title                String
+  description          String?
+  organizerId          String
+  roomId               String
+  startTime            DateTime
+  endTime              DateTime
+  recurrenceRule       String                       // RFC 5545 RRule字符串
+  endCondition         RecurrenceEndCondition       @default(NEVER)
+  endCount             Int?                          // 按次数结束时的次数
+  endDate              DateTime?                     // 按日期结束时的结束日期
+  bufferMinutes        Int                          @default(15)     // 缓冲时间（分钟）
+  skipHolidays         Boolean                      @default(true)
+  holidayRegion        String                       @default("CN")
+  status               RecurringReservationStatus    @default(ACTIVE)
+  maxOccurrences       Int?                          // 最大实例数量限制
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+
+  // 关联关系
+  organizer            User                         @relation("RecurringReservationOrganizer", fields: [organizerId], references: [id])
+  room                 MeetingRoom                  @relation("RecurringReservationRoom", fields: [roomId], references: [id])
+  reservations         Reservation[]                @relation("RecurringReservationInstances")
+  exceptions           RecurringException[]
+
+  @@map("recurring_reservations")
+}
+
+model RecurringException {
+  id                    String                     @id @default(cuid())
+  recurringReservationId String
+  exceptionType         RecurringExceptionType     @default(CANCELLED)
+  originalStartTime     DateTime
+  originalEndTime       DateTime
+  newStartTime          DateTime?
+  newEndTime            DateTime?
+  reason                String?
+  createdBy             String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  // 关联关系
+  recurringReservation  RecurringReservation       @relation(fields: [recurringReservationId], references: [id], onDelete: Cascade)
+
+  @@unique([recurringReservationId, originalStartTime])
+  @@map("recurring_exceptions")
+}
+
+model Holiday {
+  id        String    @id @default(cuid())
+  date      DateTime  @unique
+  name      String
+  region    String    @default("CN")
+  type      HolidayType @default(NATIONAL)
+  isActive  Boolean   @default(true)
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([region, date])
+  @@index([date])
+  @@map("holidays")
+}
+
+model MeetingMaterial {
+  id              String        @id @default(cuid())
+  name            String        // 显示名称
+  originalName    String        // 原始文件名
+  type            String        // MIME类型
+  size            Int           // 文件大小（字节）
+  url             String        // 访问URL
+  filePath        String        // 物理文件路径
+  fileHash        String        // 文件MD5哈希值
+  uploadedBy      String        // 上传者姓名
+  userId          String        // 上传者用户ID
+  reservationId   String?       // 关联的预约ID（可选）
+  description     String?       // 文件描述
+  isPublic        Boolean       @default(false) // 是否公开
+  downloadCount   Int           @default(0) // 下载次数
+  lastDownloadAt  DateTime?     // 最后下载时间
+  deletedAt       DateTime?     // 软删除时间
+  deletedBy       String?       // 删除者用户ID
+  deletedReason   String?       // 删除原因
+  uploadedAt      DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // 关联关系
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservation     Reservation?  @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([reservationId])
+  @@index([type])
+  @@index([uploadedAt])
+  @@index([deletedAt])
+  @@index([fileHash])
+  @@unique([fileHash, userId]) // 同一用户不能上传相同文件
+  @@map("meeting_materials")
+}
+
+enum RecurrenceEndCondition {
+  NEVER    // 永不结束
+  COUNT    // 按次数结束
+  DATE     // 按日期结束
+}
+
+enum RecurringReservationStatus {
+  ACTIVE     // 活跃状态
+  PAUSED     // 暂停状态
+  COMPLETED  // 已完成
+  CANCELED   // 已取消
+}
+
+enum RecurringExceptionType {
+  CANCELLED  // 取消该次预约
+  MODIFIED   // 修改该次预约
+  MOVED      // 移动该次预约到新时间
+}
+
+enum HolidayType {
+  NATIONAL   // 国家法定节假日
+  REGIONAL   // 地方性节假日
+  CUSTOM     // 自定义节假日
 }

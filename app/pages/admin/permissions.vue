@@ -1,5 +1,6 @@
 <template>
   <div class="admin-permissions-page">
+    <UniversalHeader />
     <PermissionManagement />
   </div>
 </template>
@@ -11,7 +12,7 @@ import PermissionManagement from '~/components/admin/PermissionManagement.vue'
 // 页面元数据
 definePageMeta({
   title: '权限管理',
-  layout: 'AdminLayout',
+  layout: 'admin',
   middleware: 'auth'
 })
 

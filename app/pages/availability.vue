@@ -13,7 +13,7 @@ const roomStore = useRoomStore()
 
 // 页面设置
 definePageMeta({
-  layout: 'AdminLayout',
+  layout: 'admin',
   middleware: 'auth'
 })
 
@@ -248,6 +248,7 @@ watch([selectedDate, selectedRoom], async () => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
+    <UniversalHeader/>
     <!-- 页面标题 -->
     <div class="bg-white shadow-sm border-b">
       <div class="container mx-auto px-4 py-6">

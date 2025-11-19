@@ -226,7 +226,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { MeetingRoom } from '~/types/room'
+import type { MeetingRoom } from '~~/types/room'
 
 interface Props {
   room: MeetingRoom

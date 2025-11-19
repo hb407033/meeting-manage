@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!existingRoom) {
-      return createErrorResponse(API_CODES.ROOM_NOT_FOUND, '会议室不存在')
+      return createErrorResponse(ROOM_NOT_FOUND, '会议室不存在')
     }
 
     // 如果更新名称，检查是否与其他会议室重复
@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
       })
 
       if (duplicateRoom) {
-        return createErrorResponse(API_CODES.ROOM_ALREADY_EXISTS, '会议室名称已存在')
+        return createErrorResponse(ROOM_ALREADY_EXISTS, '会议室名称已存在')
       }
     }
 
@@ -96,15 +96,15 @@ export default defineEventHandler(async (event) => {
 
     // 验证错误
     if (error.name === 'ZodError') {
-      return createErrorResponse(API_CODES.VALIDATION_ERROR, '请求数据验证失败', error.errors)
+      return createErrorResponse('VALIDATION_ERROR', '请求数据验证失败', error.errors)
     }
 
     // 数据库唯一约束错误
     if (error.code === 'P2002') {
-      return createErrorResponse(API_CODES.ROOM_ALREADY_EXISTS, '会议室名称已存在')
+      return createErrorResponse(ROOM_ALREADY_EXISTS, '会议室名称已存在')
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '更新会议室失败')
+    return createErrorResponse('INTERNAL_ERROR', '更新会议室失败')
   } finally {
     await prisma.$disconnect()
   }

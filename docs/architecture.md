@@ -417,6 +417,8 @@ model MeetingRoom {
 
 ### 4. 状态管理模式
 
+前端页面调用API 都采用组合式函数封装，状态管理采用 Pinia，不直接在组件中调用 Server 中的 API。
+
 **组合式 Store：**
 ```typescript
 export const useRoomsStore = defineStore('rooms', {

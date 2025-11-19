@@ -7,10 +7,18 @@ import prisma from '~~/server/services/database'
  */
 export async function getCurrentUser(event: any): Promise<AuthenticatedRequest['user'] | null> {
   try {
-    const auth = await optionalAuthMiddleware(event)
+    // 首先检查是否有Authorization头 - 使用现代H3方法
+    const authHeader = getHeader(event, 'authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null
+    }
+
+    // 使用authMiddleware但设置为required=false
+    const auth = await authMiddleware(event, { required: false })
     return auth.user || null
   } catch (error) {
     // 如果认证失败，返回 null 而不是抛出错误
+    console.warn('认证失败:', error.message)
     return null
   }
 }
@@ -169,6 +177,7 @@ export async function hasRole(event: any, role: string): Promise<boolean> {
  * @returns 是否有任一权限
  */
 export async function hasAnyPermission(event: any, permissions: string[]): Promise<boolean> {
+  debugger
   const user = await getCurrentUser(event)
   if (!user || permissions.length === 0) return false
 

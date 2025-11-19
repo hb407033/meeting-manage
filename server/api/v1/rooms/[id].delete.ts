@@ -43,12 +43,12 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!existingRoom) {
-      return createErrorResponse(API_CODES.ROOM_NOT_FOUND, '会议室不存在')
+      return createErrorResponse(ROOM_NOT_FOUND, '会议室不存在')
     }
 
     // 检查是否有未完成的预约
     if (existingRoom._count.reservations > 0) {
-      return createErrorResponse(API_CODES.ROOM_IN_USE, '会议室有未完成的预约，无法删除')
+      return createErrorResponse(ROOM_IN_USE, '会议室有未完成的预约，无法删除')
     }
 
     // 执行软删除
@@ -83,10 +83,10 @@ export default defineEventHandler(async (event) => {
 
     // 验证错误
     if (error.name === 'ZodError') {
-      return createErrorResponse(API_CODES.VALIDATION_ERROR, '请求参数验证失败', error.errors)
+      return createErrorResponse('VALIDATION_ERROR', '请求参数验证失败', error.errors)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '删除会议室失败')
+    return createErrorResponse('INTERNAL_ERROR', '删除会议室失败')
   } finally {
     await prisma.$disconnect()
   }

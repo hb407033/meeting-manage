@@ -115,6 +115,11 @@ export const API_CODES = {
   RESERVATION_CONFLICT: '41101',
   PAST_RESERVATION: '41102',
   INVALID_TIME_RANGE: '41103',
+  ROOM_CAPACITY_EXCEEDED: '41104',
+  EQUIPMENT_CONFLICT: '41105',
+  UPLOAD_FAILED: '41106',
+  INVALID_FILE_TYPE: '41107',
+  FILE_TOO_LARGE: '41108',
 
   // 系统错误 (50000-59999)
   INTERNAL_ERROR: '50000',
@@ -144,6 +149,11 @@ export const ERROR_MESSAGES = {
   [API_CODES.RESERVATION_CONFLICT]: '预约时间冲突',
   [API_CODES.PAST_RESERVATION]: '不能预约过去的时间',
   [API_CODES.INVALID_TIME_RANGE]: '时间范围无效',
+  [API_CODES.ROOM_CAPACITY_EXCEEDED]: '参会人数超过会议室容量',
+  [API_CODES.EQUIPMENT_CONFLICT]: '设备冲突',
+  [API_CODES.UPLOAD_FAILED]: '文件上传失败',
+  [API_CODES.INVALID_FILE_TYPE]: '无效的文件类型',
+  [API_CODES.FILE_TOO_LARGE]: '文件大小超出限制',
 
   [API_CODES.INTERNAL_ERROR]: '系统内部错误',
   [API_CODES.DATABASE_ERROR]: '数据库操作失败',
@@ -369,11 +379,14 @@ export function createPaginatedResponse<T>(
   )
 }
 
+// 定义API代码字面量类型
+type ApiCode = typeof API_CODES[keyof typeof API_CODES]
+
 /**
  * 创建错误响应
  */
 export function createErrorResponse(
-  code: keyof typeof API_CODES,
+  code: ApiCode,
   message?: string,
   data?: any,
   options?: {
@@ -384,8 +397,8 @@ export function createErrorResponse(
   const response: ApiResponse<null> = {
     success: false,
     data: data || null,
-    code: API_CODES[code],
-    message: message || ERROR_MESSAGES[API_CODES[code]],
+    code,
+    message: message || ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES] || message || 'Error',
     meta: {
       timestamp: new Date().toISOString()
     }
@@ -405,7 +418,7 @@ export function createValidationErrorResponse(
   errors: Array<{ field: string; message: string }>
 ): ApiResponse<null> {
   return createErrorResponse(
-    'VALIDATION_ERROR',
+    API_CODES.VALIDATION_ERROR,
     ERROR_MESSAGES[API_CODES.VALIDATION_ERROR],
     errors
   )
@@ -423,14 +436,14 @@ export function handleApiError(
   // Prisma错误处理
   if (error?.code === 'P2002') {
     return createErrorResponse(
-      'DUPLICATE_RESOURCE',
+      API_CODES.DUPLICATE_RESOURCE,
       '数据已存在',
       error?.meta?.target
     )
   }
 
   if (error?.code?.startsWith('P2')) {
-    return createErrorResponse('DATABASE_ERROR', '数据库约束错误')
+    return createErrorResponse(API_CODES.DATABASE_ERROR, '数据库约束错误')
   }
 
   // 验证错误
@@ -440,24 +453,24 @@ export function handleApiError(
 
   // JWT错误
   if (error?.name === 'JsonWebTokenError') {
-    return createErrorResponse('UNAUTHORIZED', '无效的访问令牌')
+    return createErrorResponse(API_CODES.UNAUTHORIZED, '无效的访问令牌')
   }
 
   if (error?.name === 'TokenExpiredError') {
-    return createErrorResponse('UNAUTHORIZED', '访问令牌已过期')
+    return createErrorResponse(API_CODES.UNAUTHORIZED, '访问令牌已过期')
   }
 
   // 自定义错误
-  if (error?.code && ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES]) {
+  if (error?.code && error.code in API_CODES) {
     return createErrorResponse(
-      error.code as keyof typeof API_CODES,
-      error.message || ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES]
+      API_CODES[error.code as keyof typeof API_CODES],
+      error.message || ERROR_MESSAGES[API_CODES[error.code as keyof typeof API_CODES] as keyof typeof ERROR_MESSAGES]
     )
   }
 
   // 默认错误
   return createErrorResponse(
-    'INTERNAL_ERROR',
+    API_CODES.INTERNAL_ERROR,
     error?.message || defaultMessage
   )
 }
@@ -477,7 +490,7 @@ export function getClientIP(event: any): string {
  * 生成追踪ID
  */
 export function generateTraceId(): string {
-  return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `trace_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**

@@ -1,7 +1,7 @@
 import prisma from '~~/server/services/database'
 import { requireAdmin } from '~~/server/middleware/permission'
-import { clearUserPermissionCache } from '~/composables/usePermissions'
 import { auditLogger } from '~~/server/utils/audit'
+import { clearUserPermissionCache } from '~~/server/services/permission-cache'
 
 
 
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
     })
 
     // 清除用户权限缓存
-    clearUserPermissionCache(userId)
+    await clearUserPermissionCache(userId)
 
     // 记录审计日志
     await auditLogger.logAdminAction(

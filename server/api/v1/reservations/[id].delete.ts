@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     // 获取路由参数
     const reservationId = getRouterParam(event, 'id')
     if (!reservationId) {
-      return createErrorResponse(API_CODES.INVALID_REQUEST, '预约ID是必需的')
+      return createErrorResponse('BAD_REQUEST', '预约ID是必需的')
     }
 
     // 查找现有预约
@@ -35,23 +35,23 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!existingReservation) {
-      return createErrorResponse(API_CODES.NOT_FOUND, '预约不存在')
+      return createErrorResponse('NOT_FOUND', '预约不存在')
     }
 
     // 权限检查：只有预约组织者或管理员可以取消预约
     // 这里简化处理，假设预约组织者可以取消自己的预约
     if (existingReservation.organizerId !== user.id) {
-      return createErrorResponse(API_CODES.FORBIDDEN, '只能取消自己的预约')
+      return createErrorResponse('FORBIDDEN', '只能取消自己的预约')
     }
 
     // 检查预约状态：已取消或已完成的预约不能再次取消
     if (existingReservation.status === 'CANCELED') {
-      return createErrorResponse(API_CODES.BUSINESS_ERROR, '预约已经被取消')
+      return createErrorResponse('ROOM_NOT_AVAILABLE', '预约已经被取消')
     }
 
     // 检查预约时间：已经开始的预约不能取消
     if (new Date() > existingReservation.startTime) {
-      return createErrorResponse(API_CODES.BUSINESS_ERROR, '已经开始的预约不能取消')
+      return createErrorResponse('ROOM_NOT_AVAILABLE', '已经开始的预约不能取消')
     }
 
     // 取消预约（软删除，状态更新为已取消）
@@ -109,9 +109,9 @@ export default defineEventHandler(async (event) => {
     console.error('❌ 取消预约失败:', error)
 
     if (error instanceof Error) {
-      return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, error.message)
+      return createErrorResponse('INTERNAL_ERROR', error.message)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_SERVER_ERROR, '取消预约失败')
+    return createErrorResponse('INTERNAL_ERROR', '取消预约失败')
   }
 })

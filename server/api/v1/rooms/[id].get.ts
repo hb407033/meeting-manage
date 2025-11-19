@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!room) {
-      return createErrorResponse(API_CODES.ROOM_NOT_FOUND, '会议室不存在')
+      return createErrorResponse(ROOM_NOT_FOUND, '会议室不存在')
     }
 
     return createSuccessResponse(room, '会议室详情查询成功')
@@ -67,10 +67,10 @@ export default defineEventHandler(async (event) => {
 
     // 验证错误
     if (error.name === 'ZodError') {
-      return createErrorResponse(API_CODES.VALIDATION_ERROR, '请求参数验证失败', error.errors)
+      return createErrorResponse('VALIDATION_ERROR', '请求参数验证失败', error.errors)
     }
 
-    return createErrorResponse(API_CODES.INTERNAL_ERROR, '获取会议室详情失败')
+    return createErrorResponse('INTERNAL_ERROR', '获取会议室详情失败')
   } finally {
     await prisma.$disconnect()
   }

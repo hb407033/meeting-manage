@@ -1,0 +1,426 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>4</storyId>
+    <title>预约冲突检测与解决</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-20</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/3-4-reservation-conflict-detection-and-resolution.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>普通用户</asA>
+    <iWant>系统实时检测预约冲突并提供解决建议</iWant>
+    <soThat>避免预约冲突，提高预约成功率</soThat>
+    <tasks>Task 1: 冲突检测引擎开发 (AC: 1, 2)
+- Subtask 1.1: 创建 ConflictDetectionEngine 服务类
+- Subtask 1.2: 实现时间重叠检测算法 (完全冲突、部分重叠)
+- Subtask 1.3: 实现设备冲突检测逻辑
+- Subtask 1.4: 集成Redis缓存优化检测性能 (2分钟TTL)
+
+Task 2: 智能推荐算法实现 (AC: 3, 4)
+- Subtask 2.1: 开发时间推荐算法，基于历史使用模式
+- Subtask 2.2: 实现替代会议室推荐算法
+- Subtask 2.3: 创建推荐结果缓存机制
+- Subtask 2.4: 实现推荐准确率的机器学习优化
+
+Task 3: 协商机制开发 (AC: 5)
+- Subtask 3.1: 扩展Prisma schema支持reservation_negotiation表
+- Subtask 3.2: 创建协商请求API接口
+- Subtask 3.3: 实现WebSocket实时通知协商请求
+- Subtask 3.4: 开发协商响应处理机制
+
+Task 4: 前端冲突解决界面组件 (AC: 6)
+- Subtask 4.1: 创建 ConflictDetector.vue 实时冲突检测组件
+- Subtask 4.2: 实现 ConflictResolutionDialog.vue 冲突解决对话框
+- Subtask 4.3: 设计 TimeSuggestionPanel.vue 智能时间推荐面板
+- Subtask 4.4: 建立 AlternativeRoomList.vue 替代会议室推荐列表
+- Subtask 4.5: 实现 NegotiationRequestDialog.vue 协商请求对话框
+
+Task 5: 后端API开发与集成 (AC: 1, 2, 3, 4)
+- Subtask 5.1: 创建 POST /api/v1/reservations/conflict-check 冲突检查接口
+- Subtask 5.2: 实现 GET /api/v1/reservations/suggestions 智能推荐接口
+- Subtask 5.3: 开发冲突类型分类和响应逻辑
+- Subtask 5.4: 集成现有认证中间件和权限控制
+
+Task 6: 数据分析与统计功能 (AC: 7)
+- Subtask 6.1: 创建 ConflictAnalytics.vue 冲突分析面板
+- Subtask 6.2: 实现冲突发生率和解决成功率统计
+- Subtask 6.3: 开发会议室分配策略优化建议
+- Subtask 6.4: 建立冲突数据的可视化图表
+
+Task 7: 性能优化与缓存策略
+- Subtask 7.1: 实现冲突检测结果缓存 (2分钟TTL)
+- Subtask 7.2: 优化数据库查询性能，建立复合索引
+- Subtask 7.3: 实现批量冲突检查算法
+- Subtask 7.4: 前端组件懒加载和虚拟化优化
+
+Task 8: 测试与验证
+- Subtask 8.1: 编写冲突检测引擎的单元测试
+- Subtask 8.2: 进行端到端测试验证完整冲突解决流程
+- Subtask 8.3: 性能测试验证响应时间&lt;100ms要求
+- Subtask 8.4: 压力测试支持500+并发冲突检测操作</tasks>
+  </story>
+
+  <acceptanceCriteria>1. 实时冲突检测：预约创建前验证时间可用性，响应时间&lt;100ms
+2. 冲突类型识别：支持完全冲突、部分重叠、设备冲突三种类型识别
+3. 智能时间推荐：基于历史数据和会议室使用模式推荐附近可用的时间段
+4. 替代会议室推荐：推荐同类型、同位置的可用会议室作为替代选择
+5. 协商功能：支持向现有预约者发送协商请求，协调时间调整
+6. 冲突解决建议：基于预约优先级和重要性的智能解决方案
+7. 冲突统计分析：监控和分析冲突发生率，优化会议室分配策略</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>meeting-manage - Product Requirements Document</title>
+        <section>Functional Requirements - 预约管理系统</section>
+        <snippet>系统实时检测预约冲突并提供解决建议，支持智能时间推荐和替代会议室推荐，确保用户能够快速找到合适的会议室资源。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: 预约系统核心</title>
+        <section>Services and Modules - 预约服务层</section>
+        <snippet>ConflictDetectionEngine: 实时冲突检测和解决建议算法，支持多种冲突类型识别和智能推荐，响应时间要求小于100ms。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: 预约系统核心</title>
+        <section>Data Models and Contracts - Prisma Schema 扩展</section>
+        <snippet>ReservationConflict模型存储冲突检测结果，包含冲突类型、冲突对象ID和解决方案，支持COMPLETE_OVERLAP、PARTIAL_OVERLAP、EQUIPMENT_CONFLICT等冲突分类。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: 预约系统核心</title>
+        <section>APIs and Interfaces - 冲突检测API</section>
+        <snippet>POST /api/v1/reservations/conflict-check 提供实时冲突检测服务，GET /api/v1/reservations/suggestions 返回智能推荐结果，支持时间推荐和替代会议室推荐。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: 预约系统核心</title>
+        <section>Workflows and Sequencing - 冲突解决流程</section>
+        <snippet>冲突识别包括时间重叠、容量限制、设备冲突检测，建议生成提供替代时间段和会议室推荐，支持向现有预约者发送协商请求进行协调。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: 预约系统核心</title>
+        <section>Performance - 缓存策略</section>
+        <snippet>冲突检测结果缓存2分钟TTL，支持500+并发预约操作，数据库索引优化(roomId, startTime, endTime)确保查询性能。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>meeting-manage - Architecture Decision Document</title>
+        <section>Caching Strategy - Redis 缓存架构</section>
+        <snippet>多层缓存架构包含Redis分布式缓存，支持预约冲突检测结果缓存，采用cache-aside策略提高系统响应性能。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>meeting-manage - Architecture Decision Document</title>
+        <section>API Contracts - Reservation APIs</section>
+        <snippet>冲突检测接口返回详细的冲突信息和可用性响应，包含conflicts数组列出冲突预约，suggestions数组提供推荐时间段。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>meeting-manage UX Design Specification</title>
+        <section>Core User Experience - 智能匹配</section>
+        <snippet>系统提供智能推荐算法，基于历史数据的会议室推荐和时间推荐，确保用户总能找到合适的会议室资源。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>meeting-manage UX Design Specification</title>
+        <section>Component Library - 定制企业组件</section>
+        <snippet>TimeRangePicker组件集成冲突检测功能，ReservationWizard组件包含智能推荐标识，支持实时状态更新和冲突自动解决。</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/epics.md</path>
+        <title>meeting-manage - Epic Breakdown</title>
+        <section>Epic 3: 预约系统核心 - Story 3.4</section>
+        <snippet>Story 3.4实现预约冲突检测与解决，包含实时冲突检测、智能推荐算法、协商机制等核心功能，确保用户预约成功率达到95%以上。</snippet>
+      </doc>
+    </docs>
+    <code>
+      <code>
+        <path>app/components/features/reservations/TimeSuggestionPanel.vue</path>
+        <kind>component</kind>
+        <symbol>TimeSuggestionPanel</symbol>
+        <lines>1-686</lines>
+        <reason>核心时间推荐组件，包含智能算法和用户偏好设置，支持基于历史数据的时间段推荐</reason>
+      </code>
+
+      <code>
+        <path>app/components/features/reservations/RoomAvailabilityIndicator.vue</path>
+        <kind>component</kind>
+        <symbol>RoomAvailabilityIndicator</symbol>
+        <lines>1-612</lines>
+        <reason>会议室实时状态显示和可用性统计，支持冲突检测的可视化界面</reason>
+      </code>
+
+      <code>
+        <path>server/api/v1/reservations/conflict-check.post.ts</path>
+        <kind>REST API</kind>
+        <symbol>conflict-check</symbol>
+        <lines>完整文件</lines>
+        <reason>核心冲突检测API，使用ConflictDetectionEngine检测时间重叠、容量超限、设备冲突</reason>
+      </code>
+
+      <code>
+        <path>server/api/v1/reservations/suggestions.get.ts</path>
+        <kind>REST API</kind>
+        <symbol>suggestions</symbol>
+        <lines>完整文件</lines>
+        <reason>智能推荐API，基于使用模式、设备匹配、时间偏好生成建议</reason>
+      </code>
+
+      <code>
+        <path>server/services/conflict-detection.ts</path>
+        <kind>service</kind>
+        <symbol>ConflictDetectionEngine</symbol>
+        <lines>1-501</lines>
+        <reason>完整冲突检测系统，支持时间重叠、容量、设备、维护时间、预约规则等检测</reason>
+      </code>
+
+      <code>
+        <path>server/services/availability-cache.ts</path>
+        <kind>service</kind>
+        <symbol>AvailabilityCacheService</symbol>
+        <lines>1-279</lines>
+        <reason>冲突检测结果缓存优化，2分钟TTL，Redis缓存提高响应速度</reason>
+      </code>
+
+      <code>
+        <path>app/stores/reservations.ts</path>
+        <kind>store</kind>
+        <symbol>useReservationStore</symbol>
+        <lines>1-795</lines>
+        <reason>预约CRUD操作和状态管理，包含可用性查询和缓存管理</reason>
+      </code>
+
+      <code>
+        <path>app/composables/useRoomSearch.ts</path>
+        <kind>composable</kind>
+        <symbol>useRoomSearch</symbol>
+        <lines>1-390</lines>
+        <reason>会议室搜索、筛选、分页功能，支持替代会议室推荐</reason>
+      </code>
+
+      <code>
+        <path>prisma/schema.prisma</path>
+        <kind>database model</kind>
+        <symbol>Reservation</symbol>
+        <lines>160-176</lines>
+        <reason>预约数据模型，包含状态管理（PENDING, CONFIRMED, CANCELLED, COMPLETED）</reason>
+      </code>
+
+      <code>
+        <path>prisma/schema.prisma</path>
+        <kind>database model</kind>
+        <symbol>MeetingRoom</symbol>
+        <lines>116-141</lines>
+        <reason>会议室数据模型，包含状态和规则配置（AVAILABLE, OCCUPIED, MAINTENANCE）</reason>
+      </code>
+    </code>
+    <dependencies>
+      <dep ecosystem="frontend">
+        <name>nuxt</name>
+        <version>^3.11.2</version>
+        <reason>Nuxt 4框架，全栈应用基础</reason>
+      </dep>
+      <dep ecosystem="frontend">
+        <name>@primevue/themes</name>
+        <version>^4.0.0</version>
+        <reason>PrimeVue 4.4.1组件库，企业级UI组件</reason>
+      </dep>
+      <dep ecosystem="frontend">
+        <name>vue</name>
+        <version>^3.4.21</version>
+        <reason>Vue 3 Composition API，响应式框架</reason>
+      </dep>
+      <dep ecosystem="frontend">
+        <name>pinia</name>
+        <version>^2.1.7</version>
+        <reason>状态管理，预约数据存储</reason>
+      </dep>
+      <dep ecosystem="frontend">
+        <name>@vueuse/core</name>
+        <version>^10.9.0</version>
+        <reason>Vue组合式工具库，增强开发效率</reason>
+      </dep>
+      <dep ecosystem="backend">
+        <name>prisma</name>
+        <version>^5.13.1</version>
+        <reason>数据库ORM，MySQL数据操作</reason>
+      </dep>
+      <dep ecosystem="backend">
+        <name>redis</name>
+        <version>^4.6.13</version>
+        <reason>缓存服务，冲突检测性能优化</reason>
+      </dep>
+      <dep ecosystem="backend">
+        <name>jsonwebtoken</name>
+        <version>^9.0.2</version>
+        <reason>JWT认证，安全验证</reason>
+      </dep>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>
+      <type>Architecture</type>
+      <description>遵循Nuxt 4全栈架构模式，复用现有认证中间件和RBAC权限体系</description>
+      <source>Story Dev Notes</source>
+    </constraint>
+    <constraint>
+      <type>UI Framework</type>
+      <description>与PrimeVue 4.4.1组件库保持样式一致性，使用企业级商务蓝主题(#1e40af)</description>
+      <source>Story Dev Notes</source>
+    </constraint>
+    <constraint>
+      <type>Database</type>
+      <description>使用MySQL + Prisma进行数据持久化，Redis缓存优化性能</description>
+      <source>Architecture Constraints</source>
+    </constraint>
+    <constraint>
+      <type>Performance</type>
+      <description>冲突检测响应时间必须 &lt; 100ms，支持500+并发冲突检测操作</description>
+      <source>Performance Requirements</source>
+    </constraint>
+    <constraint>
+      <type>Caching</type>
+      <description>冲突检测结果缓存2分钟TTL，使用Redis缓存减少数据库查询压力</description>
+      <source>Caching Strategy</source>
+    </constraint>
+    <constraint>
+      <type>Database Index</type>
+      <description>数据库复合索引优化：(roomId, startTime, endTime)确保查询性能</description>
+      <source>Performance Requirements</source>
+    </constraint>
+    <constraint>
+      <type>Project Structure</type>
+      <description>遵循app/components/features/reservations/目录结构，符合项目ESLint和Prettier代码规范</description>
+      <source>Project Structure Alignment</source>
+    </constraint>
+    <constraint>
+      <type>Testing</type>
+      <description>WebSocket实时通知功能需要适当的测试覆盖，包含性能测试和压力测试</description>
+      <source>Testing Requirements</source>
+    </constraint>
+    <constraint>
+      <type>Security</type>
+      <description>冲突检测需要适当的权限验证，防止SQL注入和XSS攻击的数据验证</description>
+      <source>Security Considerations</source>
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Conflict Check API</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/v1/reservations/conflict-check</signature>
+      <path>server/api/v1/reservations/conflict-check.post.ts</path>
+      <description>实时冲突检测接口，检查预约时间冲突，返回冲突类型和详细信息</description>
+    </interface>
+    <interface>
+      <name>Suggestions API</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/v1/reservations/suggestions</signature>
+      <path>server/api/v1/reservations/suggestions.get.ts</path>
+      <description>智能推荐接口，提供时间段推荐和替代会议室推荐</description>
+    </interface>
+    <interface>
+      <name>Availability API</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/v1/reservations/availability</signature>
+      <path>server/api/v1/reservations/availability.post.ts</path>
+      <description>可用性查询接口，包含维护时间和预约冲突检测</description>
+    </interface>
+    <interface>
+      <name>ConflictDetectionEngine Class</name>
+      <kind>Class interface</kind>
+      <signature>class ConflictDetectionEngine {
+  checkTimeConflicts(reservation: ReservationDto): ConflictResult[]
+  detectEquipmentConflicts(reservation: ReservationDto): ConflictResult[]
+  generateSuggestions(conflicts: ConflictResult[]): Suggestion[]
+}</signature>
+      <path>server/services/conflict-detection.ts</path>
+      <description>冲突检测引擎核心类，提供多种冲突检测算法</description>
+    </interface>
+    <interface>
+      <name>ReservationStore Interface</name>
+      <kind>Pinia store</kind>
+      <signature>export const useReservationStore = () => {
+  const checkConflict = (reservation: ReservationDto): Promise&lt;ConflictCheckResponse&gt;
+  const getSuggestions = (roomId: string, startTime: Date, endTime: Date): Promise&lt;Suggestion[]&gt;
+  const createReservation = (reservation: ReservationDto): Promise&lt;Reservation&gt;
+}</signature>
+      <path>app/stores/reservations.ts</path>
+      <description>预约状态管理接口，提供冲突检测和预约管理功能</description>
+    </interface>
+    <interface>
+      <name>TimeSuggestionPanel Props</name>
+      <kind>Component props</kind>
+      <signature>interface TimeSuggestionPanelProps {
+  roomId: string
+  startTime: Date
+  endTime: Date
+  onTimeSelect: (startTime: Date, endTime: Date) => void
+  showUserPreferences?: boolean
+}</signature>
+      <path>app/components/features/reservations/TimeSuggestionPanel.vue</path>
+      <description>智能时间推荐面板组件接口</description>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>项目使用Vitest进行单元测试和组件测试，采用Jest风格断言语法。测试文件命名遵循*.test.ts或*.spec.ts规范，包含TypeScript严格类型检查。测试覆盖率要求80%以上，关键路径100%覆盖。性能测试验证冲突检测响应时间&lt;100ms要求，压力测试支持500+并发操作。WebSocket实时通知功能需要专门的集成测试覆盖。</standards>
+    <locations>
+      <location path="tests/unit/" type="unit-tests">单元测试目录，包含服务层、工具函数和composables测试</location>
+      <location path="tests/components/" type="component-tests">组件测试目录，Vue组件的渲染和交互测试</location>
+      <location path="tests/e2e/" type="e2e-tests">端到端测试，完整用户流程测试</location>
+      <location path="tests/performance/" type="performance-tests">性能测试，验证响应时间和并发能力</location>
+      <location path="test/fixtures/" type="test-fixtures">测试数据配置，包含预约和会议室测试数据</location>
+    </locations>
+    <ideas>
+      <test idea="冲突检测引擎测试" ac="1,2">
+        测试完全冲突、部分重叠、设备冲突三种冲突类型的检测算法
+        验证时间重叠计算算法的准确性
+        测试缓存机制的性能提升效果
+      </test>
+      <test idea="智能推荐算法测试" ac="3,4">
+        验证基于历史使用模式的时间推荐
+        测试替代会议室推荐的匹配算法
+        验证推荐结果的准确性和相关性
+      </test>
+      <test idea="协商机制测试" ac="5">
+        测试协商请求的创建和发送流程
+        验证WebSocket实时通知功能
+        测试协商响应的处理逻辑
+      </test>
+      <test idea="性能压力测试" ac="1">
+        验证500+并发冲突检测操作的稳定性
+        测试响应时间&lt;100ms的性能要求
+        验证Redis缓存在高并发下的效果
+      </test>
+      <test idea="安全验证测试" ac="全功能">
+        测试权限验证在冲突检测中的应用
+        验证输入数据的SQL注入和XSS防护
+        测试敏感预约信息的访问控制
+      </test>
+      <test idea="数据分析功能测试" ac="7">
+        验证冲突发生率的统计准确性
+        测试会议室分配策略优化建议
+        验证冲突解决成功率的计算
+      </test>
+    </ideas>
+  </tests>
+</story-context>

@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     const file = formData.get('file') as File | null
 
     if (!file) {
-      return createErrorResponse(API_CODES.VALIDATION_ERROR, '请选择要上传的文件')
+      return createErrorResponse('VALIDATION_ERROR', '请选择要上传的文件')
     }
 
     // 验证其他字段
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (!room) {
-      return createErrorResponse(API_CODES.ROOM_NOT_FOUND, '会议室不存在')
+      return createErrorResponse(ROOM_NOT_FOUND, '会议室不存在')
     }
 
     // 验证文件类型
@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
     // 验证文件大小（10MB限制）
     const maxSize = 10 * 1024 * 1024 // 10MB
     if (file.size > maxSize) {
-      return createErrorResponse(API_CODES.FILE_TOO_LARGE, '文件大小不能超过10MB')
+      return createErrorResponse(FILE_TOO_LARGE, '文件大小不能超过10MB')
     }
 
     // 生成安全的文件名
@@ -135,10 +135,10 @@ export default defineEventHandler(async (event) => {
 
     // 验证错误
     if (error.name === 'ZodError') {
-      return createErrorResponse(API_CODES.VALIDATION_ERROR, '请求数据验证失败', error.errors)
+      return createErrorResponse('VALIDATION_ERROR', '请求数据验证失败', error.errors)
     }
 
-    return createErrorResponse(API_CODES.UPLOAD_FAILED, '文件上传失败')
+    return createErrorResponse(UPLOAD_FAILED, '文件上传失败')
   } finally {
     await prisma.$disconnect()
   }

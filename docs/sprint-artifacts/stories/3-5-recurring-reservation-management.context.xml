@@ -1,0 +1,175 @@
+<story-context id="{bmad_folder}/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>5</storyId>
+    <title>周期性预约管理</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-20T00:00:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/3-5-recurring-reservation-management.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>会议组织者</asA>
+    <iWant>创建和管理周期性预约</iWant>
+    <soThat>简化重复会议的预约管理，提高工作效率</soThat>
+    <tasks>- [ ] Task 1: 周期性预约数据模型设计 (AC: 1, 2, 3)
+  - [ ] Subtask 1.1: 扩展Prisma schema，创建recurring_reservations表
+  - [ ] Subtask 1.2: 设计rrule规则存储结构，支持RFC 5545标准
+  - [ ] Subtask 1.3: 创建recurring_exceptions表处理特殊日期和例外
+  - [ ] Subtask 1.4: 实现数据迁移脚本，兼容现有预约数据
+
+- [ ] Task 2: 重复预约算法引擎 (AC: 1, 2, 3)
+  - [ ] Subtask 2.1: 创建RecurringReservationEngine服务类
+  - [ ] Subtask 2.2: 实现rrule解析器，支持多种重复模式
+  - [ ] Subtask 2.3: 开发日期序列生成算法，处理结束条件
+  - [ ] Subtask 2.4: 实现节假日和特殊日期的跳过逻辑
+  - [ ] Subtask 2.5: 优化性能，支持大时间范围的预约生成
+
+- [ ] Task 3: 预约序列管理功能 (AC: 4, 5)
+  - [ ] Subtask 3.1: 实现单次预约修改功能，不影响序列其他预约
+  - [ ] Subtask 3.2: 开发批量操作接口，支持整个序列修改
+  - [ ] Subtask 3.3: 创建预约序列状态管理，跟踪变更历史
+  - [ ] Subtask 3.4: 实现预约序列的暂停和恢复功能
+  - [ ] Subtask 3.5: 支持预约序列的提前终止和延展
+
+- [ ] Task 4: 冲突检测与解决 (AC: 6)
+  - [ ] Subtask 4.1: 集成现有ConflictDetectionEngine，扩展支持周期性预约
+  - [ ] Subtask 4.2: 实现批量冲突检测算法，检查整个预约序列
+  - [ ] Subtask 4.3: 开发智能冲突解决策略，自动调整冲突预约
+  - [ ] Subtask 4.4: 创建冲突处理用户界面，提供手动解决选项
+  - [ ] Subtask 4.5: 实现冲突预防机制，在创建时预估潜在冲突
+
+- [ ] Task 5: 周期性预约API开发 (AC: 1, 2, 3, 4, 5, 6)
+  - [ ] Subtask 5.1: 创建 POST /api/v1/reservations/recurring 创建周期性预约接口
+  - [ ] Subtask 5.2: 实现 GET /api/v1/reservations/recurring/{id} 查询周期性预约接口
+  - [ ] Subtask 5.3: 开发 PUT /api/v1/reservations/recurring/{id} 更新周期性预约接口
+  - [ ] Subtask 5.4: 创建 DELETE /api/v1/reservations/recurring/{id} 删除周期性预约接口
+  - [ ] Subtask 5.5: 实现 POST /api/v1/reservations/recurring/{id}/conflict-check 批量冲突检查接口
+  - [ ] Subtask 5.6: 开发 GET /api/v1/reservations/recurring/{id}/occurrences 获取预约实例列表接口
+
+- [ ] Task 6: 周期性预约前端组件 (AC: 1, 2, 3, 4, 5)
+  - [ ] Subtask 6.1: 创建 RecurringReservationWizard.vue 周期性预约向导
+  - [ ] Subtask 6.2: 实现 RecurrencePatternSelector.vue 重复模式选择器
+  - [ ] Subtask 6.3: 设计 EndConditionSelector.vue 结束条件选择器
+  - [ ] Subtask 6.4: 建立 ExceptionDateManager.vue 例外日期管理器
+  - [ ] Subtask 6.5: 开发 RecurringReservationList.vue 预约序列管理界面
+  - [ ] Subtask 6.6: 实现 BatchOperationPanel.vue 批量操作面板
+  - [ ] Subtask 6.7: 创建 ConflictResolutionWizard.vue 周期性预约冲突解决向导
+
+- [ ] Task 7: 提醒通知集成 (AC: 7)
+  - [ ] Subtask 7.1: 扩展现有通知系统，支持周期性预约提醒
+  - [ ] Subtask 7.2: 实现个性化提醒时间设置功能
+  - [ ] Subtask 7.3: 开发提醒预览功能，显示未来提醒计划
+  - [ ] Subtask 7.4: 集成邮件和系统内通知双渠道提醒
+  - [ ] Subtask 7.5: 实现提醒统计分析，监控提醒效果
+
+- [ ] Task 8: 测试与质量保证 (AC: 1, 2, 3, 4, 5, 6, 7)
+  - [ ] Subtask 8.1: 编写周期性预约引擎单元测试
+  - [ ] Subtask 8.2: 创建API接口集成测试
+  - [ ] Subtask 8.3: 开发前端组件测试，覆盖所有交互场景
+  - [ ] Subtask 8.4: 实现性能测试，确保大规模预约序列处理效率
+  - [ ] Subtask 8.5: 进行边界条件和异常情况测试</tasks>
+  </story>
+
+  <acceptanceCriteria>1. 多种重复模式：支持每日、每周、每月、自定义间隔四种重复模式
+2. 灵活的结束条件：提供按次数结束、按日期结束、无限制三种结束条件
+3. 特殊日期处理：跳过节假日、特殊日期调整，支持自定义例外日期
+4. 单次修改功能：支持修改单次预约而不影响整个序列的独立性
+5. 批量操作：提供修改整个序列、删除多个预约的批量管理功能
+6. 冲突智能处理：自动检测和解决重复预约的时间冲突
+7. 提醒通知：每次会议前的自动提醒设置，支持个性化提醒时间</acceptanceCriteria>
+
+  <artifacts>
+    <docs>- path: docs/PRD.md
+  title: Product Requirements Document - 智能会议室管理系统
+  section: Functional Requirements - FR14: 支持周期性预约的创建和管理
+  snippet: "FR14: 支持周期性预约的创建和管理 - 系统应支持用户创建周期性预约，包括每日、每周、每月重复模式，并提供灵活的结束条件设置。"
+
+- path: docs/epics.md
+  title: Epic Breakdown - Epic 3: 预约系统核心
+  section: Story 3.5: 周期性预约管理
+  snippet: "As a 会议组织者, I want 创建和管理周期性预约, so that 简化重复会议的预约管理，提高工作效率."
+
+- path: docs/architecture.md
+  title: Architecture Decision Document
+  section: Epic to Architecture Mapping - Epic 3: 预约系统核心
+  snippet: "Epic 3 (预约系统核心) - 预约数据模型、冲突检测、状态管理、日历视图 - 🚧 To Be Implemented"</docs>
+    <code>- path: prisma/schema.prisma
+  kind: database schema
+  symbol: Reservation model
+  lines: 160-176
+  reason: 现有的预约数据模型，需要扩展以支持周期性预约功能
+
+- path: server/api/v1/reservations/conflict-check.post.ts
+  kind: API endpoint
+  symbol: conflict detection API
+  lines: 1-132
+  reason: 现有的冲突检测API，需要扩展以支持周期性预约的批量冲突检测
+
+- path: server/services/conflict-detection.ts
+  kind: service class
+  symbol: ConflictDetectionEngine
+  lines: 57-498
+  reason: 现有的冲突检测引擎，可以作为周期性预约冲突检测的基础
+
+- path: package.json
+  kind: dependency manifest
+  symbol: rrule package
+  lines: 57
+  reason: 项目已包含rrule库，用于处理重复规则，这是实现周期性预约的关键依赖</code>
+    <dependencies>- ecosystem: node.js
+  packages:
+    - name: rrule
+      version: ^2.8.1
+      purpose: RFC 5545标准的重复规则处理库，用于实现周期性预约算法
+    - name: date-fns
+      version: ^4.1.0
+      purpose: 现代化日期处理库，用于日期计算和格式化
+    - name: @prisma/client
+      version: ^6.19.0
+      purpose: 类型安全的数据库ORM，用于数据持久化
+    - name: zod
+      version: ^4.1.12
+      purpose: TypeScript优先的数据验证库，用于API参数验证
+    - name: ioredis
+      version: ^5.8.2
+      purpose: Redis客户端，用于缓存周期性预约数据</dependencies>
+  </artifacts>
+
+  <constraints>- 扩展现有Reservation模型，创建RecurringReservation和RecurringException关联表
+- 复用现有ConflictDetectionEngine，扩展支持周期性预约批量冲突检测
+- 遵循现有API响应格式，保持错误处理一致性
+- 利用Redis缓存优化大量预约实例的查询性能
+- 实现延迟生成策略，避免一次性创建大量预约实例
+- 符合企业级安全要求，操作记录到审计日志
+- 遵循统一的项目结构和命名规范</constraints>
+  <interfaces>- name: RecurringReservationService
+  kind: service class
+  signature: class RecurringReservationService { createRecurringReservation(data: CreateRecurringReservationRequest): Promise<RecurringReservation>; generateOccurrences(recurringId: string, startDate: Date, endDate: Date): Promise<Reservation[]>; updateSingleOccurrence(recurringId: string, occurrenceId: string, data: UpdateOccurrenceRequest): Promise<Reservation>; }
+  path: server/services/recurring-reservation.ts
+
+- name: POST /api/v1/reservations/recurring
+  kind: REST endpoint
+  signature: POST /api/v1/reservations/recurring - 创建周期性预约
+  path: server/api/v1/reservations/recurring/index.post.ts
+
+- name: RecurringReservationEngine
+  kind: utility class
+  signature: class RecurringReservationEngine { parseRRule(rule: string): RRuleOptions; generateDateSeries(options: RRuleOptions, constraints: DateConstraints): Date[]; skipHolidays(dates: Date[], holidays: Date[]): Date[]; }
+  path: server/utils/recurring-engine.ts</interfaces>
+  <tests>
+    <standards>项目使用Vitest作为测试框架，采用TDD开发模式。测试覆盖率要求>90%，重点测试周期性预约算法、冲突检测逻辑和边界条件。所有测试文件位于tests/目录，遵循.test.ts命名规范。</standards>
+    <locations>- tests/unit/services/recurring-reservation.test.ts - 周期性预约服务单元测试
+- tests/unit/utils/recurring-engine.test.ts - 重复规则引擎测试
+- tests/integration/api/recurring-reservation.test.ts - API接口集成测试
+- tests/components/recurring-reservation.test.ts - 前端组件测试</locations>
+    <ideas>- AC1: 测试多种重复模式的日期序列生成准确性
+- AC2: 验证不同结束条件下的预约实例数量限制
+- AC3: 测试节假日跳过和例外日期处理逻辑
+- AC4: 验证单次修改不影响序列其他预约的独立性
+- AC5: 测试批量操作的事务一致性和回滚机制
+- AC6: 验证大规模预约序列的冲突检测性能
+- AC7: 测试提醒通知的时间准确性和个性化设置</ideas>
+  </tests>
+</story-context>

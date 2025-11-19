@@ -1,7 +1,6 @@
 import prisma from '~~/server/services/database'
 import { requireAdmin } from '~~/server/middleware/permission'
-import { clearUserPermissionCache } from '~/composables/usePermissions'
-
+import { clearUserPermissionCache } from '~~/server/services/permission-cache'
 
 
 export default defineEventHandler(async (event) => {

@@ -343,6 +343,27 @@ export class AuditLogger {
   }
 
   /**
+   * 记录异常活动
+   */
+  async logAnomalousActivity(
+    anomalyType: string,
+    details: any,
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'MEDIUM',
+    ipAddress?: string,
+    userId?: string
+  ): Promise<void> {
+    await this.log({
+      userId,
+      action: `anomaly.${anomalyType}`,
+      resourceType: 'security',
+      details: { ...details, anomaly: true, type: anomalyType },
+      result: 'FAILURE',
+      riskLevel: severity,
+      ipAddress
+    })
+  }
+
+  /**
    * 获取用户活动统计
    */
   async getUserActivityStats(userId: string, days: number = 30): Promise<{

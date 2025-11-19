@@ -1,5 +1,6 @@
 import { auditService } from './audit-service'
 import { auditLogger } from '~~/server/utils/audit'
+import prisma from './database'
 
 export interface Alert {
   id: string
@@ -255,12 +256,11 @@ export class AlertService {
    * 检测可疑活动
    */
   private async detectSuspiciousActivity(): Promise<void> {
-    const db = new (await import('./database')).DatabaseService()
     const oneHourAgo = new Date()
     oneHourAgo.setHours(oneHourAgo.getHours() - 1)
 
     // 检测频繁登录失败
-    const failedLogins = await db.getClient().auditLog.groupBy({
+    const failedLogins = await prisma.auditLog.groupBy({
       by: ['ipAddress'],
       where: {
         action: 'user.login.failure',
@@ -291,7 +291,7 @@ export class AlertService {
     }
 
     // 检测高风险操作激增
-    const highRiskOps = await db.getClient().auditLog.groupBy({
+    const highRiskOps = await prisma.auditLog.groupBy({
       by: ['userId'],
       where: {
         riskLevel: {
@@ -343,12 +343,11 @@ export class AlertService {
    * 检测合规违规
    */
   private async detectComplianceViolations(): Promise<void> {
-    const db = new (await import('./database')).DatabaseService()
     const oneDayAgo = new Date()
     oneDayAgo.setDate(oneDayAgo.getDate() - 1)
 
     // 检测敏感操作未记录
-    const sensitiveOpsWithoutAudit = await db.getClient().$queryRaw`
+    const sensitiveOpsWithoutAudit = await prisma.$queryRaw`
       SELECT 'Missing audit for admin operations' as issue, COUNT(*) as count
       FROM audit_logs
       WHERE timestamp >= ${oneDayAgo}

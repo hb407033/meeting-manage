@@ -7,7 +7,7 @@ import {
   getUserPermissions,
   getUserRoles,
   clearUserPermissionCache
-} from '~/composables/usePermissions'
+} from '../../app/composables/usePermissions'
 import { PrismaClient } from '@prisma/client'
 
 // Mock Prisma Client

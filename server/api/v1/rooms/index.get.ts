@@ -11,9 +11,10 @@ import { requirePermission } from '~~/server/middleware/permission'
 
 
 export default defineEventHandler(async (event) => {
+  debugger
   // 权限验证：需要 room:read 权限
-  // 用户认证现在由通用中间件 server/middleware/api-auth.ts 处理
   await requirePermission('room:read')(event)
+
   try {
     // 验证查询参数
     const query = await getValidatedQuery(event, RoomQuerySchema.parse)
@@ -127,7 +128,7 @@ export default defineEventHandler(async (event) => {
       hasPrev: query.page > 1
     }
 
-    return createPaginatedResponse(rooms, meta, '会议室列表查询成功')
+    return createPaginatedResponse(rooms, meta.total, meta.totalPages, meta.limit, '会议室列表查询成功')
 
   } catch (error: any) {
     console.error('获取会议室列表失败:', error)

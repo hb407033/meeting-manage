@@ -1,6 +1,6 @@
 # Story 1.2b: 企业单点登录集成
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 

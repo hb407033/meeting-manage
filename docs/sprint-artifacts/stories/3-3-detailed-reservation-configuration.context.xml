@@ -1,0 +1,184 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>3</storyId>
+    <title>detailed-reservation-configuration</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-20</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/3-3-detailed-reservation-configuration.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>会议组织者</asA>
+    <iWant>在系统中配置详细的预约信息和会议需求</iWant>
+    <soThat>能够确保会议室资源完全满足会议需求，提升会议准备效率和进行质量</soThat>
+    <tasks>Task 1: 详细预约表单设计与开发 (AC: 1)
+- Subtask 1.1: 创建 DetailedReservationForm.vue 组件基础结构
+- Subtask 1.2: 实现会议主题、描述、重要性级别输入字段
+- Subtask 1.3: 添加表单验证和错误提示功能
+- Subtask 1.4: 集成PrimeVue表单组件和样式优化
+
+Task 2: 设备与服务选择功能 (AC: 2)
+- Subtask 2.1: 创建 EquipmentSelector.vue 设备选择组件
+- Subtask 2.2: 实现 ServicesSelector.vue 服务选择组件
+- Subtask 2.3: 添加设备可用性检查和冲突提示
+- Subtask 2.4: 实现选择项的总成本计算和显示
+
+Task 3: 参会人员管理模块 (AC: 3)
+- Subtask 3.1: 开发 AttendeeManager.vue 参会人员管理组件
+- Subtask 3.2: 实现内部员工搜索和添加功能
+- Subtask 3.3: 支持外部访客信息手动录入
+- Subtask 3.4: 添加参会人员容量检查和超员提示
+
+Task 4: 会议材料上传与管理 (AC: 4)
+- Subtask 4.1: 集成文件上传组件支持多文件选择
+- Subtask 4.2: 实现文件类型验证和大小限制
+- Subtask 4.3: 添加文件预览功能和下载管理
+- Subtask 4.4: 建立文件与预约的关联关系存储
+
+Task 5: 重复会议配置功能 (AC: 5)
+- Subtask 5.1: 创建 RecurringPatternConfig.vue 重复模式配置组件
+- Subtask 5.2: 实现rrule格式的重复模式解析和生成
+- Subtask 5.3: 支持特殊日期处理和节假日跳过设置
+- Subtask 5.4: 添加重复会议预览和冲突检查
+
+Task 6: 后端API开发与数据库集成
+- Subtask 6.1: 扩展Prisma schema支持详细预约字段
+- Subtask 6.2: 创建 POST /api/v1/reservations/detailed 详细预约API
+- Subtask 6.3: 实现设备、服务、参会人员的数据库存储
+- Subtask 6.4: 添加文件上传处理和存储服务
+
+Task 7: 数据验证与业务逻辑
+- Subtask 7.1: 实现预约数据的前后端双重验证
+- Subtask 7.2: 添加设备可用性和会议室容量检查
+- Subtask 7.3: 实现重复会议的冲突检测算法
+- Subtask 7.4: 建立预约确认和通知机制
+
+Task 8: 测试与优化
+- Subtask 8.1: 编写详细预约功能的单元测试
+- Subtask 8.2: 进行端到端测试验证完整流程
+- Subtask 8.3: 性能优化和响应式设计适配
+- Subtask 8.4: 用户体验测试和界面优化</tasks>
+  </story>
+
+  <acceptanceCriteria>1. 支持配置会议主题、描述、重要性级别的详细预约表单
+2. 可选择会议所需设备（如投影仪、白板、音响等）和服务（如茶水、网络等）
+3. 支持参会人员管理，能够添加内部员工和外部访客信息
+4. 支持会议材料上传和管理，允许多个文件上传和在线预览
+5. 支持重复会议设置，包括每日、每周、每月等重复模式配置</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="产品需求文档" section="功能需求清单">
+        FR16需求：会议组织者可以配置会议详细需求和参会人员，这是详细预约配置功能的直接需求来源。
+      </doc>
+      <doc path="docs/architecture.md" title="架构决策文档" section="数据架构">
+        Reservation模型包含equipment、services、attendeeCount、isRecurring、recurringPattern等字段支持复杂配置信息存储。
+      </doc>
+      <doc path="docs/ux-design-specification.md" title="UX设计规范" section="核心用户体验">
+        智能表单设计，支持自动预填和验证，采用PrimeVue Styled Mode + Aura主题，遵循"极其简单"原则。
+      </doc>
+      <doc path="docs/epics.md" title="Epic分解" section="Epic 3: 预约系统核心">
+        Story 3.3验收标准：提供全面的会议配置选项，包括基础信息、设备需求、服务需求、参会人员管理等。
+      </doc>
+    </docs>
+    <code>
+      <codeArtifact path="app/components/features/reservations/TimeSlotSelector.vue" kind="component" symbol="TimeSlotSelector" lines="1-612" reason="高级时间选择器组件，支持拖拽选择，可扩展用于详细预约时间配置"/>
+      <codeArtifact path="server/api/v1/reservations/index.post.ts" kind="api" symbol="createReservation" lines="1-174" reason="核心预约创建接口，需要扩展支持详细配置字段"/>
+      <codeArtifact path="app/stores/reservations.ts" kind="store" symbol="useReservationStore" reason="预约状态管理，需要添加详细配置状态和方法"/>
+      <codeArtifact path="prisma/schema.prisma" kind="schema" symbol="Reservation" reason="核心数据模型，需要扩展equipment、services等字段"/>
+      <codeArtifact path="app/components/UniversalHeader.vue" kind="component" symbol="UniversalHeader" lines="152-209" reason="已实现的导航组件，包含详细预约配置入口和权限控制"/>
+      <codeArtifact path="app/composables/useAuth.ts" kind="composable" symbol="useAuth" reason="认证管理，提供hasPermission等方法用于预约权限控制"/>
+      <codeArtifact path="server/api/v1/upload/rooms/post.ts" kind="api" symbol="uploadRoomImage" reason="文件上传接口模式，可参考扩展实现会议材料上传功能"/>
+    </code>
+    <dependencies>
+      <ecosystem name="frontend">
+        <package name="vue" version="3.5.24"/>
+        <package name="nuxt" version="4.2.1"/>
+        <package name="primevue" version="4.4.1"/>
+        <package name="@primevue/themes" version="4.4.1"/>
+        <package name="@formkit/nuxt" version="1.6.9"/>
+        <package name="@formkit/themes" version="1.6.9"/>
+        <package name="@vueuse/core" version="14.0.0"/>
+        <package name="pinia" version="3.0.4"/>
+        <package name="rrule" version="2.8.1"/>
+        <package name="date-fns" version="4.1.0"/>
+        <package name="date-fns-tz" version="3.1.3"/>
+      </ecosystem>
+      <ecosystem name="backend">
+        <package name="@prisma/client" version="6.19.0"/>
+        <package name="zod" version="4.1.12"/>
+        <package name="jsonwebtoken" version="9.0.2"/>
+        <package name="bcryptjs" version="3.0.3"/>
+      </ecosystem>
+      <ecosystem name="testing">
+        <package name="vitest" version="4.0.9"/>
+        <package name="@vue/test-utils" version="2.4.6"/>
+        <package name="jsdom" version="27.2.0"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint id="architecture" description="技术架构约束">
+      遵循现有Nuxt 4全栈架构模式，使用MySQL + Prisma进行数据持久化，复用现有认证中间件和RBAC权限体系。
+    </constraint>
+    <constraint id="ui-consistency" description="UI一致性约束">
+      与PrimeVue 4.4.1组件库保持样式一致性，使用企业级商务蓝主题，响应式设计适配桌面端和移动端。
+    </constraint>
+    <constraint id="component-structure" description="组件结构约束">
+      使用组合式API (Composition API) 开发Vue 3组件，采用Pinia进行状态管理，集成@vueuse/core工具库。
+    </constraint>
+    <constraint id="project-structure" description="项目结构约束">
+      遵循app/components/features/reservations/目录结构，复用app/composables/中现有的useAuth和usePermissions。
+    </constraint>
+    <constraint id="security" description="安全约束">
+      预约操作需要适当的权限验证，文件上传安全控制和病毒扫描，防SQL注入和XSS攻击的数据验证。
+    </constraint>
+    <constraint id="data-validation" description="数据验证约束">
+      实现预约数据的前后端双重验证，添加设备可用性和会议室容量检查，实现重复会议的冲突检测算法。
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="CreateReservationRequest" kind="API接口" signature="POST /api/v1/reservations/detailed">
+      接收详细预约配置数据，包括equipment、services、attendeeCount、recurringPattern等字段
+    </interface>
+    <interface name="TimeSlotSelector" kind="Vue组件接口" signature="handleSlotClick, handleMouseDown, handleMouseEnter">
+      时间选择器组件接口，支持复杂时间段选择和拖拽操作
+    </interface>
+    <interface name="useReservationStore" kind="Composable接口" signature="createReservation, updateReservation, fetchAvailability">
+      预约状态管理接口，提供预约创建、更新和可用性查询方法
+    </interface>
+    <interface name="useAuth" kind="Composable接口" signature="hasPermission, canAccess">
+      权限检查接口，用于预约功能的权限控制
+    </interface>
+    <interface name="FileUpload" kind="文件上传接口" signature="multipart/form-data upload">
+      支持多文件上传，文件类型验证和大小限制
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      使用Vitest测试框架和@vue/test-utils进行组件测试，遵循AAA模式（Arrange-Act-Assert），测试文件命名模式为*.test.ts，测试目录按功能分类：unit/、integration/、components/、performance/。使用jsdom-global提供DOM环境，自定义匹配器扩展expect功能。
+    </standards>
+    <locations>
+      tests/unit/ - 单元测试目录
+      tests/integration/ - 集成测试目录
+      tests/components/ - 组件测试目录
+      tests/performance/ - 性能测试目录
+      test/fixtures/vitest-setup-simple.ts - 测试环境配置
+    </locations>
+    <ideas>
+      <test idea="AC1详细预约表单验证" description="测试DetailedReservationForm组件的表单验证、字段绑定和错误提示功能"/>
+      <test idea="AC2设备服务选择" description="测试EquipmentSelector和ServicesSelector组件的选择功能和可用性检查"/>
+      <test idea="AC3参会人员管理" description="测试AttendeeManager组件的员工搜索、访客录入和容量检查功能"/>
+      <test idea="AC4文件上传功能" description="测试多文件上传、类型验证、预览功能和下载管理"/>
+      <test idea="AC5重复会议配置" description="测试RecurringPatternConfig组件的rrule解析和冲突检查"/>
+      <test idea="API集成测试" description="测试POST /api/v1/reservations/detailed接口的完整数据流转"/>
+      <test idea="权限控制测试" description="测试基于角色的预约权限访问控制"/>
+      <test idea="性能测试" description="测试大量设备选择和复杂表单的渲染性能"/>
+    </ideas>
+  </tests>
+</story-context>

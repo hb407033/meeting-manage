@@ -17,6 +17,7 @@ declare module '#app' {
       hasRole: (role: string) => boolean
       hasPermission: (permission: string) => boolean
       canAccess: (resource: string, action?: string) => boolean
+      clearUserPermissionCache: (userId: string, organizationId?: string) => Promise<void>
       isAdmin: boolean
       isUser: boolean
       isLoggedIn: boolean
@@ -385,6 +386,28 @@ export const useAuthStore = defineStore('auth', {
           return this.hasPermission(`reservation:${action}`)
         default:
           return false
+      }
+    },
+
+    /**
+     * 清除用户权限缓存
+     */
+    async clearUserPermissionCache(userId: string, organizationId?: string): Promise<void> {
+      try {
+        // 在 store 中必须通过 useNuxtApp() 访问注入的依赖
+        const { $apiFetch } = useNuxtApp()
+        await $apiFetch('/api/v1/admin/permissions/clear-cache', {
+          method: 'POST',
+          body: {
+            userId,
+            organizationId
+          }
+        })
+
+        console.log(`权限缓存已清除: 用户 ${userId}`)
+      } catch (error) {
+        console.error('清除权限缓存失败:', error)
+        throw error
       }
     }
   }

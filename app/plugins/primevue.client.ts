@@ -178,10 +178,15 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Toolbar from 'primevue/toolbar'
 import Tag from 'primevue/tag'
+import Badge from 'primevue/badge'
 import Toast from 'primevue/toast'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
+import TabView from 'primevue/tabview'
+import TabPanel from 'primevue/tabpanel'
+import Calendar from 'primevue/calendar'
+import ToggleSwitch from 'primevue/toggleswitch'
 
 export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.vueApp.use(PrimeVue, {
@@ -223,5 +228,10 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.vueApp.component('Column', Column)
   nuxtApp.vueApp.component('Toolbar', Toolbar)
   nuxtApp.vueApp.component('Tag', Tag)
+  nuxtApp.vueApp.component('Badge', Badge)
   nuxtApp.vueApp.component('Toast', Toast)
+  nuxtApp.vueApp.component('TabView', TabView)
+  nuxtApp.vueApp.component('TabPanel', TabPanel)
+  nuxtApp.vueApp.component('Calendar', Calendar)
+  nuxtApp.vueApp.component('ToggleSwitch', ToggleSwitch)
 })

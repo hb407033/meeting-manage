@@ -494,6 +494,409 @@ export class ConflictDetectionEngine {
   }
 }
 
+import { MeetingRoom, RecurringReservation } from "@prisma/client"
+import RecurringReservationEngine from "./recurring-reservation-engine"
+
+/**
+ * 周期性预约冲突检测扩展
+ */
+
+interface RecurringConflictDetectionParams {
+  recurringReservation: any // RecurringReservation 类型
+  existingReservations: Reservation[]
+  roomInfo: MeetingRoom
+  dateRange?: TimeSlot
+  options?: {
+    maxInstances?: number
+    skipHolidays?: boolean
+  }
+}
+
+interface RecurringConflictResult extends ConflictResult {
+  recurringConflicts: Array<{
+    occurrence: TimeSlot
+    conflicts: Conflict[]
+    index: number
+  }>
+  totalInstances: number
+  conflictRate: number // 冲突率 (0-1)
+}
+
+/**
+ * 扩展ConflictDetectionEngine以支持周期性预约
+ */
+export class RecurringConflictDetectionEngine extends ConflictDetectionEngine {
+
+  /**
+   * 检测周期性预约的冲突
+   */
+  async detectRecurringConflicts(params: RecurringConflictDetectionParams): Promise<RecurringConflictResult> {
+    const { recurringReservation, existingReservations, roomInfo, dateRange, options = {} } = params
+    const { maxInstances = 50, skipHolidays = recurringReservation.skipHolidays || true } = options
+
+    // 生成周期性预约的实例
+    const occurrences = await RecurringReservationEngine.generateOccurrences(
+      recurringReservation,
+      dateRange,
+      { maxOccurrences: maxInstances, skipHolidays }
+    )
+
+    const recurringConflicts: Array<{
+      occurrence: TimeSlot
+      conflicts: Conflict[]
+      index: number
+    }> = []
+
+    let totalConflicts = 0
+
+    // 检查每个实例的冲突
+    for (let i = 0; i < occurrences.length; i++) {
+      const occurrence = occurrences[i]
+
+      // 跳过已取消的实例
+      if (occurrence.hasException && occurrence.exceptionType === 'CANCELLED') {
+        continue
+      }
+
+      // 获取实际的时间（可能有修改）
+      const actualStartTime = occurrence.newStartTime || occurrence.startTime
+      const actualEndTime = occurrence.newEndTime || occurrence.endTime
+
+      const occurrenceReservation: Reservation = {
+        id: `recurring-${i}`,
+        roomId: recurringReservation.roomId,
+        userId: recurringReservation.organizerId,
+        title: recurringReservation.title,
+        startTime: actualStartTime,
+        endTime: actualEndTime,
+        attendeeCount: 1,
+        equipment: [],
+        status: 'confirmed'
+      }
+
+      // 检测这个实例的冲突
+      const conflictResult = await this.detectConflicts({
+        reservation: occurrenceReservation,
+        existingReservations: existingReservations.filter(r =>
+          r.status !== 'cancelled' &&
+          !(r.startTime.getTime() === actualStartTime.getTime() &&
+            r.endTime.getTime() === actualEndTime.getTime() &&
+            r.roomId === recurringReservation.roomId)
+        ),
+        roomInfo
+      })
+
+      if (conflictResult.hasConflict) {
+        recurringConflicts.push({
+          occurrence: {
+            startTime: actualStartTime,
+            endTime: actualEndTime
+          },
+          conflicts: conflictResult.conflicts,
+          index: i
+        })
+        totalConflicts += conflictResult.conflicts.length
+      }
+    }
+
+    // 计算冲突率
+    const validInstances = occurrences.filter(o =>
+      !(o.hasException && o.exceptionType === 'CANCELLED')
+    ).length
+    const conflictRate = validInstances > 0 ? totalConflicts / validInstances : 0
+
+    // 生成总体建议
+    const overallSuggestions = this.generateOverallSuggestions(recurringConflicts, occurrences)
+
+    return {
+      hasConflict: recurringConflicts.length > 0,
+      conflicts: this.summarizeConflicts(recurringConflicts),
+      suggestions: overallSuggestions,
+      recurringConflicts,
+      totalInstances: occurrences.length,
+      conflictRate: Math.round(conflictRate * 100) / 100
+    }
+  }
+
+  /**
+   * 批量检测多个周期性预约的冲突
+   */
+  async detectBatchRecurringConflicts(
+    recurringReservations: any[],
+    rooms: MeetingRoom[],
+    existingReservations: Reservation[]
+  ): Promise<RecurringConflictResult[]> {
+    const results: RecurringConflictResult[] = []
+
+    for (const recurring of recurringReservations) {
+      const roomInfo = rooms.find(r => r.id === recurring.roomId)
+      if (!roomInfo) {
+        results.push({
+          hasConflict: true,
+          conflicts: [{
+            type: 'time_overlap',
+            severity: 'high',
+            description: `会议室不存在: ${recurring.roomId}`
+          }],
+          recurringConflicts: [],
+          totalInstances: 0,
+          conflictRate: 1
+        })
+        continue
+      }
+
+      const result = await this.detectRecurringConflicts({
+        recurringReservation: recurring,
+        existingReservations,
+        roomInfo
+      })
+
+      results.push(result)
+    }
+
+    return results
+  }
+
+  /**
+   * 智能冲突解决建议
+   */
+  async suggestConflictResolution(
+    conflictResult: RecurringConflictResult,
+    recurringReservation: any
+  ): Promise<{
+    strategies: Array<{
+      type: 'time_adjustment' | 'frequency_change' | 'room_change' | 'skip_conflicts'
+      description: string
+      impact: 'low' | 'medium' | 'high'
+      effort: 'low' | 'medium' | 'high'
+      details: any
+    }>
+    recommended: string
+  }> {
+    const strategies: any[] = []
+
+    // 分析冲突模式
+    const conflictPattern = this.analyzeConflictPattern(conflictResult.recurringConflicts)
+
+    // 策略1: 时间调整
+    if (conflictPattern.timeBasedConflicts > 0) {
+      strategies.push({
+        type: 'time_adjustment',
+        description: '调整预约时间以避免冲突',
+        impact: 'low',
+        effort: 'medium',
+        details: {
+          suggestedTimeSlots: this.findAlternativeTimeSlots(
+            conflictResult.recurringConflicts,
+            recurringReservation
+          ),
+          conflictTimes: conflictPattern.conflictTimes
+        }
+      })
+    }
+
+    // 策略2: 频率调整
+    if (conflictPattern.highFrequencyConflicts) {
+      strategies.push({
+        type: 'frequency_change',
+        description: '调整重复频率以减少冲突',
+        impact: 'medium',
+        effort: 'low',
+        details: {
+          currentPattern: recurringReservation.recurrenceRule,
+          suggestedPatterns: this.suggestAlternativePatterns(
+            recurringReservation.recurrenceRule
+          )
+        }
+      })
+    }
+
+    // 策略3: 房间更换
+    if (conflictPattern.roomSpecificConflicts) {
+      const alternativeRooms = await this.findAlternativeRooms(
+        recurringReservation.roomId,
+        recurringReservation
+      )
+
+      if (alternativeRooms.length > 0) {
+        strategies.push({
+          type: 'room_change',
+          description: '更换到其他可用会议室',
+          impact: 'low',
+          effort: 'low',
+          details: {
+            alternativeRooms,
+            currentRoom: recurringReservation.roomId
+          }
+        })
+      }
+    }
+
+    // 策略4: 跳过冲突
+    if (conflictResult.conflictRate < 0.3) {
+      strategies.push({
+        type: 'skip_conflicts',
+        description: '跳过有冲突的实例，保留其他实例',
+        impact: 'low',
+        effort: 'low',
+        details: {
+          skippedInstances: conflictResult.recurringConflicts.length,
+          keptInstances: conflictResult.totalInstances - conflictResult.recurringConflicts.length
+        }
+      })
+    }
+
+    // 推荐策略
+    let recommended = 'time_adjustment'
+    if (strategies.length > 0) {
+      // 根据影响和工作量选择最佳策略
+      const sortedStrategies = strategies.sort((a, b) => {
+        const scoreA = (a.impact === 'low' ? 3 : a.impact === 'medium' ? 2 : 1) +
+                     (a.effort === 'low' ? 3 : a.effort === 'medium' ? 2 : 1)
+        const scoreB = (b.impact === 'low' ? 3 : b.impact === 'medium' ? 2 : 1) +
+                     (b.effort === 'low' ? 3 : b.effort === 'medium' ? 2 : 1)
+        return scoreB - scoreA
+      })
+      recommended = sortedStrategies[0].type
+    }
+
+    return { strategies, recommended }
+  }
+
+  /**
+   * 分析冲突模式
+   */
+  private analyzeConflictPattern(conflicts: any[]) {
+    const pattern = {
+      timeBasedConflicts: 0,
+      roomSpecificConflicts: 0,
+      highFrequencyConflicts: false,
+      conflictTimes: new Set<string>(),
+      conflictTypes: new Set<string>()
+    }
+
+    conflicts.forEach(conflict => {
+      conflict.conflicts.forEach((c: Conflict) => {
+        pattern.conflictTypes.add(c.type)
+
+        if (c.type === 'time_overlap') {
+          pattern.timeBasedConflicts++
+          const hour = conflict.occurrence.startTime.getHours()
+          pattern.conflictTimes.add(`${hour}:00`)
+        }
+
+        if (c.severity === 'high') {
+          pattern.roomSpecificConflicts++
+        }
+      })
+    })
+
+    // 判断是否为高频冲突
+    pattern.highFrequencyConflicts = conflicts.length > 5
+
+    return pattern
+  }
+
+  /**
+   * 查找替代时间段
+   */
+  private findAlternativeTimeSlots(conflicts: any[], recurringReservation: any) {
+    const timeSlots: string[] = []
+    const conflictHours = new Set<number>()
+
+    conflicts.forEach(conflict => {
+      conflictHours.add(conflict.occurrence.startTime.getHours())
+    })
+
+    // 建议在非冲突时间段
+    for (let hour = 8; hour <= 17; hour++) {
+      if (!conflictHours.has(hour)) {
+        timeSlots.push(`${hour}:00-${hour + 1}:00`)
+      }
+    }
+
+    return timeSlots.slice(0, 3) // 返回前3个建议
+  }
+
+  /**
+   * 建议替代模式
+   */
+  private suggestAlternativePatterns(currentRule: string) {
+    const alternatives = [
+      '降低重复频率',
+      '限制在工作日',
+      '避开特定时间段',
+      '减少重复次数'
+    ]
+
+    return alternatives
+  }
+
+  /**
+   * 查找替代会议室
+   */
+  private async findAlternativeRooms(currentRoomId: string, recurringReservation: any) {
+    // 这里应该调用会议室服务来查找可用的替代房间
+    // 简化实现，返回空数组
+    return []
+  }
+
+  /**
+   * 总结所有冲突
+   */
+  private summarizeConflicts(recurringConflicts: any[]) {
+    const allConflicts: Conflict[] = []
+    const seen = new Set<string>()
+
+    recurringConflicts.forEach(conflict => {
+      conflict.conflicts.forEach((c: Conflict) => {
+        const key = `${c.type}-${c.description}-${conflict.occurrence.startTime.toISOString()}`
+        if (!seen.has(key)) {
+          allConflicts.push(c)
+          seen.add(key)
+        }
+      })
+    })
+
+    return allConflicts
+  }
+
+  /**
+   * 生成总体建议
+   */
+  private generateOverallSuggestions(recurringConflicts: any[], allOccurrences: any[]) {
+    const suggestions: TimeSlot[] = []
+
+    if (recurringConflicts.length === 0) {
+      return suggestions
+    }
+
+    // 简单的冲突时间回避策略
+    const conflictHours = new Set<number>()
+    recurringConflicts.forEach(conflict => {
+      conflictHours.add(conflict.occurrence.startTime.getHours())
+    })
+
+    // 生成建议时间段
+    for (let hour = 8; hour <= 17; hour++) {
+      if (!conflictHours.has(hour)) {
+        const suggestion: TimeSlot = {
+          startTime: new Date(2000, 0, 1, hour, 0, 0),
+          endTime: new Date(2000, 0, 1, hour + 1, 0, 0)
+        }
+        suggestions.push(suggestion)
+
+        if (suggestions.length >= 3) break
+      }
+    }
+
+    return suggestions
+  }
+}
+
+// 创建扩展的冲突检测引擎实例
+export const recurringConflictDetectionEngine = new RecurringConflictDetectionEngine()
+
 // 导出单例实例
 export const conflictDetectionEngine = new ConflictDetectionEngine()
 
