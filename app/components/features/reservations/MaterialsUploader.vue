@@ -181,7 +181,7 @@
                       icon="pi pi-eye"
                       size="small"
                       variant="text"
-                      @click="previewMaterial(data)"
+                      @click="handlePreviewMaterial(data)"
                       v-tooltip="'预览'"
                       :disabled="!canPreview(data)"
                     />
@@ -501,7 +501,7 @@ const uploadFile = async (file: File): Promise<MaterialFile | null> => {
   }
 }
 
-const previewMaterial = async (material: MaterialFile) => {
+const handlePreviewMaterial = async (material: MaterialFile) => {
   previewMaterial.value = material
 
   if (isText(material)) {
@@ -514,6 +514,7 @@ const previewMaterial = async (material: MaterialFile) => {
   }
 
   previewVisible.value = true
+  emit('preview', material)
 }
 
 const downloadMaterial = (material: MaterialFile) => {

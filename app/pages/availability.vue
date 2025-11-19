@@ -40,22 +40,84 @@ const timeSlots = ref<TimeSlot[]>([])
 const generateTimeSlots = async (): Promise<TimeSlot[]> => {
   const slots: TimeSlot[] = []
   const targetDate = new Date(selectedDate.value)
-  const startTime = new Date(targetDate.setHours(0, 0, 0, 0)).toISOString()
-  const endTime = new Date(targetDate.setHours(23, 59, 59, 999)).toISOString()
+
+  // 根据会议室预约规则设置时间范围，而不是硬编码0:00-24:00
+  const getDefaultTimeRange = () => {
+    return {
+      start: '00:00',
+      end: '23:59'
+    }
+  }
+
+  // 为每个会议室设置基于预约规则的时间范围
+  const getRoomTimeRange = (room: any) => {
+    if (room.rules?.allowedTimeRange) {
+      return {
+        start: room.rules.allowedTimeRange.start,
+        end: room.rules.allowedTimeRange.end
+      }
+    }
+    // 如果没有预约规则，使用营业时间
+    if (room.operatingHours) {
+      return {
+        start: room.operatingHours.start || '09:00',
+        end: room.operatingHours.end || '18:00'
+      }
+    }
+    // 默认时间范围
+    return getDefaultTimeRange()
+  }
+
+  // 根据选择确定时间范围
+  let startTime: string
+  let endTime: string
+
+  if (selectedRoom.value && selectedRoom.value !== '') {
+    // 如果选择特定会议室，使用该会议室的时间范围
+    const room = roomStore.rooms.find(r => r.id === selectedRoom.value)
+    const timeRange = getRoomTimeRange(room)
+    const [startHour, startMinute] = timeRange.start.split(':')
+    const [endHour, endMinute] = timeRange.end.split(':')
+
+    const startDate = new Date(targetDate)
+    startDate.setHours(parseInt(startHour), parseInt(startMinute), 0, 0)
+
+    const endDate = new Date(targetDate)
+    endDate.setHours(parseInt(endHour), parseInt(endMinute), 59, 999)
+
+    startTime = startDate.toISOString()
+    endTime = endDate.toISOString()
+  } else {
+    // 查询所有会议室时，使用全天时间范围（0:00-24:00）
+    startTime = new Date(targetDate.setHours(0, 0, 0, 0)).toISOString()
+    endTime = new Date(targetDate.setHours(23, 59, 59, 999)).toISOString()
+  }
 
   if (!selectedRoom.value || selectedRoom.value === '') {
-    // 如果选择了全部会议室，为每个会议室获取数据
+    // 如果选择了全部会议室，为每个会议室获取数据（使用各自的营业时间）
     const roomIds = roomStore.rooms.map(room => room.id)
 
-    try {
-      await reservationStore.fetchAvailability({
-        roomIds,
-        startTime,
-        endTime
-      })
+    // 为每个会议室单独获取可用性数据，使用各自的时间范围
+    for (const roomId of roomIds) {
+      const room = roomStore.rooms.find(r => r.id === roomId)
+      const timeRange = getRoomTimeRange(room)
+      const [startHour, startMinute] = timeRange.start.split(':')
+      const [endHour, endMinute] = timeRange.end.split(':')
 
-      // 从store获取可用性数据并转换为TimeSlot格式
-      roomIds.forEach(roomId => {
+      const roomStartDate = new Date(targetDate)
+      roomStartDate.setHours(parseInt(startHour), parseInt(startMinute), 0, 0)
+
+      const roomEndDate = new Date(targetDate)
+      roomEndDate.setHours(parseInt(endHour), parseInt(endMinute), 59, 999)
+
+      try {
+        await reservationStore.fetchAvailability({
+          roomIds: [roomId],
+          startTime: roomStartDate.toISOString(),
+          endTime: roomEndDate.toISOString()
+        })
+
+        // 从store获取可用性数据并转换为TimeSlot格式
         const roomAvailability = reservationStore.getRoomAvailability(roomId)
         if (roomAvailability) {
           // 添加可用时间段
@@ -82,9 +144,9 @@ const generateTimeSlots = async (): Promise<TimeSlot[]> => {
             })
           })
         }
-      })
-    } catch (error) {
-      console.error('获取可用性数据失败:', error)
+      } catch (error) {
+        console.error(`获取会议室 ${roomId} 可用性数据失败:`, error)
+      }
     }
   } else {
     // 为特定会议室获取数据

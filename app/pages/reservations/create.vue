@@ -25,7 +25,7 @@ const editReservationId = computed(() => route.query.edit as string)
 // 页面设置
 definePageMeta({
   layout: 'default',
-  title: computed(() => isEditMode.value ? '编辑预约' : '会议室预约'),
+  title: computed(() => isEditMode.value ? '编辑预约' : '快速预约'),
   description: computed(() => isEditMode.value ? '编辑会议室预约信息' : '查看会议室可用时间并创建预约')
 })
 
@@ -164,8 +164,48 @@ const generateAvailableTimeSlots = async () => {
   }
 
   const targetDate = new Date(reservationDate.value)
-  const startTime = new Date(targetDate.setHours(0, 0, 0, 0)).toISOString()
-  const endTime = new Date(targetDate.setHours(23, 59, 59, 999)).toISOString()
+
+  // 根据会议室预约规则设置时间范围，而不是硬编码0:00-24:00
+  const getDefaultTimeRange = () => {
+    return {
+      start: '00:00',
+      end: '23:59'
+    }
+  }
+
+  // 为会议室设置基于预约规则的时间范围
+  const getRoomTimeRange = (room: any) => {
+    if (room?.rules?.allowedTimeRange) {
+      return {
+        start: room.rules.allowedTimeRange.start,
+        end: room.rules.allowedTimeRange.end
+      }
+    }
+    // 如果没有预约规则，使用营业时间
+    if (room?.operatingHours) {
+      return {
+        start: room.operatingHours.start || '09:00',
+        end: room.operatingHours.end || '18:00'
+      }
+    }
+    // 默认时间范围
+    return getDefaultTimeRange()
+  }
+
+  // 获取所选会议室并使用其时间范围
+  const room = roomStore.rooms.find(r => r.id === selectedRoom.value)
+  const timeRange = getRoomTimeRange(room)
+  const [startHour, startMinute] = timeRange.start.split(':')
+  const [endHour, endMinute] = timeRange.end.split(':')
+
+  const startDate = new Date(targetDate)
+  startDate.setHours(parseInt(startHour), parseInt(startMinute), 0, 0)
+
+  const endDate = new Date(targetDate)
+  endDate.setHours(parseInt(endHour), parseInt(endMinute), 59, 999)
+
+  const startTime = startDate.toISOString()
+  const endTime = endDate.toISOString()
 
   try {
     await reservationStore.fetchAvailability({
@@ -454,15 +494,36 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- 主要内容区域：左右两列布局 -->
+    <!-- 预约类型选择 -->
     <div class="container mx-auto px-4 py-6">
+      <div class="mb-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                <i class="pi pi-question-circle"></i>
+                预约方式选择
+              </h3>
+              <p class="text-blue-700 mt-1">选择适合您需求的预约方式</p>
+            </div>
+            <Button
+              label="使用详细配置"
+              icon="pi pi-cog"
+              class="p-button-outlined"
+              @click="$router.push('/reservations/detailed')"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 主要内容区域：左右两列布局 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- 左侧：预约表单信息 -->
         <div class="bg-white rounded-lg shadow-sm border p-6">
           <h2 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
             <i class="pi pi-file-edit text-blue-600"></i>
-            预约信息
+            快速预约
           </h2>
 
           <form @submit.prevent="handleReservationSubmit" class="space-y-6">
@@ -597,7 +658,7 @@ onMounted(async () => {
                 <i class="pi pi-spin pi-spinner mr-2"></i>
                 正在提交...
               </span>
-              <span v-else>创建预约</span>
+              <span v-else>快速创建预约</span>
             </button>
           </form>
         </div>
@@ -676,6 +737,34 @@ onMounted(async () => {
             <i class="pi pi-calendar text-4xl text-gray-300 mb-4"></i>
             <p class="text-gray-500">请先在左侧选择会议日期</p>
           </div>
+        </div>
+      </div>
+
+      <!-- 快速预约功能说明 -->
+      <div class="mt-6 bg-gray-50 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <i class="pi pi-bolt text-yellow-600"></i>
+          快速预约特点
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-700">
+          <div class="flex items-start gap-2">
+            <i class="pi pi-check text-green-600 mt-0.5"></i>
+            <span>基础信息填写，快速完成预约</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <i class="pi pi-check text-green-600 mt-0.5"></i>
+            <span>支持会议室选择和时间安排</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <i class="pi pi-check text-green-600 mt-0.5"></i>
+            <span>适合简单会议和临时预约</span>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-gray-200">
+          <p class="text-xs text-gray-600">
+            <i class="pi pi-info-circle mr-1"></i>
+            需要更多功能？<NuxtLink to="/reservations/detailed" class="text-blue-600 hover:text-blue-800 underline">使用详细预约配置</NuxtLink>支持设备选择、服务预订、材料上传等完整功能。
+          </p>
         </div>
       </div>
     </div>
