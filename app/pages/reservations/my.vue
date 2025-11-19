@@ -1,28 +1,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { format, addDays, startOfWeek, endOfWeek, isAfter, isBefore, isToday } from 'date-fns'
+import { format, addDays, startOfWeek, endOfWeek, isAfter, isBefore } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { useRouter } from 'vue-router'
 
 // 导入store
-import { useReservationStore } from '~/stores/reservations'
-import { useRoomStore } from '~/stores/rooms'
 import { useAuthStore } from '~/stores/auth'
+import { useReservationStore } from '~/stores/reservations'
 
-// 使用store和路由
-const reservationStore = useReservationStore()
-const roomStore = useRoomStore()
+// 使用store
 const authStore = useAuthStore()
-const router = useRouter()
+const reservationStore = useReservationStore()
 
 // 页面设置
 definePageMeta({
-  layout: 'admin',
+  layout: 'default',
   middleware: 'auth'
 })
 
 // 筛选状态
-const selectedRoom = ref<string>('')
 const selectedStatus = ref<string>('')
 const selectedDateRange = ref<string>('all')
 
@@ -40,17 +35,23 @@ const dateRangeOptions = [
   { value: 'all', label: '全部' },
   { value: 'today', label: '今天' },
   { value: 'tomorrow', label: '明天' },
-  { value: 'week', label: '本周' }
+  { value: 'week', label: '本周' },
+  { value: 'month', label: '本月' }
 ]
+
+// 获取当前用户的预约
+const myReservations = computed(() => {
+  if (!authStore.user) return []
+
+  return reservationStore.reservations.filter(reservation =>
+    reservation.organizerId === authStore.user?.id ||
+    reservation.organizer?.email === authStore.user?.email
+  )
+})
 
 // 过滤后的预约列表
 const filteredReservations = computed(() => {
-  let filtered = reservationStore.reservations
-
-  // 按会议室筛选
-  if (selectedRoom.value) {
-    filtered = filtered.filter(r => r.room?.id === selectedRoom.value || r.roomId === selectedRoom.value)
-  }
+  let filtered = myReservations.value
 
   // 按状态筛选
   if (selectedStatus.value) {
@@ -62,7 +63,6 @@ const filteredReservations = computed(() => {
   if (selectedDateRange.value === 'today') {
     filtered = filtered.filter(r => {
       const reservationDate = new Date(r.startTime)
-      // 使用UTC时间进行日期比较，避免时区问题
       const reservationDateUTC = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
       const nowUTC = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       return reservationDateUTC.getTime() === nowUTC.getTime()
@@ -71,7 +71,6 @@ const filteredReservations = computed(() => {
     const tomorrow = addDays(now, 1)
     filtered = filtered.filter(r => {
       const reservationDate = new Date(r.startTime)
-      // 使用UTC时间进行日期比较，避免时区问题
       const reservationDateUTC = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
       const tomorrowUTC = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
       return reservationDateUTC.getTime() === tomorrowUTC.getTime()
@@ -81,13 +80,57 @@ const filteredReservations = computed(() => {
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
     filtered = filtered.filter(r => {
       const reservationDate = new Date(r.startTime)
-      // 使用UTC时间进行日期比较
       const reservationDateUTC = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
       return reservationDateUTC >= weekStart && reservationDateUTC <= weekEnd
     })
+  } else if (selectedDateRange.value === 'month') {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    filtered = filtered.filter(r => {
+      const reservationDate = new Date(r.startTime)
+      return reservationDate >= monthStart && reservationDate <= monthEnd
+    })
   }
 
-  return filtered.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  return filtered.sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+})
+
+// 按状态分组的预约统计
+const reservationStats = computed(() => {
+  const stats = {
+    total: myReservations.value.length,
+    confirmed: 0,
+    pending: 0,
+    cancelled: 0,
+    completed: 0,
+    upcoming: 0,
+    past: 0
+  }
+
+  myReservations.value.forEach(reservation => {
+    switch (reservation.status) {
+      case 'CONFIRMED':
+        stats.confirmed++
+        break
+      case 'PENDING':
+        stats.pending++
+        break
+      case 'CANCELLED':
+        stats.cancelled++
+        break
+      case 'COMPLETED':
+        stats.completed++
+        break
+    }
+
+    if (isPastReservation(reservation.startTime)) {
+      stats.past++
+    } else {
+      stats.upcoming++
+    }
+  })
+
+  return stats
 })
 
 // 获取状态显示样式
@@ -158,33 +201,11 @@ function isCurrentReservation(startTime: string | Date, endTime: string | Date):
   return isAfter(now, start) && isBefore(now, end)
 }
 
-// 检查用户是否可以编辑预约
-function canEditReservation(reservation: { status: string; startTime: string; organizerId?: string; organizer?: { email?: string } }): boolean {
-  if (!authStore.user) return false
-
-  // 检查是否是管理员
-  if (authStore.user.role === 'ADMIN') return true
-
-  // 检查是否是预约组织者
-  const isOrganizer = reservation.organizerId === authStore.user.id ||
-                     reservation.organizer?.email === authStore.user.email ||
-                     reservation.organizerName === authStore.user.name
-
-  // 检查预约是否已开始
-  const isUpcoming = new Date(reservation.startTime) > new Date()
-  const isNotCancelled = reservation.status !== 'CANCELLED'
-
-  return isOrganizer && isUpcoming && isNotCancelled
-}
-
-// 检查用户是否可以取消预约
-function canCancelReservation(reservation: any): boolean {
-  return canEditReservation(reservation) // 取消权限与编辑权限相同
-}
-
-// 加载预约数据
-async function loadReservations() {
+// 加载我的预约数据
+async function loadMyReservations() {
   try {
+    // 使用 store 的 fetchReservations 方法获取所有预约，然后在组件中过滤当前用户的预约
+    // 这样可以保持数据的一致性和复用 store 的逻辑
     await reservationStore.fetchReservations()
   } catch (err: any) {
     console.error('加载预约列表失败:', err)
@@ -193,18 +214,13 @@ async function loadReservations() {
 
 // 查看预约详情
 function viewReservationDetail(reservationId: string) {
-  router.push(`/reservations/${reservationId}`)
-}
-
-// 编辑预约
-function editReservation(reservationId: string) {
-  router.push(`/reservations/create?edit=${reservationId}`)
+  navigateTo(`/reservations/${reservationId}`)
 }
 
 // 取消预约
 async function cancelReservation(reservationId: string) {
   // TODO: 替换为更好的用户确认对话框组件
-  if (!window.confirm('确定要取消这个预约吗？此操作不可撤销。')) {
+  if (!window.confirm('确定要取消这个预约吗？')) {
     return
   }
 
@@ -224,81 +240,88 @@ async function cancelReservation(reservationId: string) {
   }
 }
 
-// 加载会议室数据
-async function _loadRooms() {
-  try {
-    await roomStore.fetchRooms()
-  } catch (err: unknown) {
-    console.error('加载会议室失败:', err)
-  }
-}
-
 // 生命周期
 onMounted(async () => {
-  console.warn('✅ Reservation list page mounted successfully!')
+  console.warn('✅ My reservations page mounted successfully!')
 
-  // 添加强制刷新逻辑
-  console.warn('🔄 开始加载预约数据...')
+  if (!authStore.user) {
+    console.warn('❌ 用户未登录')
+    return
+  }
+
+  console.warn(`🔄 开始加载用户 ${authStore.user.name} 的预约数据...`)
 
   try {
-    // 直接调用 store 方法
-    await reservationStore.fetchReservations()
-    console.warn('✅ 预约数据加载完成，数量:', reservationStore.reservations.length)
+    await loadMyReservations()
+    console.warn('✅ 我的预约数据加载完成，数量:', myReservations.value.length)
 
-    // 强制触发响应式更新
     await nextTick()
     console.warn('✅ nextTick 完成')
 
   } catch (error) {
-    console.error('❌ 预约数据加载失败:', error)
-  }
-
-  // 加载会议室数据
-  try {
-    await roomStore.fetchRooms()
-    console.warn('✅ 会议室数据加载完成，数量:', roomStore.rooms.length)
-  } catch (error) {
-    console.error('❌ 会议室数据加载失败:', error)
+    console.error('❌ 我的预约数据加载失败:', error)
   }
 
   console.warn('🔍 最终状态检查:')
-  console.warn('  - Store 预约数量:', reservationStore.reservations.length)
-  console.warn('  - Store 加载状态:', reservationStore.loading)
-  console.warn('  - Store 错误状态:', reservationStore.error)
-  console.warn('  - computed 过滤后数量:', filteredReservations.value.length)
+  console.warn('  - 用户信息:', authStore.user.name)
+  console.warn('  - 我的预约数量:', myReservations.value.length)
+  console.warn('  - 过滤后数量:', filteredReservations.value.length)
+  console.warn('  - 预约统计:', reservationStats.value)
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50">
     <UniversalHeader/>
-    <!-- 筛选条件 -->
+
+    <!-- 页面标题和统计 -->
     <div class="container mx-auto px-4 py-6">
+      <div class="bg-white rounded-lg shadow-sm border p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <i class="pi pi-calendar text-blue-600"></i>
+            我的预约
+          </h1>
+          <button
+            @click="navigateTo('/reservations/create')"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <i class="pi pi-plus"></i>
+            新建预约
+          </button>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div class="text-2xl font-bold text-blue-600">{{ reservationStats.total }}</div>
+            <div class="text-sm text-blue-600">全部预约</div>
+          </div>
+          <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div class="text-2xl font-bold text-green-600">{{ reservationStats.upcoming }}</div>
+            <div class="text-sm text-green-600">即将进行</div>
+          </div>
+          <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <div class="text-2xl font-bold text-yellow-600">{{ reservationStats.pending }}</div>
+            <div class="text-sm text-yellow-600">待确认</div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div class="text-2xl font-bold text-gray-600">{{ reservationStats.past }}</div>
+            <div class="text-sm text-gray-600">已结束</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="container mx-auto px-4 pb-6">
       <div class="bg-white rounded-lg shadow-sm border p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <i class="pi pi-filter text-blue-600"></i>
           筛选条件
         </h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- 会议室筛选 -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">会议室</label>
-            <select
-              v-model="selectedRoom"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">全部会议室</option>
-              <option
-                v-for="room in roomStore.rooms"
-                :key="room.id"
-                :value="room.id"
-              >
-                {{ room.name }}
-              </option>
-            </select>
-          </div>
-
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- 状态筛选 -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">状态</label>
@@ -342,19 +365,25 @@ onMounted(async () => {
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900">
-              预约列表 ({{ filteredReservations.length }})
+              我的预约列表 ({{ filteredReservations.length }})
             </h2>
           </div>
         </div>
 
         <div v-if="reservationStore.loading" class="p-8 text-center">
           <i class="pi pi-spinner pi-spin text-4xl text-blue-400 mb-4"></i>
-          <p class="text-gray-500">正在加载预约列表...</p>
+          <p class="text-gray-500">正在加载我的预约列表...</p>
         </div>
 
         <div v-else-if="filteredReservations.length === 0" class="p-8 text-center">
           <i class="pi pi-calendar-times text-4xl text-gray-400 mb-4"></i>
-          <p class="text-gray-500">暂无符合条件的预约记录</p>
+          <p class="text-gray-500 mb-4">暂无符合条件的预约记录</p>
+          <button
+            @click="navigateTo('/reservations/create')"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            创建第一个预约
+          </button>
         </div>
 
         <div v-else class="divide-y divide-gray-200">
@@ -389,10 +418,6 @@ onMounted(async () => {
                     <div class="flex items-center gap-2">
                       <i class="pi pi-home text-gray-400"></i>
                       <span>会议室：{{ reservation.room?.name || reservation.roomName || '未知' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <i class="pi pi-user text-gray-400"></i>
-                      <span>组织者：{{ reservation.organizer?.name || reservation.organizerName || '未知' }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-users text-gray-400"></i>
@@ -431,15 +456,14 @@ onMounted(async () => {
                   查看详情
                 </button>
                 <button
-                  v-if="canEditReservation(reservation)"
-                  @click="editReservation(reservation.id)"
+                  v-if="!isPastReservation(reservation.startTime) && reservation.status !== 'CANCELLED'"
                   class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 >
                   <i class="pi pi-pencil mr-1"></i>
                   编辑
                 </button>
                 <button
-                  v-if="canCancelReservation(reservation)"
+                  v-if="!isPastReservation(reservation.startTime) && reservation.status !== 'CANCELLED'"
                   @click="cancelReservation(reservation.id)"
                   class="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
                 >

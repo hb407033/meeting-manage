@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { format, addDays, startOfDay, addHours, addMinutes, isToday, isTomorrow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useRoute, useRouter } from 'vue-router'
 
 // 导入时间选择器组件
 import TimeSlotSelector from '~/components/features/reservations/TimeSlotSelectorSimple.vue'
@@ -13,11 +14,19 @@ import { useRoomStore } from '~/stores/rooms'
 // 导入认证composable
 import { useAuth } from '~/composables/useAuth'
 
+// 使用路由
+const route = useRoute()
+const router = useRouter()
+
+// 检查是否为编辑模式
+const isEditMode = computed(() => !!route.query.edit)
+const editReservationId = computed(() => route.query.edit as string)
+
 // 页面设置
 definePageMeta({
   layout: 'default',
-  title: '会议室预约',
-  description: '查看会议室可用时间并创建预约'
+  title: computed(() => isEditMode.value ? '编辑预约' : '会议室预约'),
+  description: computed(() => isEditMode.value ? '编辑会议室预约信息' : '查看会议室可用时间并创建预约')
 })
 
 // 时间选择器接口类型
@@ -48,7 +57,7 @@ const reservationStore = useReservationStore()
 const roomStore = useRoomStore()
 
 // 使用认证composable
-const { canAccess } = useAuth()
+const { canAccess: _canAccess } = useAuth()
 
 // 生成时间槽数据 - 基于选择的日期和会议室设置
 const generateTimeSlots = async (roomId: string, targetDate: Date): Promise<TimeSlot[]> => {
@@ -276,15 +285,14 @@ async function handleReservationSubmit() {
   }
 
   isSubmitting.value = true
-  message.value = '正在提交预约...'
+  message.value = isEditMode.value ? '正在更新预约...' : '正在提交预约...'
 
   try {
     // 获取最早和最晚时间作为开始和结束时间
     const startTime = new Date(Math.min(...selectedTimeSlots.value.map(slot => slot.startTime.getTime())))
     const endTime = new Date(Math.max(...selectedTimeSlots.value.map(slot => slot.endTime.getTime())))
 
-    // 使用store创建预约
-    const response = await reservationStore.createReservation({
+    const reservationData = {
       title: reservationTitle.value.trim(),
       roomId: selectedRoom.value,
       startTime: startTime.toISOString(),
@@ -293,24 +301,35 @@ async function handleReservationSubmit() {
       description: reservationDescription.value.trim(),
       organizerName: reservationHost.value.trim(),
       attendees: reservationAttendees.value.map(name => ({ name }))
-    })
+    }
 
-    console.log('预约创建成功:', response)
+    let response
+    if (isEditMode.value && editReservationId.value) {
+      // 编辑模式：更新现有预约
+      response = await reservationStore.updateReservation(editReservationId.value, reservationData)
+      console.warn('预约更新成功:', response)
+      message.value = '预约更新成功！'
+    } else {
+      // 创建模式：创建新预约
+      response = await reservationStore.createReservation(reservationData)
+      console.warn('预约创建成功:', response)
+      message.value = '预约创建成功！'
+    }
 
-    // 重置表单
-    selectedRoom.value = ''
-    reservationDate.value = format(new Date(), 'yyyy-MM-dd')
-    selectedTimeSlots.value = []
-    reservationTitle.value = ''
-    reservationHost.value = ''
-    reservationAttendees.value = []
-    reservationDescription.value = ''
-
-    message.value = '预约创建成功！'
+    // 只有在创建模式下才重置表单
+    if (!isEditMode.value) {
+      selectedRoom.value = ''
+      reservationDate.value = format(new Date(), 'yyyy-MM-dd')
+      selectedTimeSlots.value = []
+      reservationTitle.value = ''
+      reservationHost.value = ''
+      reservationAttendees.value = []
+      reservationDescription.value = ''
+    }
 
   } catch (err: any) {
-    console.error('预约创建失败:', err)
-    message.value = `创建预约失败: ${err.message || '未知错误'}`
+    console.error(isEditMode.value ? '预约更新失败:' : '预约创建失败:', err)
+    message.value = `${isEditMode.value ? '更新' : '创建'}预约失败: ${err.message || '未知错误'}`
   } finally {
     isSubmitting.value = false
   }
@@ -353,61 +372,76 @@ async function loadRooms() {
   }
 }
 
+// 加载编辑模式的预约数据
+async function loadEditReservation() {
+  if (!isEditMode.value || !editReservationId.value) return
+
+  try {
+    message.value = '正在加载预约数据...'
+    await reservationStore.fetchReservation(editReservationId.value)
+
+    const reservation = reservationStore.currentReservation
+    if (!reservation) {
+      message.value = '预约不存在或已被删除'
+      router.push('/reservations/my')
+      return
+    }
+
+    // 检查权限：只有预约组织者可以编辑
+    const { user } = useAuth()
+    const isOrganizer = reservation.organizerId === user?.id ||
+                       reservation.organizer?.email === user?.email
+
+    if (!isOrganizer) {
+      message.value = '您没有权限编辑此预约'
+      router.push('/reservations/my')
+      return
+    }
+
+    // 填充表单数据
+    selectedRoom.value = reservation.roomId || ''
+    reservationTitle.value = reservation.title || ''
+    reservationHost.value = reservation.organizerName || user?.name || ''
+    reservationDescription.value = reservation.description || ''
+    reservationAttendees.value = reservation.attendees?.map(a => a.name) || []
+
+    // 设置日期
+    if (reservation.startTime) {
+      reservationDate.value = format(new Date(reservation.startTime), 'yyyy-MM-dd')
+    }
+
+    message.value = '预约数据加载完成！您可以修改信息并选择新的时间'
+
+  } catch (error: any) {
+    console.error('加载预约数据失败:', error)
+    message.value = `加载预约数据失败: ${error.message}`
+  }
+}
+
 // 生命周期
 onMounted(async () => {
   console.log('✅ Reservations page mounted successfully!')
-  message.value = '页面加载成功！请填写左侧表单并选择时间'
+
+  // 根据模式显示不同消息
+  if (isEditMode.value) {
+    message.value = '正在加载编辑数据...'
+  } else {
+    message.value = '页面加载成功！请填写左侧表单并选择时间'
+  }
 
   // 加载会议室数据
   await loadRooms()
+
+  // 如果是编辑模式，加载预约数据
+  if (isEditMode.value) {
+    await loadEditReservation()
+  }
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- 页面标题 -->
-    <div class="bg-white shadow-sm border-b">
-      <div class="container mx-auto px-4 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">会议室预约</h1>
-            <p class="mt-1 text-gray-600">填写预约信息并选择时间</p>
-          </div>
-          <div class="flex gap-3">
-            <NuxtLink
-              to="/reservations"
-              class="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-list"></i>
-              预约列表
-            </NuxtLink>
-            <NuxtLink
-              to="/admin/rooms/availability"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-              v-if="canAccess('room', 'read')"
-            >
-              <i class="pi pi-clock"></i>
-              会议室可用时间
-            </NuxtLink>
-            <NuxtLink
-              to="/admin/rooms"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-              v-if="canAccess('room', 'read')"
-            >
-              <i class="pi pi-home"></i>
-              会议室管理
-            </NuxtLink>
-            <NuxtLink
-              to="/dashboard"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-th-large"></i>
-              控制台
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </div>
+    <UniversalHeader />
 
     <!-- 状态消息 -->
     <div v-if="message" class="container mx-auto px-4 py-3">
