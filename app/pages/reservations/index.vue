@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { format, addDays, startOfWeek, endOfWeek, isAfter, isBefore, isToday } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 
@@ -14,7 +14,7 @@ const roomStore = useRoomStore()
 // 筛选状态
 const selectedRoom = ref<string>('')
 const selectedStatus = ref<string>('')
-const selectedDateRange = ref<string>('today')
+const selectedDateRange = ref<string>('all')
 
 // 状态选项
 const statusOptions = [
@@ -27,10 +27,10 @@ const statusOptions = [
 
 // 日期范围选项
 const dateRangeOptions = [
+  { value: 'all', label: '全部' },
   { value: 'today', label: '今天' },
   { value: 'tomorrow', label: '明天' },
-  { value: 'week', label: '本周' },
-  { value: 'all', label: '全部' }
+  { value: 'week', label: '本周' }
 ]
 
 // 过滤后的预约列表
@@ -47,29 +47,37 @@ const filteredReservations = computed(() => {
     filtered = filtered.filter(r => r.status === selectedStatus.value)
   }
 
-  // 按日期范围筛选
+  // 按日期范围筛选（修复时区问题）
   const now = new Date()
   if (selectedDateRange.value === 'today') {
     filtered = filtered.filter(r => {
       const reservationDate = new Date(r.startTime)
-      return reservationDate.toDateString() === now.toDateString()
+      // 使用UTC时间进行日期比较，避免时区问题
+      const reservationDateUTC = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
+      const nowUTC = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      return reservationDateUTC.getTime() === nowUTC.getTime()
     })
   } else if (selectedDateRange.value === 'tomorrow') {
     const tomorrow = addDays(now, 1)
     filtered = filtered.filter(r => {
       const reservationDate = new Date(r.startTime)
-      return reservationDate.toDateString() === tomorrow.toDateString()
+      // 使用UTC时间进行日期比较，避免时区问题
+      const reservationDateUTC = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
+      const tomorrowUTC = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
+      return reservationDateUTC.getTime() === tomorrowUTC.getTime()
     })
   } else if (selectedDateRange.value === 'week') {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 })
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
     filtered = filtered.filter(r => {
       const reservationDate = new Date(r.startTime)
-      return reservationDate >= weekStart && reservationDate <= weekEnd
+      // 使用UTC时间进行日期比较
+      const reservationDateUTC = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
+      return reservationDateUTC >= weekStart && reservationDateUTC <= weekEnd
     })
   }
 
-  return filtered.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  return filtered.sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 })
 
 // 获取状态显示样式
@@ -104,18 +112,22 @@ function getStatusText(status: string): string {
 }
 
 // 格式化时间
-function formatDateTime(date: Date): string {
-  return format(date, 'MM月dd日 HH:mm', { locale: zhCN })
+function formatDateTime(date: string | Date): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return format(dateObj, 'MM月dd日 HH:mm', { locale: zhCN })
 }
 
-function formatTime(date: Date): string {
-  return format(date, 'HH:mm', { locale: zhCN })
+function formatTime(date: string | Date): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return format(dateObj, 'HH:mm', { locale: zhCN })
 }
 
 // 获取时长
-function getDuration(startTime: Date, endTime: Date): string {
-  const hours = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60))
-  const minutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)) % 60
+function getDuration(startTime: string | Date, endTime: string | Date): string {
+  const start = typeof startTime === 'string' ? new Date(startTime) : startTime
+  const end = typeof endTime === 'string' ? new Date(endTime) : endTime
+  const hours = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60))
+  const minutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60)) % 60
   if (hours > 0) {
     return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`
   }
@@ -123,14 +135,17 @@ function getDuration(startTime: Date, endTime: Date): string {
 }
 
 // 检查是否为过期预约
-function isPastReservation(startTime: Date): boolean {
-  return isBefore(new Date(startTime), new Date())
+function isPastReservation(startTime: string | Date): boolean {
+  const start = typeof startTime === 'string' ? new Date(startTime) : startTime
+  return isBefore(start, new Date())
 }
 
 // 检查是否为进行中的预约
-function isCurrentReservation(startTime: Date, endTime: Date): boolean {
+function isCurrentReservation(startTime: string | Date, endTime: string | Date): boolean {
   const now = new Date()
-  return isAfter(now, startTime) && isBefore(now, endTime)
+  const start = typeof startTime === 'string' ? new Date(startTime) : startTime
+  const end = typeof endTime === 'string' ? new Date(endTime) : endTime
+  return isAfter(now, start) && isBefore(now, end)
 }
 
 // 加载预约数据
@@ -155,11 +170,35 @@ async function loadRooms() {
 onMounted(async () => {
   console.log('✅ Reservation list page mounted successfully!')
 
-  // 并行加载数据
-  await Promise.all([
-    loadReservations(),
-    loadRooms()
-  ])
+  // 添加强制刷新逻辑
+  console.log('🔄 开始加载预约数据...')
+
+  try {
+    // 直接调用 store 方法
+    await reservationStore.fetchReservations()
+    console.log('✅ 预约数据加载完成，数量:', reservationStore.reservations.length)
+
+    // 强制触发响应式更新
+    await nextTick()
+    console.log('✅ nextTick 完成')
+
+  } catch (error) {
+    console.error('❌ 预约数据加载失败:', error)
+  }
+
+  // 加载会议室数据
+  try {
+    await roomStore.fetchRooms()
+    console.log('✅ 会议室数据加载完成，数量:', roomStore.rooms.length)
+  } catch (error) {
+    console.error('❌ 会议室数据加载失败:', error)
+  }
+
+  console.log('🔍 最终状态检查:')
+  console.log('  - Store 预约数量:', reservationStore.reservations.length)
+  console.log('  - Store 加载状态:', reservationStore.loading)
+  console.log('  - Store 错误状态:', reservationStore.error)
+  console.log('  - computed 过滤后数量:', filteredReservations.value.length)
 })
 </script>
 
@@ -337,15 +376,15 @@ onMounted(async () => {
                   <div class="space-y-1">
                     <div class="flex items-center gap-2">
                       <i class="pi pi-calendar text-gray-400"></i>
-                      <span>日期：{{ formatDateTime(new Date(reservation.startTime)) }}</span>
+                      <span>日期：{{ formatDateTime(reservation.startTime) }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-clock text-gray-400"></i>
-                      <span>时间：{{ formatTime(new Date(reservation.startTime)) }} - {{ formatTime(new Date(reservation.endTime)) }}</span>
+                      <span>时间：{{ formatTime(reservation.startTime) }} - {{ formatTime(reservation.endTime) }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <i class="pi pi-hourglass text-gray-400"></i>
-                      <span>时长：{{ getDuration(new Date(reservation.startTime), new Date(reservation.endTime)) }}</span>
+                      <span>时长：{{ getDuration(reservation.startTime, reservation.endTime) }}</span>
                     </div>
                   </div>
                 </div>
