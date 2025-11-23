@@ -106,13 +106,7 @@ async function handleFormSubmit(formData: ReservationFormData) {
         organizerId: user.value?.id
       }
 
-      response = await $fetch(`/api/v1/reservations/${editReservationId.value}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: reservationData
-      })
+      response = await reservationStore.updateReservationData(editReservationId.value, reservationData)
       console.log('预约更新成功:', response)
       message.value = '预约更新成功！'
     } else {

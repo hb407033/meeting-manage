@@ -363,6 +363,11 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminStore } from '~/stores/admin'
+
+// Store实例
+const adminStore = useAdminStore()
+
 // Props定义
 interface Props {
   onAssignmentChange?: (assignments: any[]) => void
@@ -567,10 +572,8 @@ const selectUser = async (user: User) => {
 const loadUsers = async () => {
   userLoading.value = true
   try {
-    const { data } = await $fetch('/api/v1/users/filtered', {
-      query: {
-        organizationId: selectedOrganization.value || undefined
-      }
+    const data = await adminStore.getFilteredUsers({
+      organizationId: selectedOrganization.value || undefined
     })
     users.value = data
   } catch (error) {
@@ -583,7 +586,7 @@ const loadUsers = async () => {
 
 const loadOrganizations = async () => {
   try {
-    const { data } = await $fetch('/api/v1/organizations')
+    const data = await adminStore.getOrganizations()
     organizations.value = data
   } catch (error) {
     console.error('加载组织数据失败:', error)
@@ -592,7 +595,7 @@ const loadOrganizations = async () => {
 
 const loadRoles = async () => {
   try {
-    const { data } = await $fetch('/api/v1/admin/roles')
+    const data = await adminStore.getRoles()
     roles.value = data
   } catch (error) {
     console.error('加载角色数据失败:', error)
@@ -602,7 +605,7 @@ const loadRoles = async () => {
 
 const loadUserRoles = async (userId: string) => {
   try {
-    const { data } = await $fetch(`/api/v1/admin/user-roles/${userId}`)
+    const data = await adminStore.getUserRoles(userId)
     currentUserRoles.value = data
     selectedRoles.value = data.map((ur: UserRole) => ur.roleId)
     originalSelectedRoles.value = [...selectedRoles.value]
@@ -659,13 +662,10 @@ const saveUserRoleAssignments = async () => {
       reason: roleConfiguration.value.reason
     }))
 
-    const response = await $fetch('/api/v1/admin/user-roles/assign-batch', {
-      method: 'POST',
-      body: {
-        userId: selectedUser.value.id,
-        assignments,
-        reason: roleConfiguration.value.reason
-      }
+    const response = await adminStore.batchAssignUserRoles({
+      userId: selectedUser.value.id,
+      assignments,
+      reason: roleConfiguration.value.reason
     })
 
     if (response.code === 200) {

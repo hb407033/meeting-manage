@@ -4,6 +4,7 @@
  */
 
 import { defineStore } from 'pinia'
+import { authStateManager } from '~/utils/auth-state-manager'
 
 // 从 rooms store 导入 PaginationMeta
 import type { PaginationMeta } from './rooms'
@@ -21,8 +22,9 @@ function getApiFetch() {
       onRequest({ request, options }) {
         // 只对API请求添加认证头
         if (typeof request === 'string' && request.startsWith('/api/')) {
-          // 从本地存储获取token
-          const token = import.meta.client ? localStorage.getItem('auth_access_token') : null
+          // 使用 AuthStateManager 统一管理token
+          const state = authStateManager.getState()
+          const token = state.accessToken
 
           if (token) {
             options.headers = {
@@ -379,6 +381,119 @@ export const useReservationStore = defineStore('reservations', {
       }
     },
 
+    // 获取我的预约列表
+    async fetchMyReservations(params?: {
+      page?: number
+      limit?: number
+      status?: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        // 构建查询参数
+        const queryParams: any = {
+          page: params?.page || 1,
+          limit: params?.limit || 20
+        }
+
+        if (params?.status) {
+          queryParams.status = params.status
+        }
+
+        const apiFetch = getApiFetch()
+        const response = await apiFetch('/api/v1/reservations/my', {
+          query: queryParams
+        })
+
+        // 处理响应格式
+        if (response && typeof response === 'object') {
+          if ('success' in response && 'data' in response) {
+            // 标准API响应格式: { success: true, data: { data: [...], total: ..., pagination: {...} } }
+            const responseData = response.data as any
+            if (responseData && typeof responseData === 'object') {
+              // 处理预约数据
+              if (responseData.data && Array.isArray(responseData.data)) {
+                this.reservations = responseData.data as Reservation[]
+              } else {
+                this.reservations = []
+              }
+
+              // 处理分页信息
+              if (responseData.pagination) {
+                this.pagination = responseData.pagination as PaginationMeta
+              } else {
+                // 如果没有分页信息，创建基本的分页对象
+                const total = responseData.total || this.reservations.length
+                this.pagination = {
+                  page: queryParams.page,
+                  limit: queryParams.limit,
+                  total: total,
+                  totalPages: Math.ceil(total / queryParams.limit),
+                  hasNext: queryParams.page < Math.ceil(total / queryParams.limit),
+                  hasPrev: queryParams.page > 1
+                }
+              }
+            }
+          } else if ('data' in response && 'total' in response) {
+            // 简化API响应格式: { data: [...], total: ... }
+            const responseData = response.data as any
+            if (Array.isArray(responseData)) {
+              this.reservations = responseData as Reservation[]
+            } else {
+              this.reservations = []
+            }
+            this.pagination = {
+              page: queryParams.page,
+              limit: queryParams.limit,
+              total: response.total as number,
+              totalPages: Math.ceil((response.total as number) / queryParams.limit),
+              hasNext: queryParams.page < Math.ceil((response.total as number) / queryParams.limit),
+              hasPrev: queryParams.page > 1
+            }
+          } else if (Array.isArray(response)) {
+            // 数组格式
+            this.reservations = response as Reservation[]
+            this.pagination = {
+              page: queryParams.page,
+              limit: queryParams.limit,
+              total: response.length,
+              totalPages: 1,
+              hasNext: false,
+              hasPrev: false
+            }
+          }
+        }
+
+        return {
+          reservations: this.reservations,
+          pagination: this.pagination
+        }
+
+      } catch (error: any) {
+        this.setError(error.message || '获取我的预约列表失败')
+        console.error('获取我的预约列表失败:', error)
+
+        // 发生错误时返回空数据
+        this.reservations = []
+        this.pagination = {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        }
+
+        return {
+          reservations: [],
+          pagination: this.pagination
+        }
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
     // 获取预约列表
     async fetchReservations(params?: ReservationQuery) {
       this.setLoading(true)
@@ -452,7 +567,7 @@ export const useReservationStore = defineStore('reservations', {
           console.log('公开API响应:', publicResponse)
 
           if (publicResponse && publicResponse.success && publicResponse.data) {
-            this.reservations = publicResponse.data.reservations as Reservation[]
+            this.reservations = publicResponse.data.reservations as unknown as Reservation[]
             this.pagination = publicResponse.data.pagination as PaginationMeta
             console.log('✅ 使用公开API获取到真实数据:', this.reservations.length, '条记录')
           } else {
@@ -575,6 +690,215 @@ export const useReservationStore = defineStore('reservations', {
         throw error
       } finally {
         this.setLoading(false)
+      }
+    },
+
+    // 创建快速预约
+    async createQuickReservation(data: {
+      title: string
+      startTime: string
+      endTime: string
+      organizerId: string
+      roomId?: string
+      description?: string
+      attendeeCount: number
+    }): Promise<Reservation> {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        // 如果没有指定会议室，自动找一个可用的
+        let reservationData = { ...data }
+        if (!reservationData.roomId) {
+          const availableRoom = await this.findAvailableRoom(
+            reservationData.startTime,
+            reservationData.endTime,
+            reservationData.attendeeCount
+          )
+          if (availableRoom) {
+            reservationData.roomId = availableRoom.id
+          } else {
+            throw new Error('没有找到可用的会议室')
+          }
+        }
+
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: Reservation }>('/api/v1/reservations/quick', {
+          method: 'POST',
+          body: reservationData
+        })
+
+        // 添加到本地状态
+        if (response.data) {
+          this.reservations.unshift(response.data)
+
+          // 清除相关房间的可用性缓存
+          if (response.data.roomId && this.availability[response.data.roomId]) {
+            delete this.availability[response.data.roomId]
+          }
+        }
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '创建快速预约失败')
+        console.error('创建快速预约失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 查找可用会议室（内部方法）
+    async findAvailableRoom(startTime: string, endTime: string, attendeeCount?: number) {
+      try {
+        const query: any = { startTime, endTime, limit: 1 }
+        if (attendeeCount) {
+          query.capacity = attendeeCount
+        }
+
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: any[] }>('/api/v1/rooms/available', {
+          method: 'GET',
+          query
+        })
+
+        return response.data?.[0] || null
+      } catch (err: any) {
+        console.error('查找可用会议室失败:', err)
+        return null
+      }
+    },
+
+    // 延长预约时间
+    async extendReservation(reservationId: string, additionalMinutes: number = 30): Promise<Reservation> {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: Reservation }>(`/api/v1/reservations/${reservationId}/extend`, {
+          method: 'POST',
+          body: { additionalMinutes }
+        })
+
+        // 更新本地状态
+        const index = this.reservations.findIndex(reservation => reservation.id === reservationId)
+        if (index !== -1 && response.data) {
+          this.reservations[index] = response.data
+        }
+
+        if (this.currentReservation?.id === reservationId && response.data) {
+          this.currentReservation = response.data
+        }
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '延长预约失败')
+        console.error('延长预约失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取用户当前和即将开始的预约
+    async fetchCurrentUserReservations(userId: string): Promise<Reservation[]> {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: Reservation[] }>('/api/v1/reservations/user/current', {
+          method: 'GET',
+          query: { userId }
+        })
+
+        return response.data || []
+      } catch (error: any) {
+        this.setError(error.message || '获取预约信息失败')
+        console.error('获取预约信息失败:', error)
+        return []
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取会议室可用性列表
+    async fetchAvailableRooms(filters?: {
+      startTime?: string
+      endTime?: string
+      capacity?: number
+      location?: string
+    }): Promise<any[]> {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: any[] }>('/api/v1/rooms/availability', {
+          method: 'GET',
+          query: {
+            ...filters,
+            includeBookings: true
+          }
+        })
+
+        return response.data || []
+      } catch (error: any) {
+        this.setError(error.message || '获取会议室信息失败')
+        console.error('获取会议室信息失败:', error)
+        return []
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取用户预约统计
+    async fetchUserReservationStats(userId: string) {
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: any }>('/api/v1/statistics/user', {
+          method: 'GET',
+          query: { userId }
+        })
+
+        return response.data || {
+          totalReservations: 0,
+          upcomingReservations: 0,
+          completedReservations: 0,
+          cancelledReservations: 0,
+          totalHours: 0
+        }
+      } catch (error: any) {
+        console.error('获取预约统计失败:', error)
+        return {
+          totalReservations: 0,
+          upcomingReservations: 0,
+          completedReservations: 0,
+          cancelledReservations: 0,
+          totalHours: 0
+        }
+      }
+    },
+
+    // 检查时间冲突
+    async checkTimeConflict(roomId: string, startTime: string, endTime: string, excludeId?: string) {
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{ data: { hasConflict: boolean } }>('/api/v1/reservations/check-conflict', {
+          method: 'POST',
+          body: {
+            roomId,
+            startTime,
+            endTime,
+            excludeId
+          }
+        })
+
+        return response.data?.hasConflict || false
+      } catch (error: any) {
+        console.error('检查时间冲突失败:', error)
+        return false
       }
     },
 
@@ -782,7 +1106,7 @@ export const useReservationStore = defineStore('reservations', {
         mockAvailability[roomId] = {
           roomId,
           roomName: `会议室${roomId}`,
-          date: date,
+          date: date as string,
           availableSlots: [
             {
               startTime: `${date}T09:00:00Z`,
@@ -908,6 +1232,30 @@ export const useReservationStore = defineStore('reservations', {
       } finally {
         this.setLoading(false)
       }
+    },
+
+    // 检查房间可用性（用于直接页面调用）
+    async checkRoomAvailability(roomIds: string[], startTime: string, endTime: string) {
+      const apiFetch = getApiFetch()
+      return await apiFetch('/api/v1/reservations/availability', {
+        method: 'POST',
+        body: { roomIds, startTime, endTime }
+      })
+    },
+
+    // 获取预约详情（用于直接页面调用）
+    async getReservationById(reservationId: string) {
+      const apiFetch = getApiFetch()
+      return await apiFetch(`/api/v1/reservations/${reservationId}`)
+    },
+
+    // 更新预约信息（用于直接页面调用）
+    async updateReservationData(reservationId: string, data: any) {
+      const apiFetch = getApiFetch()
+      return await apiFetch(`/api/v1/reservations/${reservationId}`, {
+        method: 'PUT',
+        body: data
+      })
     }
   }
 })

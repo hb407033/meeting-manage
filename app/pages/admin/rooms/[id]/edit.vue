@@ -99,7 +99,7 @@ const loadRoom = async () => {
     loading.value = true
     error.value = null
 
-    const response = await $fetch(`/api/v1/rooms/${roomId}`)
+    const response = await roomStore.getRoomById(roomId)
     room.value = response.data
   } catch (err: any) {
     error.value = err.data?.message || '加载会议室详情失败'

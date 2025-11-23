@@ -4,6 +4,7 @@
  */
 
 import { defineStore } from 'pinia'
+import { authStateManager } from '~/utils/auth-state-manager'
 
 // 获取 $apiFetch 的辅助函数
 function getApiFetch() {
@@ -18,8 +19,9 @@ function getApiFetch() {
       onRequest({ request, options }) {
         // 只对API请求添加认证头
         if (typeof request === 'string' && request.startsWith('/api/')) {
-          // 从本地存储获取token
-          const token = import.meta.client ? localStorage.getItem('auth_access_token') : null
+          // 使用 AuthStateManager 统一管理token
+          const state = authStateManager.getState()
+          const token = state.accessToken
 
           if (token) {
             options.headers = {
@@ -745,6 +747,27 @@ export const useRoomStore = defineStore('rooms', {
       } finally {
         this.setLoading(false)
       }
+    },
+
+    // 获取房间详情（用于直接页面调用）
+    async getRoomById(roomId: string) {
+      const apiFetch = getApiFetch()
+      return await apiFetch(`/api/v1/rooms/${roomId}`)
+    },
+
+    // 获取房间历史（用于直接页面调用）
+    async getRoomHistory(roomId: string) {
+      const apiFetch = getApiFetch()
+      return await apiFetch(`/api/v1/rooms/${roomId}/history`)
+    },
+
+    // 更新房间信息（用于直接页面调用）
+    async updateRoomData(roomId: string, data: any) {
+      const apiFetch = getApiFetch()
+      return await apiFetch(`/api/v1/rooms/${roomId}`, {
+        method: 'PUT',
+        body: data
+      })
     }
   }
 })

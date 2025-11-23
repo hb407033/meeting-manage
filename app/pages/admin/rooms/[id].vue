@@ -293,7 +293,7 @@ const loadRoom = async () => {
     loading.value = true
     error.value = null
 
-    const response = await $fetch(`/api/v1/rooms/${roomId}`)
+    const response = await roomStore.getRoomById(roomId)
     room.value = response.data
 
     // 加载操作历史
@@ -312,7 +312,7 @@ const loadRoom = async () => {
 const loadHistory = async () => {
   try {
     historyLoading.value = true
-    const response = await $fetch(`/api/v1/rooms/${roomId}/history`)
+    const response = await roomStore.getRoomHistory(roomId)
     history.value = response.data || []
   } catch (err) {
     console.error('加载操作历史失败:', err)

@@ -68,17 +68,7 @@ const generateTimeSlots = async (roomId: string, targetDate: Date): Promise<Time
     const startTime = startOfDay(targetDate)
     const endTime = addDays(startTime, 1)
 
-    const response = await $fetch('/api/v1/reservations/availability', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: {
-        roomIds: [roomId],
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString()
-      }
-    })
+    const response = await reservationStore.checkRoomAvailability([roomId], startTime.toISOString(), endTime.toISOString())
 
     // 处理API返回的可用性数据
     if (response && response.data && response.data[roomId]) {

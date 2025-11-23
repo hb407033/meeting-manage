@@ -394,8 +394,8 @@ const retentionOptions = ref([
 // 方法
 const loadAlertStats = async () => {
   try {
-    const response = await $fetch('/api/v1/admin/alerts?limit=0')
-    alertStats.value = response.data.stats
+    const response = await adminStore.getAlerts()
+    alertStats.value = response.stats
   } catch (error) {
     console.error('Failed to load alert stats:', error)
   }
@@ -403,38 +403,24 @@ const loadAlertStats = async () => {
 
 const exportAuditReport = async () => {
   try {
-    const response = await $fetch('/api/v1/admin/audit-logs/export', {
-      method: 'POST',
-      body: {
-        format: 'xlsx',
-        filters: {},
-        fields: [
-          'id', 'timestamp', 'userName', 'userEmail', 'action',
-          'resourceType', 'resourceId', 'result', 'riskLevel',
-          'ipAddress', 'details'
-        ]
-      }
+    const response = await adminStore.exportAuditLogs({
+      format: 'xlsx',
+      filters: {},
+      fields: [
+        'id', 'timestamp', 'userName', 'userEmail', 'action',
+        'resourceType', 'resourceId', 'result', 'riskLevel',
+        'ipAddress', 'details'
+      ]
     })
 
-    // 创建下载链接
-    const blob = new Blob([response], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `audit-report-${new Date().toISOString().slice(0, 10)}.xlsx`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-
-    toast.add({
-      severity: 'success',
-      summary: '导出成功',
-      detail: '审计报告已成功导出',
-      life: 3000
-    })
+    if (response.success) {
+      toast.add({
+        severity: 'success',
+        summary: '导出成功',
+        detail: '审计报告已成功导出',
+        life: 3000
+      })
+    }
   } catch (error) {
     console.error('Export failed:', error)
     toast.add({
@@ -449,16 +435,11 @@ const exportAuditReport = async () => {
 const performCleanup = async () => {
   cleaning.value = true
   try {
-    const response = await $fetch('/api/v1/admin/audit-logs/cleanup', {
-      method: 'DELETE',
-      body: {
-        olderThanDays: cleanupConfig.days,
-        riskLevel: cleanupConfig.riskLevel === 'ALL' ? undefined : cleanupConfig.riskLevel,
-        dryRun: false
-      }
+    const data = await adminStore.cleanupAuditLogs({
+      olderThanDays: cleanupConfig.days,
+      riskLevel: cleanupConfig.riskLevel === 'ALL' ? undefined : cleanupConfig.riskLevel,
+      dryRun: false
     })
-
-    const data = response.data
 
     showCleanupDialog.value = false
 

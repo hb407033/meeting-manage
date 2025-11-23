@@ -440,6 +440,11 @@
 <script setup lang="ts">
 import {ref} from 'vue'
 import {useAuth} from '~/composables/useAuth'
+import { useAdminStore } from '~/stores/admin'
+
+// Store实例
+const adminStore = useAdminStore()
+
 // 响应式数据
 const activeTab = ref(0)
 const loadingPermissions = ref(false)
@@ -532,7 +537,7 @@ const loadData = async () => {
 const loadPermissions = async () => {
   loadingPermissions.value = true
   try {
-    const { data } = await $fetch('/api/v1/admin/permissions')
+    const data = await adminStore.getPermissions()
     permissions.value = data
   } catch (error) {
       console.error('加载权限数据失败:', error)
@@ -544,7 +549,7 @@ const loadPermissions = async () => {
 const loadRoles = async () => {
   loadingRoles.value = true
   try {
-    const { data } = await $fetch('/api/v1/admin/roles')
+    const data = await adminStore.getRoles()
     roles.value = data
   } catch (error) {
     console.error('加载角色数据失败:', error)
@@ -555,7 +560,7 @@ const loadRoles = async () => {
 
 const loadStats = async () => {
   try {
-    const { data } = await $fetch('/api/v1/admin/organizations')
+    const data = await adminStore.getOrganizationStats()
     stats.value = data.statistics
   } catch (error) {
     console.error('加载统计数据失败:', error)
@@ -564,7 +569,7 @@ const loadStats = async () => {
 
 const loadAvailablePermissions = async () => {
   try {
-    const { data } = await $fetch('/api/v1/admin/permissions')
+    const data = await adminStore.getPermissions()
     availablePermissions.value = data
   } catch (error) {
     console.error('加载可用权限失败:', error)
@@ -579,12 +584,9 @@ const handleSearch = useDebounceFn(() => {
 const createPermission = async () => {
   creatingPermission.value = true
   try {
-    const response = await $fetch('/api/v1/admin/permissions', {
-      method: 'POST',
-      body: permissionForm.value
-    })
+    const response = await adminStore.createPermission(permissionForm.value)
 
-    if (response.code === 201) {
+    if (response.success) {
       useToast().success('权限创建成功')
       showCreatePermissionDialog.value = false
       resetPermissionForm()
@@ -602,12 +604,9 @@ const createPermission = async () => {
 const createRole = async () => {
   creatingRole.value = true
   try {
-    const response = await $fetch('/api/v1/admin/roles', {
-      method: 'POST',
-      body: roleForm.value
-    })
+    const response = await adminStore.createRole(roleForm.value)
 
-    if (response.code === 201) {
+    if (response.success) {
       useToast().success('角色创建成功')
       showCreateRoleDialog.value = false
       resetRoleForm()
@@ -651,9 +650,7 @@ const deletePermission = async (permission) => {
 
   if (confirmed) {
     try {
-      await $fetch(`/api/v1/admin/permissions/${permission.id}`, {
-        method: 'DELETE'
-      })
+      await adminStore.deletePermission(permission.id)
       useToast().success('权限删除成功')
       await loadPermissions()
     } catch (error) {
@@ -668,9 +665,7 @@ const deleteRole = async (role) => {
 
   if (confirmed) {
     try {
-      await $fetch(`/api/v1/admin/roles/${role.id}`, {
-        method: 'DELETE'
-      })
+      await adminStore.deleteRole(role.id)
       useToast().success('角色删除成功')
       await loadRoles()
     } catch (error) {
