@@ -1,4 +1,7 @@
 import { defineStore } from 'pinia'
+import { tokenRefreshManager, type TokenSet } from '~/utils/token-refresh-manager'
+import { authStateManager } from '~/utils/auth-state-manager'
+import { authErrorHandler, type AuthError } from '~/utils/auth-error-handler'
 
 // 声明 Nuxt 应用扩展类型
 declare module '#app' {
@@ -50,11 +53,7 @@ export interface AuthState {
   tokenExpiresAt: number | null
 }
 
-export interface Tokens {
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
-}
+// TokenSet 接口已从 token-refresh-manager 导入
 
 export interface LoginCredentials {
   email: string
@@ -67,12 +66,7 @@ export interface RegisterData {
   name: string
 }
 
-const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'auth_access_token',
-  REFRESH_TOKEN: 'auth_refresh_token',
-  USER_DATA: 'auth_user_data',
-  TOKEN_EXPIRES_AT: 'auth_token_expires_at'
-} as const
+// STORAGE_KEYS 已弃用，所有存储操作现在通过 AuthStateManager 统一管理
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
@@ -105,51 +99,94 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     /**
-     * 初始化认证状态（从本地存储恢复）
+     * 初始化认证状态（使用状态管理器）
      */
-    initAuth() {
+    async initAuth() {
       try {
         // 只在客户端执行
         if (typeof window === 'undefined') return
 
-        // 如果已经有认证状态，避免重复初始化
-        if (this.isAuthenticated && this.accessToken) {
-          return
-        }
+        // 移除重复初始化检查，总是尝试从状态管理器恢复状态
+        // 因为页面刷新后 store 状态都是初始值，不能反映真实情况
 
-        const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)
-        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
-        const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA)
-        const tokenExpiresAt = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRES_AT)
+        console.log('[AuthStore] 开始初始化认证状态')
 
-        if (accessToken && userData) {
-          try {
-            this.accessToken = accessToken
-            this.refreshToken = refreshToken
-            this.user = JSON.parse(userData)
-            this.isAuthenticated = true
-            this.tokenExpiresAt = tokenExpiresAt ? parseInt(tokenExpiresAt) : null
+        // 等待状态管理器完全初始化（避免竞态条件）
+        await this.waitForStateManagerInit()
 
-            // 检查令牌是否过期
-            if (this.isTokenExpiringSoon) {
-              // 异步刷新令牌，不阻塞初始化
-              this.refreshTokens().catch(() => {
-                console.warn('Token refresh failed during init, clearing auth state')
-                this.clearAuth()
-              })
+        // 从状态管理器获取状态
+        const state = authStateManager.getState()
+
+        if (state.isAuthenticated && state.user && state.accessToken) {
+          // 同步状态到 store
+          this.syncFromStateManager(state)
+
+          console.log('[AuthStore] 从状态管理器恢复认证状态')
+
+          // 检查令牌是否已过期或即将过期
+          if (authStateManager.isTokenExpired()) {
+            console.warn('[AuthStore] 检测到令牌已过期，尝试刷新')
+            try {
+              await this.refreshTokens()
+            } catch (error) {
+              console.warn('[AuthStore] 令牌已过期且刷新失败，清除认证状态')
+              this.clearAuth()
+              return
             }
-          } catch (parseError) {
-            console.error('Failed to parse user data:', parseError)
-            this.clearAuth()
+          } else if (authStateManager.isTokenExpiringSoon()) {
+            console.log('[AuthStore] 令牌即将过期，尝试刷新')
+            try {
+              await this.refreshTokens()
+            } catch (error) {
+              console.warn('[AuthStore] 初始化时令牌刷新失败，但保持当前状态')
+              // 不立即清除状态，让用户可以继续使用，在后续操作中处理令牌过期
+            }
+          } else {
+            console.log('[AuthStore] 认证状态恢复成功，令牌有效')
           }
         } else {
-          // 确保状态完全清除
+          console.log('[AuthStore] 无有效的认证状态，用户需要登录')
           this.clearAuth()
         }
       } catch (error) {
-        console.error('Failed to initialize auth:', error)
-        this.clearAuth()
+        console.error('[AuthStore] 初始化认证状态失败:', error)
+        const authError = authErrorHandler.handleError(error, { action: 'login' })
+
+        if (authErrorHandler.shouldClearAuthState(authError)) {
+          this.clearAuth()
+        }
       }
+    },
+
+    /**
+     * 等待状态管理器初始化完成
+     */
+    async waitForStateManagerInit(maxRetries = 10, delay = 100): Promise<void> {
+      for (let i = 0; i < maxRetries; i++) {
+        // 简单检查状态管理器是否已经从存储中加载了数据
+        const state = authStateManager.getState()
+        if (state.lastSync > 0) {
+          console.log('[AuthStore] 状态管理器已初始化')
+          return
+        }
+
+        console.log(`[AuthStore] 等待状态管理器初始化... (${i + 1}/${maxRetries})`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+
+      console.warn('[AuthStore] 状态管理器初始化超时，继续执行')
+    },
+
+    /**
+     * 从状态管理器同步状态
+     */
+    syncFromStateManager(state: any) {
+      this.user = state.user
+      this.accessToken = state.accessToken
+      this.refreshToken = state.refreshToken
+      this.isAuthenticated = state.isAuthenticated
+      this.tokenExpiresAt = state.tokenExpiresAt
+      this.lastError = null
     },
 
     /**
@@ -164,7 +201,7 @@ export const useAuthStore = defineStore('auth', {
           success: boolean
           data: {
             user: User
-            tokens: Tokens
+            tokens: TokenSet
           }
           message: string
         }>('/api/auth/login', {
@@ -173,21 +210,32 @@ export const useAuthStore = defineStore('auth', {
         })
 
         if (response.success && response.data) {
-          this.setAuthState(response.data.user, response.data.tokens)
+          // 使用状态管理器更新状态
+          authStateManager.updateAuthState(response.data.user, response.data.tokens)
+          this.syncFromStateManager(authStateManager.getState())
           this.loginAttempts = 0
+
+          console.log('[AuthStore] 登录成功')
         } else {
           throw new Error(response.message || '登录失败')
         }
       } catch (error: any) {
         this.loginAttempts++
-        this.lastError = error.message || '登录失败，请稍后重试'
+        const authError = authErrorHandler.handleError(error, {
+          action: 'login',
+          url: '/api/auth/login',
+          retryCount: this.loginAttempts
+        })
 
-        // 清除可能存在的认证状态
-        if (this.loginAttempts >= 3) {
+        this.lastError = authErrorHandler.getUserMessage(authError)
+
+        // 根据错误处理器的建议清除状态
+        if (authErrorHandler.shouldClearAuthState(authError)) {
           this.clearAuth()
         }
 
-        throw error
+        console.error('[AuthStore] 登录失败:', authError)
+        throw authError
       } finally {
         this.isLoading = false
       }
@@ -205,7 +253,7 @@ export const useAuthStore = defineStore('auth', {
           success: boolean
           data: {
             user: User
-            tokens: Tokens
+            tokens: TokenSet
           }
           message: string
         }>('/api/auth/register', {
@@ -214,13 +262,29 @@ export const useAuthStore = defineStore('auth', {
         })
 
         if (response.success && response.data) {
-          this.setAuthState(response.data.user, response.data.tokens)
+          // 使用状态管理器更新状态
+          authStateManager.updateAuthState(response.data.user, response.data.tokens)
+          this.syncFromStateManager(authStateManager.getState())
+
+          console.log('[AuthStore] 注册成功')
         } else {
           throw new Error(response.message || '注册失败')
         }
       } catch (error: any) {
-        this.lastError = error.message || '注册失败，请稍后重试'
-        throw error
+        const authError = authErrorHandler.handleError(error, {
+          action: 'register',
+          url: '/api/auth/register'
+        })
+
+        this.lastError = authErrorHandler.getUserMessage(authError)
+
+        // 根据错误处理器的建议清除状态
+        if (authErrorHandler.shouldClearAuthState(authError)) {
+          this.clearAuth()
+        }
+
+        console.error('[AuthStore] 注册失败:', authError)
+        throw authError
       } finally {
         this.isLoading = false
       }
@@ -231,102 +295,113 @@ export const useAuthStore = defineStore('auth', {
      */
     async logout(): Promise<void> {
       try {
+        console.log('[AuthStore] 开始登出流程')
+
         // 调用服务器登出接口
         if (this.accessToken && this.refreshToken) {
-          // 在 store 中必须通过 useNuxtApp() 访问注入的依赖
-          const { $apiFetch } = useNuxtApp()
-          await $apiFetch('/api/auth/logout', {
-            method: 'POST',
-            body: {
-              accessToken: this.accessToken,
-              refreshToken: this.refreshToken
-            }
-          }).catch(() => {
+          try {
+            const { $apiFetch } = useNuxtApp()
+            await $apiFetch('/api/auth/logout', {
+              method: 'POST',
+              body: {
+                accessToken: this.accessToken,
+                refreshToken: this.refreshToken
+              }
+            })
+            console.log('[AuthStore] 服务器登出成功')
+          } catch (error) {
+            console.warn('[AuthStore] 服务器登出失败，但继续清除本地状态:', error)
+            const authError = authErrorHandler.handleError(error, {
+              action: 'logout',
+              url: '/api/auth/logout'
+            })
             // 即使服务器登出失败也继续清除本地状态
-          })
+          }
         }
       } catch (error) {
-        console.error('Logout server error:', error)
+        console.error('[AuthStore] 登出过程中发生意外错误:', error)
       } finally {
+        // 使用状态管理器处理登出
+        authStateManager.logout()
         this.clearAuth()
+        console.log('[AuthStore] 登出完成')
       }
     },
 
     /**
-     * 刷新令牌
+     * 刷新令牌（使用令牌刷新管理器）
      */
     async refreshTokens(): Promise<void> {
       if (!this.refreshToken) {
-        throw new Error('No refresh token available')
+        const error = new Error('没有可用的刷新令牌')
+        throw authErrorHandler.handleError(error, { action: 'refresh' })
       }
 
       try {
-        // 在 store 中必须通过 useNuxtApp() 访问注入的依赖
-        const { $apiFetch } = useNuxtApp()
-        const response = await $apiFetch<{
-          success: boolean
-          data: {
-            tokens: Tokens
-          }
-          message: string
-        }>('/api/auth/refresh', {
-          method: 'POST',
-          body: {
-            refreshToken: this.refreshToken
-          }
+        console.log('[AuthStore] 开始刷新令牌')
+
+        // 使用令牌刷新管理器处理并发和重试
+        const tokens = await tokenRefreshManager.refreshTokens(this.refreshToken)
+
+        // 更新状态管理器
+        const currentState = authStateManager.getState()
+        if (currentState.user) {
+          authStateManager.updateAuthState(currentState.user, tokens)
+          this.syncFromStateManager(authStateManager.getState())
+        }
+
+        console.log('[AuthStore] 令牌刷新成功')
+      } catch (error) {
+        console.error('[AuthStore] 令牌刷新失败:', error)
+
+        const authError = authErrorHandler.handleError(error, {
+          action: 'refresh',
+          retryCount: tokenRefreshManager.getRefreshStatus().retryCount
         })
 
-        if (response.success && response.data) {
-          this.updateTokens(response.data.tokens)
+        this.lastError = authErrorHandler.getUserMessage(authError)
+
+        // 根据错误处理器的建议决定是否清除状态
+        if (authErrorHandler.shouldClearAuthState(authError)) {
+          console.warn('[AuthStore] 令牌刷新失败，清除认证状态')
+          this.clearAuth()
         } else {
-          throw new Error(response.message || '令牌刷新失败')
+          console.warn('[AuthStore] 令牌刷新失败，但保持当前状态')
         }
-      } catch (error) {
-        console.error('Token refresh failed:', error)
-        this.clearAuth()
-        throw error
+
+        throw authError
       }
     },
 
     /**
-     * 设置认证状态
+     * 设置认证状态（已弃用，使用状态管理器）
+     * @deprecated 使用 authStateManager.updateAuthState
      */
-    setAuthState(user: User, tokens: Tokens) {
-      this.user = user
-      this.accessToken = tokens.accessToken
-      this.refreshToken = tokens.refreshToken
-      this.isAuthenticated = true
-      this.tokenExpiresAt = Date.now() + (tokens.expiresIn * 1000)
-      this.lastError = null
-
-      // 持久化到本地存储
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken)
-        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
-        localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRES_AT, this.tokenExpiresAt.toString())
-      }
+    setAuthState(user: User, tokens: TokenSet) {
+      console.warn('[AuthStore] setAuthState 已弃用，使用状态管理器')
+      authStateManager.updateAuthState(user, tokens)
+      this.syncFromStateManager(authStateManager.getState())
     },
 
     /**
-     * 更新令牌
+     * 更新令牌（已弃用，使用状态管理器）
+     * @deprecated 使用状态管理器
      */
-    updateTokens(tokens: Tokens) {
-      this.accessToken = tokens.accessToken
-      this.refreshToken = tokens.refreshToken
-      this.tokenExpiresAt = Date.now() + (tokens.expiresIn * 1000)
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken)
-        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
-        localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRES_AT, this.tokenExpiresAt.toString())
+    updateTokens(tokens: TokenSet) {
+      console.warn('[AuthStore] updateTokens 已弃用，使用状态管理器')
+      const currentState = authStateManager.getState()
+      if (currentState.user) {
+        authStateManager.updateAuthState(currentState.user, tokens)
+        this.syncFromStateManager(authStateManager.getState())
       }
     },
 
     /**
-     * 清除认证状态
+     * 清除认证状态（使用状态管理器）
      */
     clearAuth() {
+      console.log('[AuthStore] 清除认证状态')
+
       this.user = null
       this.accessToken = null
       this.refreshToken = null
@@ -334,11 +409,12 @@ export const useAuthStore = defineStore('auth', {
       this.tokenExpiresAt = null
       this.lastError = null
 
-      // 清除本地存储
+      // 重置令牌刷新管理器
+      tokenRefreshManager.reset()
+
+      // 通过AuthStateManager清除状态，不再直接操作localStorage
       if (typeof window !== 'undefined') {
-        Object.values(STORAGE_KEYS).forEach(key => {
-          localStorage.removeItem(key)
-        })
+        authStateManager.clearAuthState()
       }
     },
 
@@ -349,9 +425,78 @@ export const useAuthStore = defineStore('auth', {
       if (this.user) {
         this.user = { ...this.user, ...userData }
 
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(this.user))
+        // 更新状态管理器中的用户信息
+        const currentState = authStateManager.getState()
+        if (currentState.user) {
+          const updatedUser = { ...currentState.user, ...userData }
+          // 手动更新状态管理器的用户数据（不触发同步事件）
+          const state = authStateManager.getState()
+          state.user = updatedUser
         }
+
+        // 通过AuthStateManager更新用户信息，不再直接操作localStorage
+        if (typeof window !== 'undefined') {
+          const currentState = authStateManager.getState()
+          if (currentState.isAuthenticated && currentState.accessToken && currentState.refreshToken) {
+            const tokens = {
+              accessToken: currentState.accessToken,
+              refreshToken: currentState.refreshToken,
+              expiresIn: currentState.tokenExpiresAt ?
+                Math.floor((currentState.tokenExpiresAt - Date.now()) / 1000) : 3600
+            }
+            authStateManager.updateAuthState(this.user, tokens)
+          }
+        }
+
+        console.log('[AuthStore] 用户信息已更新')
+      }
+    },
+
+    /**
+     * 获取认证系统状态
+     */
+    getAuthSystemStatus() {
+      return {
+        // Store 状态
+        store: {
+          isAuthenticated: this.isAuthenticated,
+          hasUser: !!this.user,
+          hasAccessToken: !!this.accessToken,
+          hasRefreshToken: !!this.refreshToken,
+          tokenExpiresAt: this.tokenExpiresAt,
+          lastError: this.lastError
+        },
+        // 状态管理器状态
+        stateManager: authStateManager.getState(),
+        // 令牌刷新管理器状态
+        tokenRefresh: tokenRefreshManager.getRefreshStatus(),
+        // 错误处理器统计
+        errorStats: authErrorHandler.getErrorStats()
+      }
+    },
+
+    /**
+     * 强制同步所有状态
+     */
+    async forceSyncStates() {
+      console.log('[AuthStore] 强制同步所有认证状态')
+
+      try {
+        // 从状态管理器同步
+        const state = authStateManager.getState()
+        this.syncFromStateManager(state)
+
+        // 检查令牌状态
+        if (this.isAuthenticated && authStateManager.isTokenExpired()) {
+          console.warn('[AuthStore] 检测到令牌已过期，尝试刷新')
+          await this.refreshTokens().catch(() => {
+            console.warn('[AuthStore] 强制同步时令牌刷新失败')
+          })
+        }
+
+        console.log('[AuthStore] 状态同步完成')
+      } catch (error) {
+        console.error('[AuthStore] 强制同步状态失败:', error)
       }
     },
 
