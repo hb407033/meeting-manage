@@ -474,10 +474,9 @@ const saveConfig = async () => {
   savingConfig.value = true
   try {
     // 这里应该调用配置保存API
-    // await $fetch('/api/v1/admin/audit/config', {
-    //   method: 'PUT',
-    //   body: auditConfig
-    // })
+    // const { useAdminStore } = await import('~/stores/admin')
+    // const adminStore = useAdminStore()
+    // await adminStore.saveAuditConfig(auditConfig)
 
     showConfigDialog.value = false
 

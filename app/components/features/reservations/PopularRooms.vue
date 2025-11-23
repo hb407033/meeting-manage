@@ -161,6 +161,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useReservationsStore } from '~/stores/reservations'
+
+const reservationsStore = useReservationsStore()
 
 // 组件属性
 interface Props {
@@ -247,13 +250,10 @@ const fetchPopularRooms = async () => {
   error.value = ''
 
   try {
-    const response = await $fetch('/api/v1/statistics/popular-rooms', {
-      method: 'GET',
-      query: {
-        timeRange: selectedTimeRange.value,
-        limit: props.limit
-      }
-    })
+    const response = await reservationsStore.getPopularRooms(
+      selectedTimeRange.value,
+      props.limit || 10
+    )
 
     popularRooms.value = response.data || []
 

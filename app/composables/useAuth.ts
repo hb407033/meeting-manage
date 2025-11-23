@@ -1,6 +1,7 @@
 import { useAuthStore } from '../stores/auth'
 import { useIntervalFn, useEventListener, onClickOutside } from '@vueuse/core'
 import { getCurrentInstance } from 'vue'
+import { getApiFetch } from '~/utils/api-fetch'
 
 export const useAuth = () => {
   const authStore = useAuthStore()
@@ -153,17 +154,17 @@ export const useAuth = () => {
     return {}
   }
 
-  // 创建带认证的请求 - 使用统一的认证处理
+  // 创建带认证的请求 - 使用统一的API工具
   const authenticatedFetch = async (url: string, options: any = {}) => {
-    const headers = {
-      ...getAuthHeaders(),
-      ...options.headers
-    }
+    const apiFetch = getApiFetch()
 
     try {
-      return await $fetch(url, {
+      return await apiFetch(url, {
         ...options,
-        headers
+        headers: {
+          ...getAuthHeaders(),
+          ...options.headers
+        }
       })
     } catch (error: any) {
       // 处理认证错误
@@ -172,10 +173,11 @@ export const useAuth = () => {
         try {
           await refreshTokens()
           // 重新发送请求
-          return await $fetch(url, {
+          return await apiFetch(url, {
             ...options,
             headers: {
-              ...headers,
+              ...getAuthHeaders(),
+              ...options.headers,
               Authorization: `Bearer ${authStore.accessToken}`
             }
           })

@@ -237,6 +237,9 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useAdminStore } from '~/stores/admin'
+
+const adminStore = useAdminStore()
 
 interface ServiceStatus {
   name: string
@@ -349,8 +352,7 @@ const recentEvents = ref<SystemEvent[]>([])
 const checkSystemHealth = async () => {
   try {
     // 模拟健康检查
-    const response = await $fetch('/api/health')
-    const healthData = response.data
+    const healthData = await adminStore.getSystemHealth()
 
     // 更新服务状态
     coreServices.value = coreServices.value.map(service => ({

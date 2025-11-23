@@ -6,38 +6,7 @@
 import { defineStore } from 'pinia'
 import { authStateManager } from '~/utils/auth-state-manager'
 
-// 获取 $apiFetch 的辅助函数
-function getApiFetch() {
-  try {
-    const nuxtApp = useNuxtApp()
-    if (nuxtApp && nuxtApp.$apiFetch) {
-      return nuxtApp.$apiFetch as typeof $fetch
-    }
-
-    // 如果无法获取 $apiFetch，则使用带认证的 $fetch 作为后备
-    return $fetch.create({
-      onRequest({ request, options }) {
-        // 只对API请求添加认证头
-        if (typeof request === 'string' && request.startsWith('/api/')) {
-          // 使用 AuthStateManager 统一管理token
-          const state = authStateManager.getState()
-          const token = state.accessToken
-
-          if (token) {
-            options.headers = {
-              ...options.headers,
-              Authorization: `Bearer ${token}`
-            }
-          }
-        }
-      }
-    })
-  } catch (error) {
-    console.error('获取 $apiFetch 失败:', error)
-    // 返回基本的 $fetch 作为后备
-    return $fetch
-  }
-}
+import { getApiFetch } from '~/utils/api-fetch'
 
 export interface RoomEquipment {
   projector: boolean
@@ -768,6 +737,105 @@ export const useRoomStore = defineStore('rooms', {
         method: 'PUT',
         body: data
       })
+    },
+
+    // 搜索房间（带参数）
+    async searchRoomsWithParams(params: any) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/rooms', {
+          params
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '搜索房间失败')
+        console.error('搜索房间失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 高级搜索房间
+    async searchRooms(searchData: any) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/rooms/search', {
+          method: 'POST',
+          body: searchData
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '高级搜索房间失败')
+        console.error('高级搜索房间失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取房间历史记录
+    async getRoomHistory(roomId: string, options: {
+      startDate?: string
+      endDate?: string
+      page?: number
+      pageSize?: number
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const params = new URLSearchParams()
+
+        if (options.startDate) params.append('startDate', options.startDate)
+        if (options.endDate) params.append('endDate', options.endDate)
+        if (options.page) params.append('page', options.page.toString())
+        if (options.pageSize) params.append('pageSize', options.pageSize.toString())
+        params.append('roomId', roomId)
+
+        const response = await apiFetch(`/api/v1/rooms/history?${params.toString()}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取房间历史记录失败')
+        console.error('获取房间历史记录失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取房间可用性
+    async getRoomAvailability(date: string, includeBookings = false) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch('/api/v1/rooms/availability', {
+          query: {
+            date,
+            includeBookings
+          }
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取房间可用性失败')
+        console.error('获取房间可用性失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
     }
   }
 })

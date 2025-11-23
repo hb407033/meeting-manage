@@ -227,14 +227,14 @@ const generatePreview = async () => {
     const today = new Date()
     const endDate = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000) // 未来90天
 
-    const response = await $fetch('/api/v1/notifications/preview', {
-      method: 'POST',
-      body: {
-        recurringReservationId: props.recurringReservationId,
-        startDate: props.startDate || today.toISOString(),
-        endDate: props.endDate || endDate.toISOString(),
-        reminderMinutes: props.reminderMinutes
-      }
+    const { useNotificationsStore } = await import('~/stores/notifications')
+    const notificationsStore = useNotificationsStore()
+
+    const response = await notificationsStore.previewNotification({
+      recurringReservationId: props.recurringReservationId,
+      startDate: props.startDate || today.toISOString(),
+      endDate: props.endDate || endDate.toISOString(),
+      reminderMinutes: props.reminderMinutes
     })
 
     if (response.success) {

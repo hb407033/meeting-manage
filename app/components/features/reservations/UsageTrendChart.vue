@@ -171,14 +171,12 @@ const fetchUsageData = async () => {
   error.value = ''
 
   try {
-    const response = await $fetch('/api/v1/statistics/usage-trend', {
-      method: 'GET',
-      query: {
-        period: parseInt(selectedPeriod.value)
-      }
-    })
+    const { useAdminStore } = await import('~/stores/admin')
+    const adminStore = useAdminStore()
 
-    usageData.value = response.data || []
+    const response = await adminStore.getUsageTrend(parseInt(selectedPeriod.value))
+
+    usageData.value = response || []
 
     // 计算统计数据
     calculateStatistics()

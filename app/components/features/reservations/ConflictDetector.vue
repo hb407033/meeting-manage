@@ -2,6 +2,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { format, addMinutes, differenceInMinutes } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useReservationStore } from '~/stores/reservations'
+
+const reservationsStore = useReservationStore()
 
 interface Conflict {
   type: 'time_overlap' | 'capacity_exceeded' | 'equipment_conflict' | 'maintenance_conflict' | 'rule_conflict'
@@ -114,18 +117,13 @@ async function detectConflicts(): Promise<void> {
 
   isDetecting.value = true
   try {
-    const response = await $fetch('/api/v1/reservations/conflict-check', {
-      method: 'POST',
-      body: {
-        reservation: {
-          roomId: props.reservation.roomId,
-          startTime: props.reservation.startTime.toISOString(),
-          endTime: props.reservation.endTime.toISOString(),
-          title: props.reservation.title,
-          attendeeCount: props.reservation.attendeeCount,
-          equipment: props.reservation.equipment
-        }
-      }
+    const response = await reservationsStore.checkReservationConflict({
+      roomId: props.reservation.roomId,
+      startTime: props.reservation.startTime.toISOString(),
+      endTime: props.reservation.endTime.toISOString(),
+      title: props.reservation.title,
+      attendeeCount: props.reservation.attendeeCount,
+      equipment: props.reservation.equipment
     })
 
     if (response.success) {

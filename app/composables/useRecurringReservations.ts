@@ -2,6 +2,10 @@
  * 周期性预约组合式函数
  */
 
+import { useReservationStore } from '~/stores/reservations'
+
+const reservationsStore = useReservationStore()
+
 export interface RecurringReservation {
   id: string
   title: string
@@ -113,7 +117,14 @@ export const useRecurringReservations = () => {
         total: number
         page: number
         limit: number
-      }> = await $fetch(`/api/v1/reservations/recurring?${queryParams.toString()}`)
+      }> = await reservationsStore.getRecurringReservations({
+        page: filters.page,
+        limit: filters.limit,
+        status: filters.status,
+        roomId: filters.roomId,
+        userId: filters.organizerId,
+        search: filters.search
+      })
 
       if (response.success && response.data) {
         recurringReservations.value = response.data.items
@@ -139,15 +150,13 @@ export const useRecurringReservations = () => {
     error.value = null
 
     try {
-      const response: ApiResponse<RecurringReservation> = await $fetch(
-        `/api/v1/reservations/recurring/${id}?includeStats=${includeStats}`
-      )
+      const response = await reservationsStore.getRecurringReservationById(id, includeStats)
 
-      if (response.success && response.data) {
-        currentReservation.value = response.data
-        return response.data
+      if (response) {
+        currentReservation.value = response
+        return response
       } else {
-        throw new Error(response.message)
+        throw new Error('获取周期性预约详情失败')
       }
     } catch (err: any) {
       error.value = err.message || '获取周期性预约详情失败'

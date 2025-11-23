@@ -5,7 +5,10 @@
 
 import { ref, computed, reactive, watch } from 'vue'
 import { useDebounce, debounce } from './useDebounce'
+import { useRoomsStore } from '~/stores/rooms'
 import type { MeetingRoom } from '~~/types/room'
+
+const roomsStore = useRoomsStore()
 
 interface SearchFilters {
   location?: string
@@ -187,10 +190,7 @@ export function useRoomSearch() {
       const params = buildSearchParams()
 
       // 调用搜索API
-      const response = await $fetch('/api/v1/rooms', {
-        method: 'GET',
-        params
-      })
+      const response = await roomsStore.searchRoomsWithParams(params)
 
       if (response.success) {
         searchState.results = response.data || []
@@ -226,10 +226,7 @@ export function useRoomSearch() {
       searchState.loading = true
       searchState.error = null
 
-      const response = await $fetch('/api/v1/rooms/search', {
-        method: 'POST',
-        body: searchData
-      })
+      const response = await roomsStore.searchRooms(searchData)
 
       if (response.success) {
         searchState.results = response.data || []

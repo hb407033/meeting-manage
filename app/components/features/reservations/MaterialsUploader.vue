@@ -499,7 +499,9 @@ const handlePreviewMaterial = async (material: MaterialFile) => {
 
   if (isText(material)) {
     try {
-      const response = await $fetch(material.url)
+      const { getApiFetch } = await import('~/utils/api-fetch')
+      const apiFetch = getApiFetch()
+      const response = await apiFetch(material.url)
       textPreviewContent.value = response as string
     } catch (error) {
       textPreviewContent.value = '无法加载文件内容'

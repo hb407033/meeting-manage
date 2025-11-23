@@ -221,12 +221,11 @@ const canCreateReservation = computed(() => {
 // 方法
 const loadAvailableRooms = async () => {
   try {
-    const response = await $fetch('/api/v1/rooms', {
-      query: {
-        status: 'AVAILABLE'
-      }
-    })
-    availableRooms.value = response.data || []
+    const { useRoomsStore } = await import('~/stores/rooms')
+    const roomsStore = useRoomsStore()
+
+    const response = await roomsStore.fetchRooms({ page: 1, limit: 100, status: 'AVAILABLE' })
+    availableRooms.value = response || []
   } catch (err) {
     console.error('加载会议室列表失败:', err)
   }
@@ -239,13 +238,13 @@ const checkAvailability = async () => {
   }
 
   try {
-    const response = await $fetch('/api/v1/reservations/availability', {
-      method: 'POST',
-      body: {
-        roomId: form.value.roomId,
-        startTime: form.value.startTime,
-        endTime: form.value.endTime
-      }
+    const { useReservationStore } = await import('~/stores/reservations')
+    const reservationsStore = useReservationStore()
+
+    const response = await reservationsStore.checkAvailability({
+      roomId: form.value.roomId,
+      startTime: form.value.startTime,
+      endTime: form.value.endTime
     })
 
     if (response.isAvailable) {
@@ -298,10 +297,10 @@ const handleSubmit = async () => {
       type: 'QUICK' // 标记为快捷预约
     }
 
-    const response = await $fetch('/api/v1/reservations/quick', {
-      method: 'POST',
-      body: reservationData
-    })
+    const { useReservationStore } = await import('~/stores/reservations')
+    const reservationsStore = useReservationStore()
+
+    const response = await reservationsStore.createQuickReservation(reservationData)
 
     emit('reservationCreated', response)
 

@@ -1,4 +1,7 @@
 import { ref, computed } from 'vue'
+import { useNotificationsStore } from '~/stores/notifications'
+
+const notificationsStore = useNotificationsStore()
 
 export interface NotificationPreference {
   userId: string
@@ -102,7 +105,7 @@ export function useNotifications() {
       if (options.limit) query.append('limit', options.limit.toString())
       if (options.unreadOnly) query.append('unreadOnly', 'true')
 
-      const response = await $fetch(`/api/v1/notifications?${query.toString()}`)
+      const response = await notificationsStore.getNotifications(options)
 
       if (response.success) {
         notifications.value = response.data.notifications
@@ -121,7 +124,7 @@ export function useNotifications() {
 
   const fetchPreferences = async () => {
     try {
-      const response = await $fetch('/api/v1/notifications/preferences')
+      const response = await notificationsStore.getNotificationPreferences()
 
       if (response.success && response.data) {
         preferences.value = response.data.notificationPreference
@@ -138,10 +141,7 @@ export function useNotifications() {
 
   const updatePreferences = async (data: Partial<NotificationPreference & ReminderSettings>) => {
     try {
-      const response = await $fetch('/api/v1/notifications/preferences', {
-        method: 'PUT',
-        body: data
-      })
+      const response = await notificationsStore.updateNotificationPreferences(data)
 
       if (response.success) {
         // 更新本地状态
@@ -163,10 +163,7 @@ export function useNotifications() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const response = await $fetch('/api/v1/notifications/read', {
-        method: 'POST',
-        body: { notificationId }
-      })
+      const response = await notificationsStore.markNotificationsAsRead([notificationId])
 
       if (response.success) {
         // 更新本地状态
@@ -190,10 +187,7 @@ export function useNotifications() {
       const unreadIds = unreadNotifications.value.map(n => n.id)
       if (unreadIds.length === 0) return
 
-      const response = await $fetch('/api/v1/notifications/read', {
-        method: 'POST',
-        body: { notificationIds: unreadIds }
-      })
+      const response = await notificationsStore.markMultipleAsRead(unreadIds)
 
       if (response.success) {
         // 更新本地状态
@@ -220,10 +214,7 @@ export function useNotifications() {
     reminderMinutes?: number
   }) => {
     try {
-      const response = await $fetch('/api/v1/notifications/preview', {
-        method: 'POST',
-        body: data
-      })
+      const response = await notificationsStore.previewNotification(data)
 
       if (response.success) {
         return response.data
@@ -238,7 +229,7 @@ export function useNotifications() {
 
   const getNotificationStats = async (period: number = 30) => {
     try {
-      const response = await $fetch(`/api/v1/notifications/stats?period=${period}`)
+      const response = await notificationsStore.getNotificationStats(`${period}d`)
 
       if (response.success) {
         return response.data

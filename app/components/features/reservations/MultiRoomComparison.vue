@@ -103,18 +103,18 @@ const conflictingSlots = computed(() => {
 async function loadAvailabilityData() {
   loading.value = true
   try {
-    // 调用 API 获取可用性数据
-    const response = await $fetch('/api/v1/reservations/availability', {
-      method: 'POST',
-      body: {
-        roomIds: props.rooms.map(room => room.id),
-        startTime: timeSlots.value[0]?.start.toISOString(),
-        endTime: timeSlots.value[timeSlots.value.length - 1]?.end.toISOString()
-      }
+    // 使用 reservations store 获取可用性数据
+    const { useReservationStore } = await import('~/stores/reservations')
+    const reservationsStore = useReservationStore()
+
+    const response = await reservationsStore.checkMultipleRoomAvailability({
+      roomIds: props.rooms.map(room => room.id),
+      startTime: timeSlots.value[0]?.start.toISOString(),
+      endTime: timeSlots.value[timeSlots.value.length - 1]?.end.toISOString()
     })
 
-    if (response.success && response.data) {
-      processAvailabilityData(response.data)
+    if (response && Array.isArray(response)) {
+      processAvailabilityData(response)
     }
   } catch (error) {
     console.error('Failed to load availability data:', error)

@@ -235,16 +235,16 @@ const submitPermissionRequest = async () => {
       currentPath: window.location.pathname
     }
 
-    const response = await $fetch('/api/v1/admin/permission-requests', {
-      method: 'POST',
-      body: requestData
-    })
+    const { useAdminStore } = await import('~/stores/admin')
+    const adminStore = useAdminStore()
 
-    if (response.code === 201) {
+    const response = await adminStore.createPermissionRequest(requestData)
+
+    if (response) {
       useToast().success('权限申请提交成功，等待审批')
       showRequestDialog.value = false
       resetRequestForm()
-      emit('request-submitted', response.data)
+      emit('request-submitted', response)
     }
   } catch (error) {
     console.error('提交权限申请失败:', error)

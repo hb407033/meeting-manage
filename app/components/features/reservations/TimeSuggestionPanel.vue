@@ -105,20 +105,20 @@ async function loadSuggestions() {
 
   loadingSuggestions.value = true
   try {
-    // 调用智能推荐API
-    const response = await $fetch('/api/v1/reservations/suggestions', {
-      method: 'POST',
-      body: {
-        date: props.date.toISOString(),
-        roomIds: props.rooms.map(room => room.id),
-        userPreferences: userPreferences.value,
-        algorithms: props.algorithms,
-        maxResults: props.maxSuggestions * 2 // 获取更多结果用于备用选择
-      }
+    // 使用 reservations store 获取时间建议
+    const { useReservationStore } = await import('~/stores/reservations')
+    const reservationsStore = useReservationStore()
+
+    const response = await reservationsStore.getTimeSuggestions({
+      date: props.date.toISOString(),
+      roomIds: props.rooms.map(room => room.id),
+      userPreferences: userPreferences.value,
+      algorithms: props.algorithms,
+      maxResults: props.maxSuggestions * 2 // 获取更多结果用于备用选择
     })
 
-    if (response.success && response.data) {
-      suggestions.value = response.data.map(suggestion => ({
+    if (response && Array.isArray(response)) {
+      suggestions.value = response.map(suggestion => ({
         ...suggestion,
         startTime: new Date(suggestion.startTime),
         endTime: new Date(suggestion.endTime)

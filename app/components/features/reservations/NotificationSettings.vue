@@ -245,14 +245,17 @@ const holidayHandlingOptions = [
 const loadSettings = async () => {
   try {
     loading.value = true
-    const response = await $fetch('/api/v1/notifications/preferences')
+    const { useNotificationsStore } = await import('~/stores/notifications')
+    const notificationsStore = useNotificationsStore()
 
-    if (response.success && response.data) {
-      if (response.data.notificationPreference) {
-        preferences.value = { ...preferences.value, ...response.data.notificationPreference }
+    const response = await notificationsStore.fetchPreferences()
+
+    if (response) {
+      if (response.notificationPreference) {
+        preferences.value = { ...preferences.value, ...response.notificationPreference }
       }
-      if (response.data.reminderSettings) {
-        reminderSettings.value = { ...reminderSettings.value, ...response.data.reminderSettings }
+      if (response.reminderSettings) {
+        reminderSettings.value = { ...reminderSettings.value, ...response.reminderSettings }
       }
     }
   } catch (error) {
@@ -277,12 +280,12 @@ const saveSettings = async () => {
       ...reminderSettings.value
     }
 
-    const response = await $fetch('/api/v1/notifications/preferences', {
-      method: 'PUT',
-      body: settings
-    })
+    const { useNotificationsStore } = await import('~/stores/notifications')
+    const notificationsStore = useNotificationsStore()
 
-    if (response.success) {
+    const response = await notificationsStore.updatePreferences(settings)
+
+    if (response) {
       toast.add({
         severity: 'success',
         summary: '保存成功',

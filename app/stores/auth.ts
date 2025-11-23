@@ -28,19 +28,6 @@ declare module '#app' {
   }
 }
 
-export interface User {
-  id: string
-  email: string
-  name: string
-  avatar?: string
-  phone?: string
-  role: string
-  permissions?: string[]
-  isActive: boolean
-  lastLoginAt?: string
-  createdAt: string
-  updatedAt: string
-}
 
 export interface AuthState {
   user: User | null

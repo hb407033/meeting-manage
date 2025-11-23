@@ -113,6 +113,10 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminStore } from '~/stores/admin'
+
+const adminStore = useAdminStore()
+
 // Props定义
 interface Props {
   modelValue: string[] | string
@@ -214,7 +218,7 @@ const removeRole = (roleToRemove: RoleOption) => {
 // 加载可用角色
 const loadAvailableRoles = async () => {
   try {
-    const { data } = await $fetch('/api/v1/admin/roles')
+    const { data } = await adminStore.getRoles()
     availableRoles.value = data.map((role: any) => ({
       id: role.id,
       name: role.name,

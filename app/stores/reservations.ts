@@ -9,38 +9,7 @@ import { authStateManager } from '~/utils/auth-state-manager'
 // 从 rooms store 导入 PaginationMeta
 import type { PaginationMeta } from './rooms'
 
-// 获取 $apiFetch 的辅助函数
-function getApiFetch() {
-  try {
-    const nuxtApp = useNuxtApp()
-    if (nuxtApp && nuxtApp.$apiFetch) {
-      return nuxtApp.$apiFetch as typeof $fetch
-    }
-
-    // 如果无法获取 $apiFetch，则使用带认证的 $fetch 作为后备
-    return $fetch.create({
-      onRequest({ request, options }) {
-        // 只对API请求添加认证头
-        if (typeof request === 'string' && request.startsWith('/api/')) {
-          // 使用 AuthStateManager 统一管理token
-          const state = authStateManager.getState()
-          const token = state.accessToken
-
-          if (token) {
-            options.headers = {
-              ...options.headers,
-              Authorization: `Bearer ${token}`
-            }
-          }
-        }
-      }
-    })
-  } catch (error) {
-    console.error('获取 $apiFetch 失败:', error)
-    // 返回基本的 $fetch 作为后备
-    return $fetch
-  }
-}
+import { getApiFetch } from '~/utils/api-fetch'
 
 // 预约相关接口定义
 export interface ReservationAttendee {
@@ -1032,6 +1001,67 @@ export const useReservationStore = defineStore('reservations', {
       }
     },
 
+    // 批量检查房间可用性
+    async checkMultipleRoomAvailability(data: {
+      roomIds: string[]
+      startTime: string
+      endTime: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{
+          success: boolean
+          data: any[]
+        }>('/api/v1/reservations/availability', {
+          method: 'POST',
+          body: data
+        })
+
+        if (response.success) {
+          return response.data
+        } else {
+          throw new Error('获取房间可用性失败')
+        }
+      } catch (error: any) {
+        this.setError(error.message || '获取房间可用性失败')
+        console.error('获取房间可用性失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取时间建议
+    async getTimeSuggestions(data: {
+      date: string
+      roomIds: string[]
+      userPreferences?: any
+      duration?: number
+      attendeeCount?: number
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/reservations/suggestions', {
+          method: 'POST',
+          body: data
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取时间建议失败')
+        console.error('获取时间建议失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
     // 删除预约
     async deleteReservation(id: string) {
       this.setLoading(true)
@@ -1256,6 +1286,286 @@ export const useReservationStore = defineStore('reservations', {
         method: 'PUT',
         body: data
       })
+    },
+
+    // 获取冲突检测分析数据
+    async getConflictAnalytics(dateRange: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/analytics/conflict-detection', {
+          query: { dateRange }
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取冲突分析数据失败')
+        console.error('获取冲突分析数据失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取热门会议室统计
+    async getPopularRooms(timeRange: string, limit: number = 10) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/statistics/popular-rooms', {
+          query: { timeRange, limit }
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取热门会议室统计失败')
+        console.error('获取热门会议室统计失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // ========== 重复预约管理 ==========
+
+    // 获取周期性预约详情
+    async getRecurringReservationById(id: string, includeStats = false) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch(`/api/v1/reservations/recurring/${id}?includeStats=${includeStats}`)
+
+        if (response.success && response.data) {
+          return response.data
+        } else {
+          throw new Error(response.message || '获取周期性预约详情失败')
+        }
+      } catch (error: any) {
+        this.setError(error.message || '获取周期性预约详情失败')
+        console.error('获取周期性预约详情失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取重复预约列表
+    async getRecurringReservations(params: {
+      page?: number
+      limit?: number
+      status?: string
+      roomId?: string
+      userId?: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const queryString = new URLSearchParams()
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            queryString.append(key, value.toString())
+          }
+        })
+
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring?${queryString.toString()}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取重复预约列表失败')
+        console.error('获取重复预约列表失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 创建重复预约
+    async createRecurringReservation(data: any) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/reservations/recurring', {
+          method: 'POST',
+          body: data
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '创建重复预约失败')
+        console.error('创建重复预约失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取重复预约详情
+    async getRecurringReservation(id: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring/${id}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取重复预约详情失败')
+        console.error('获取重复预约详情失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 更新重复预约
+    async updateRecurringReservation(id: string, data: any) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring/${id}`, {
+          method: 'PUT',
+          body: data
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '更新重复预约失败')
+        console.error('更新重复预约失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 删除重复预约
+    async deleteRecurringReservation(id: string, deleteInstances?: boolean) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const query = deleteInstances ? `?deleteInstances=${deleteInstances}` : ''
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring/${id}${query}`, {
+          method: 'DELETE'
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '删除重复预约失败')
+        console.error('删除重复预约失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 更新重复预约实例
+    async updateRecurringReservationInstance(id: string, data: any) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring/${id}/instance`, {
+          method: 'PUT',
+          body: data
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '更新重复预约实例失败')
+        console.error('更新重复预约实例失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 删除重复预约实例
+    async deleteRecurringReservationInstance(id: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring/${id}/instance`, {
+          method: 'DELETE'
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '删除重复预约实例失败')
+        console.error('删除重复预约实例失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取重复预约统计
+    async getRecurringReservationStats(roomId?: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const query = roomId ? `?roomId=${roomId}` : ''
+        const response = await (apiFetch as any)(`/api/v1/reservations/recurring/stats${query}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取重复预约统计失败')
+        console.error('获取重复预约统计失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // ========== 冲突检测 ==========
+
+    // 检查预约冲突
+    async checkReservationConflict(reservationData: {
+      roomId: string
+      startTime: string
+      endTime: string
+      title?: string
+      excludeReservationId?: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/reservations/conflict-check', {
+          method: 'POST',
+          body: {
+            reservation: reservationData
+          }
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '检查预约冲突失败')
+        console.error('检查预约冲突失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
     }
   }
 })

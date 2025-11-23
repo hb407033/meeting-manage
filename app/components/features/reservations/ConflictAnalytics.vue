@@ -2,6 +2,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { format, subDays, subWeeks, subMonths, startOfDay, endOfDay } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useReservationStore } from '~/stores/reservations'
+
+const reservationsStore = useReservationStore()
 
 interface ConflictAnalyticsData {
   summary: {
@@ -101,12 +104,7 @@ async function loadAnalyticsData(): Promise<void> {
   loading.value = true
   try {
     // 调用后端API获取分析数据
-    const response = await $fetch('/api/v1/analytics/conflict-detection', {
-      method: 'GET',
-      query: {
-        dateRange: props.dateRange
-      }
-    })
+    const response = await reservationsStore.getConflictAnalytics(props.dateRange)
 
     if (response.success) {
       analyticsData.value = response.data

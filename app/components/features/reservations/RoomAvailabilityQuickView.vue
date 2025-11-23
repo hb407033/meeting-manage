@@ -298,14 +298,12 @@ const loadRoomAvailability = async () => {
 
     const date = selectedDate.value || new Date().toISOString().split('T')[0]
 
-    const response = await $fetch('/api/v1/rooms/availability', {
-      query: {
-        date,
-        includeBookings: true
-      }
-    })
+    const { useRoomsStore } = await import('~/stores/rooms')
+    const roomsStore = useRoomsStore()
 
-    rooms.value = response.data || []
+    const response = await roomsStore.getRoomAvailability(date, true)
+
+    rooms.value = response || []
   } catch (err) {
     error.value = err as Error
     console.error('加载会议室可用性失败:', err)

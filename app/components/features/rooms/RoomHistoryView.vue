@@ -131,15 +131,23 @@ const loadHistory = async (page: number = 0, append: boolean = false) => {
       pageSize: props.pageSize
     }
 
-    const response = await $fetch('/api/v1/rooms/history', { params })
+    const { useRoomsStore } = await import('~/stores/rooms')
+    const roomsStore = useRoomsStore()
+
+    const response = await roomsStore.getRoomHistory(props.roomId, {
+      startDate,
+      endDate,
+      page,
+      pageSize: props.pageSize
+    })
 
     if (append) {
-      history.value.push(...response.data.history)
+      history.value.push(...response.history)
     } else {
-      history.value = response.data.history
+      history.value = response.history
     }
 
-    hasMore.value = response.data.hasMore
+    hasMore.value = response.hasMore
     currentPage.value = page
   } catch (error) {
     console.error('加载操作历史失败:', error)

@@ -8,6 +8,9 @@ import { format, addDays, startOfWeek, endOfWeek } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import type { CalendarOptions, EventSourceInput } from '@fullcalendar/core'
 import type { Socket } from 'socket.io-client'
+import { useReservationsStore } from '~/stores/reservations'
+
+const reservationsStore = useReservationsStore()
 
 interface Props {
   roomIds?: string[]
@@ -351,14 +354,11 @@ async function loadEvents() {
     const { start, end } = currentRange.value
 
     // 调用 API 获取可用性数据
-    const response = await $fetch('/api/v1/reservations/availability', {
-      method: 'POST',
-      body: {
-        roomIds: props.roomIds,
-        startTime: start.toISOString(),
-        endTime: end.toISOString()
-      }
-    })
+    const response = await reservationsStore.checkRoomAvailability(
+      props.roomIds || [],
+      start.toISOString(),
+      end.toISOString()
+    )
 
     if (response.success && response.data) {
       // 转换数据为 FullCalendar 事件格式

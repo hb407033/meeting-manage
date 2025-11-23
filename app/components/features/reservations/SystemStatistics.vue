@@ -154,12 +154,11 @@ const fetchStatistics = async () => {
     loading.value = true
     error.value = null
 
-    // 调用系统统计API
-    const response = await $fetch('/api/v1/statistics/system', {
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
-    })
+    // 使用 admin store 获取系统统计
+    const { useAdminStore } = await import('~/stores/admin')
+    const adminStore = useAdminStore()
+
+    const response = await adminStore.getSystemStatistics()
 
     statistics.value = {
       totalRooms: response.totalRooms || 0,

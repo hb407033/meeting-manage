@@ -6,38 +6,7 @@
 import { defineStore } from 'pinia'
 import { authStateManager } from '~/utils/auth-state-manager'
 
-// 获取 $apiFetch 的辅助函数
-function getApiFetch() {
-  try {
-    const nuxtApp = useNuxtApp()
-    if (nuxtApp && nuxtApp.$apiFetch) {
-      return nuxtApp.$apiFetch as typeof $fetch
-    }
-
-    // 如果无法获取 $apiFetch，则使用带认证的 $fetch 作为后备
-    return $fetch.create({
-      onRequest({ request, options }) {
-        // 只对API请求添加认证头
-        if (typeof request === 'string' && request.startsWith('/api/')) {
-          // 使用 AuthStateManager 统一管理token
-          const state = authStateManager.getState()
-          const token = state.accessToken
-
-          if (token) {
-            options.headers = {
-              ...options.headers,
-              Authorization: `Bearer ${token}`
-            }
-          }
-        }
-      }
-    })
-  } catch (error) {
-    console.error('获取 $apiFetch 失败:', error)
-    // 返回基本的 $fetch 作为后备
-    return $fetch
-  }
-}
+import { getApiFetch } from '~/utils/api-fetch'
 
 // 管理相关接口定义
 export interface AuditLog {
@@ -272,51 +241,6 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-    // 导出审计日志
-    async exportAuditLogs(params: AuditLogQuery = {}) {
-      this.setLoading(true)
-      this.setError(null)
-
-      try {
-        const apiFetch = getApiFetch()
-        const response = await apiFetch.raw('/api/v1/admin/audit-logs/export', {
-          method: 'POST',
-          body: params
-        })
-
-        if (!response.ok) {
-          throw new Error(`导出失败: ${response.statusText}`)
-        }
-
-        const csvContent = response._data as string
-
-        // 创建下载链接
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `audit-logs-export-${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-        window.URL.revokeObjectURL(url)
-
-        return {
-          success: true,
-          filename: link.download,
-          size: csvContent.length
-        }
-
-      } catch (error: any) {
-        this.setError(error.message || '导出审计日志失败')
-        console.error('导出审计日志失败:', error)
-        return {
-          success: false,
-          error: error.message
-        }
-      } finally {
-        this.setLoading(false)
-      }
-    },
-
     // 获取系统统计信息
     async getSystemStats() {
       this.setLoading(true)
@@ -469,6 +393,91 @@ export const useAdminStore = defineStore('admin', {
         this.setError(error.message || '获取权限列表失败')
         console.error('获取权限列表失败:', error)
         return []
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 权限请求
+    async createPermissionRequest(requestData: {
+      permissionType: string
+      resourceType: string
+      resourceId: string
+      reason: string
+      duration?: string
+      urgency?: string
+      attachments?: string[]
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{
+          success: boolean
+          code: number
+          message: string
+          data: any
+        }>('/api/v1/admin/permission-requests', {
+          method: 'POST',
+          body: requestData
+        })
+
+        if (response.success && response.code === 201) {
+          return response.data
+        } else {
+          throw new Error(response.message || '创建权限请求失败')
+        }
+      } catch (error: any) {
+        this.setError(error.message || '创建权限请求失败')
+        console.error('创建权限请求失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取系统统计
+    async getSystemStatistics() {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch('/api/v1/statistics/system', {
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取系统统计失败')
+        console.error('获取系统统计失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取使用趋势统计
+    async getUsageTrend(period: number) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch('/api/v1/statistics/usage-trend', {
+          query: {
+            period
+          }
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取使用趋势统计失败')
+        console.error('获取使用趋势统计失败:', error)
+        throw error
       } finally {
         this.setLoading(false)
       }
@@ -1259,6 +1268,27 @@ export const useAdminStore = defineStore('admin', {
       } catch (error: any) {
         this.setError(error.message || '获取异常检测结果失败')
         console.error('获取异常检测结果失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // ========== 系统监控 ==========
+
+    // 获取系统健康状态
+    async getSystemHealth() {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/health')
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取系统健康状态失败')
+        console.error('获取系统健康状态失败:', error)
         throw error
       } finally {
         this.setLoading(false)

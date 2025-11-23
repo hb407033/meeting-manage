@@ -231,16 +231,15 @@ const loadStats = async () => {
   try {
     loading.value = true
 
-    const response = await $fetch('/api/v1/notifications/stats', {
-      query: {
-        period: selectedPeriod.value
-      }
-    })
+    const { useNotificationsStore } = await import('~/stores/notifications')
+    const notificationsStore = useNotificationsStore()
 
-    if (response.success) {
-      statsData.value = response.data
+    const response = await notificationsStore.getNotificationStats(selectedPeriod.value.toString())
+
+    if (response) {
+      statsData.value = response
     } else {
-      throw new Error(response.message || '加载统计数据失败')
+      throw new Error('加载统计数据失败')
     }
   } catch (error) {
     console.error('Failed to load notification stats:', error)
