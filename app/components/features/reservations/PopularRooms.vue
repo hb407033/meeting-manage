@@ -161,9 +161,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useReservationsStore } from '~/stores/reservations'
+import  {useReservationStore}  from '~/stores/reservations'
 
-const reservationsStore = useReservationsStore()
+const reservationsStore = useReservationStore()
 
 // 组件属性
 interface Props {
