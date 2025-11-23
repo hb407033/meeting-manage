@@ -312,40 +312,6 @@ watch([selectedDate, selectedRoom], async () => {
   <div class="min-h-screen bg-gray-50">
     <UniversalHeader/>
     <!-- 页面标题 -->
-    <div class="bg-white shadow-sm border-b">
-      <div class="container mx-auto px-4 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">会议室可用时间管理</h1>
-            <p class="mt-1 text-gray-600">查看和管理各会议室的时间安排和可用情况</p>
-          </div>
-          <div class="flex gap-3">
-            <NuxtLink
-              to="/admin/rooms"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-arrow-left"></i>
-              返回会议室管理
-            </NuxtLink>
-            <NuxtLink
-              to="/reservations/create"
-              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-plus"></i>
-              新建预约
-            </NuxtLink>
-            <NuxtLink
-              to="/reservations"
-              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <i class="pi pi-list"></i>
-              预约列表
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 筛选条件 -->
     <div class="container mx-auto px-4 py-6">
       <div class="bg-white rounded-lg shadow-sm border p-6">

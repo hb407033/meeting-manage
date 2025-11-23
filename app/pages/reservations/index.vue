@@ -144,10 +144,48 @@ function getDuration(startTime: string | Date, endTime: string | Date): string {
   return `${minutes}分钟`
 }
 
-// 检查是否为过期预约
-function isPastReservation(startTime: string | Date): boolean {
+// 判断是否为详细预约
+function isDetailedReservation(reservation: any): boolean {
+  return !!(
+    reservation.equipment ||
+    reservation.services ||
+    reservation.attendeeList ||
+    reservation.specialRequirements ||
+    reservation.budgetAmount ||
+    (reservation.importanceLevel && reservation.importanceLevel !== 'NORMAL') ||
+    (reservation.meetingMaterials && reservation.meetingMaterials.length > 0)
+  )
+}
+
+// 获取预约类型信息
+function getReservationTypeInfo(reservation: any) {
+  const isDetailed = isDetailedReservation(reservation)
+  return {
+    isDetailed,
+    type: isDetailed ? '详细预约' : '快速预约',
+    icon: isDetailed ? 'pi-cog' : 'pi-clock',
+    color: isDetailed ? 'purple' : 'blue'
+  }
+}
+
+// 检查是否为过期预约（基于预约的结束时间）
+function isPastReservation(startTime: string | Date, endTime?: string | Date): boolean {
   const start = typeof startTime === 'string' ? new Date(startTime) : startTime
-  return isBefore(start, new Date())
+  const end = endTime ? (typeof endTime === 'string' ? new Date(endTime) : endTime) : start
+
+  // 如果预约已经结束（结束时间已过），则认为是过期预约
+  return isBefore(end, new Date())
+}
+
+// 检查是否为已结束预约的更准确版本（考虑状态和时间）
+function isReservationEnded(reservation: any): boolean {
+  // 如果状态是已完成或已取消，直接返回true
+  if (reservation.status === 'COMPLETED' || reservation.status === 'CANCELLED') {
+    return true
+  }
+
+  // 否则检查结束时间
+  return isPastReservation(reservation.startTime, reservation.endTime)
 }
 
 // 检查是否为进行中的预约
@@ -159,27 +197,100 @@ function isCurrentReservation(startTime: string | Date, endTime: string | Date):
 }
 
 // 检查用户是否可以编辑预约
-function canEditReservation(reservation: { status: string; startTime: string; organizerId?: string; organizer?: { email?: string } }): boolean {
-  if (!authStore.user) return false
+function canEditReservation(reservation: { status: string; startTime: string; endTime: string; organizerId?: string; organizer?: { email?: string } }): { canEdit: boolean; reason: string } {
+  if (!authStore.user) return { canEdit: false, reason: '用户未登录' }
 
   // 检查是否是管理员
-  if (authStore.user.role === 'ADMIN') return true
+  if (authStore.user.role === 'ADMIN') {
+    // 管理员也不能编辑已结束或已完成的预约
+    const isEnded = isReservationEnded(reservation)
+    if (isEnded) {
+      return { canEdit: false, reason: '预约已结束' }
+    }
+    return { canEdit: true, reason: '' }
+  }
 
   // 检查是否是预约组织者
   const isOrganizer = reservation.organizerId === authStore.user.id ||
                      reservation.organizer?.email === authStore.user.email ||
                      reservation.organizerName === authStore.user.name
 
-  // 检查预约是否已开始
-  const isUpcoming = new Date(reservation.startTime) > new Date()
-  const isNotCancelled = reservation.status !== 'CANCELLED'
+  if (!isOrganizer) {
+    return { canEdit: false, reason: '只有组织者可以编辑' }
+  }
 
-  return isOrganizer && isUpcoming && isNotCancelled
+  // 检查预约状态：只有未结束且未取消的预约可以编辑
+  const now = new Date()
+  const startTime = new Date(reservation.startTime)
+  const endTime = new Date(reservation.endTime)
+
+  // 预约已经结束（结束时间已过）
+  const isEnded = endTime <= now
+  // 预约还未开始
+  const isUpcoming = startTime > now
+
+  // 可编辑条件：组织者 + (未开始或正在进行中) + 未取消 + 未完成
+  const canEditByStatus = !isEnded &&
+                          reservation.status !== 'CANCELLED' &&
+                          reservation.status !== 'COMPLETED'
+
+  const statusReason = isEnded ? '预约已结束' :
+                      (reservation.status === 'CANCELLED' ? '预约已取消' :
+                       reservation.status === 'COMPLETED' ? '预约已完成' : '')
+
+  return {
+    canEdit: canEditByStatus,
+    reason: statusReason
+  }
 }
 
 // 检查用户是否可以取消预约
-function canCancelReservation(reservation: any): boolean {
-  return canEditReservation(reservation) // 取消权限与编辑权限相同
+function canCancelReservation(reservation: { status: string; startTime: string; endTime: string; organizerId?: string; organizer?: { email?: string } }): { canCancel: boolean; reason: string } {
+  if (!authStore.user) return { canCancel: false, reason: '用户未登录' }
+
+  // 检查是否是管理员
+  if (authStore.user.role === 'ADMIN') {
+    // 管理员也只能取消未开始的预约
+    const now = new Date()
+    const startTime = new Date(reservation.startTime)
+    if (startTime <= now) {
+      return { canCancel: false, reason: '预约已开始或已结束' }
+    }
+    return { canEdit: true, reason: '' }
+  }
+
+  // 检查是否是预约组织者
+  const isOrganizer = reservation.organizerId === authStore.user.id ||
+                     reservation.organizer?.email === authStore.user.email ||
+                     reservation.organizerName === authStore.user.name
+
+  if (!isOrganizer) {
+    return { canCancel: false, reason: '只有组织者可以取消' }
+  }
+
+  // 检查预约状态：只有未开始且未结束的预约可以取消
+  const now = new Date()
+  const startTime = new Date(reservation.startTime)
+  const endTime = new Date(reservation.endTime)
+
+  // 预约已经结束（结束时间已过）
+  const isEnded = endTime <= now
+  // 预约还未开始
+  const isUpcoming = startTime > now
+
+  // 可取消条件：组织者 + 未开始 + 未取消 + 未完成
+  const canCancelByStatus = isUpcoming &&
+                           reservation.status !== 'CANCELLED' &&
+                           reservation.status !== 'COMPLETED'
+
+  const statusReason = !isUpcoming ? '预约已开始或已结束' :
+                      (reservation.status === 'CANCELLED' ? '预约已取消' :
+                       reservation.status === 'COMPLETED' ? '预约已完成' : '')
+
+  return {
+    canCancel: canCancelByStatus,
+    reason: statusReason
+  }
 }
 
 // 加载预约数据
@@ -192,25 +303,55 @@ async function loadReservations() {
 }
 
 // 查看预约详情
-function viewReservationDetail(reservationId: string) {
-  router.push(`/reservations/${reservationId}`)
+function viewReservationDetail(reservationId: string, reservation: any) {
+  const typeInfo = getReservationTypeInfo(reservation)
+  if (typeInfo.isDetailed) {
+    // 详细预约跳转到详细页面
+    router.push(`/reservations/detailed#${reservationId}`)
+  } else {
+    // 简单预约跳转到简单详情页面
+    router.push(`/reservations/${reservationId}`)
+  }
 }
 
 // 编辑预约
-function editReservation(reservationId: string) {
-  router.push(`/reservations/create?edit=${reservationId}`)
+function editReservation(reservationId: string, reservation: any) {
+  // 检查编辑权限
+  const editPermission = canEditReservation(reservation)
+  if (!editPermission.canEdit) {
+    window.alert(`无法编辑预约：${editPermission.reason}`)
+    return
+  }
+
+  const typeInfo = getReservationTypeInfo(reservation)
+  if (typeInfo.isDetailed) {
+    // 详细预约跳转到详细编辑页面
+    router.push(`/reservations/detailed?edit=${reservationId}`)
+  } else {
+    // 简单预约跳转到简单编辑页面
+    router.push(`/reservations/create?edit=${reservationId}`)
+  }
 }
 
 // 取消预约
-async function cancelReservation(reservationId: string) {
+async function cancelReservation(reservationId: string, reservation?: any) {
+  // 如果传入了预约对象，先检查权限
+  if (reservation) {
+    const cancelPermission = canCancelReservation(reservation)
+    if (!cancelPermission.canCancel) {
+      window.alert(`无法取消预约：${cancelPermission.reason}`)
+      return
+    }
+  }
+
   // TODO: 替换为更好的用户确认对话框组件
   if (!window.confirm('确定要取消这个预约吗？此操作不可撤销。')) {
     return
   }
 
   try {
-    // 使用 store 的 deleteReservation 方法
-    const success = await reservationStore.deleteReservation(reservationId)
+    // 使用 store 的 cancelReservation 方法
+    const success = await reservationStore.cancelReservation(reservationId)
 
     if (success) {
       // TODO: 替换为更好的通知组件
@@ -366,15 +507,25 @@ onMounted(async () => {
             <div class="flex items-start justify-between">
               <!-- 左侧：主要信息 -->
               <div class="flex-1">
-                <div class="flex items-center gap-3 mb-2">
+                <div class="flex items-center gap-3 mb-2 flex-wrap">
                   <h3 class="text-lg font-medium text-gray-900">{{ reservation.title }}</h3>
+                  <!-- 预约类型标识 -->
+                  <span :class="[
+                    'px-2 py-1 text-xs font-medium rounded-full border flex items-center gap-1',
+                    getReservationTypeInfo(reservation).color === 'purple'
+                      ? 'bg-purple-100 text-purple-800 border-purple-200'
+                      : 'bg-blue-100 text-blue-800 border-blue-200'
+                  ]">
+                    <i :class="['pi', getReservationTypeInfo(reservation).icon, 'text-xs']"></i>
+                    {{ getReservationTypeInfo(reservation).type }}
+                  </span>
                   <span :class="[
                     'px-2 py-1 text-xs font-medium rounded-full',
                     getStatusStyle(reservation.status)
                   ]">
                     {{ getStatusText(reservation.status) }}
                   </span>
-                  <span v-if="isPastReservation(reservation.startTime)"
+                  <span v-if="isReservationEnded(reservation)"
                         class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                     已结束
                   </span>
@@ -424,24 +575,26 @@ onMounted(async () => {
               <!-- 右侧：操作按钮 -->
               <div class="ml-6 flex flex-col gap-2">
                 <button
-                  @click="viewReservationDetail(reservation.id)"
+                  @click="viewReservationDetail(reservation.id, reservation)"
                   class="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
                 >
                   <i class="pi pi-eye mr-1"></i>
                   查看详情
                 </button>
                 <button
-                  v-if="canEditReservation(reservation)"
-                  @click="editReservation(reservation.id)"
+                  v-if="canEditReservation(reservation).canEdit"
+                  @click="editReservation(reservation.id, reservation)"
                   class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                  title="编辑预约"
                 >
                   <i class="pi pi-pencil mr-1"></i>
                   编辑
                 </button>
                 <button
-                  v-if="canCancelReservation(reservation)"
-                  @click="cancelReservation(reservation.id)"
+                  v-if="canCancelReservation(reservation).canCancel"
+                  @click="cancelReservation(reservation.id, reservation)"
                   class="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                  title="取消预约"
                 >
                   <i class="pi pi-trash mr-1"></i>
                   取消

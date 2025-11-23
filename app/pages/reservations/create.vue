@@ -450,6 +450,25 @@ async function loadEditReservation() {
       reservationDate.value = format(new Date(reservation.startTime), 'yyyy-MM-dd')
     }
 
+    // 设置时间选择器的时间段
+    if (reservation.startTime && reservation.endTime) {
+      const startTime = new Date(reservation.startTime)
+      const endTime = new Date(reservation.endTime)
+
+      // 创建一个时间段来表示当前预约的时间
+      const timeSlot: TimeSlot = {
+        id: `edit-${reservation.id}`,
+        startTime,
+        endTime,
+        status: 'selected',
+        roomId: reservation.roomId,
+        reservationId: reservation.id
+      }
+
+      selectedTimeSlots.value = [timeSlot]
+      console.warn('🔄 已设置编辑时间段:', timeSlot)
+    }
+
     message.value = '预约数据加载完成！您可以修改信息并选择新的时间'
 
   } catch (error: any) {
@@ -484,7 +503,7 @@ onMounted(async () => {
     <UniversalHeader />
 
     <!-- 状态消息 -->
-    <div v-if="message" class="container mx-auto px-4 py-3">
+    <div v-if="message" class="container mx-auto my-0 px-4 py-3">
       <div :class="[
         'rounded-lg p-4 flex items-center gap-3',
         message.includes('成功') ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'
@@ -496,7 +515,7 @@ onMounted(async () => {
 
     <!-- 预约类型选择 -->
     <div class="container mx-auto px-4 py-6">
-      <div class="mb-6">
+      <!-- <div class="mb-6">
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div class="flex items-center justify-between">
             <div>
@@ -514,7 +533,7 @@ onMounted(async () => {
             />
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- 主要内容区域：左右两列布局 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -526,7 +545,7 @@ onMounted(async () => {
             快速预约
           </h2>
 
-          <form @submit.prevent="handleReservationSubmit" class="space-y-6">
+          <form @submit.prevent="handleReservationSubmit" class="space-y-3">
             <!-- 会议室选择 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">

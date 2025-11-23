@@ -123,7 +123,8 @@ const reservationStats = computed(() => {
         break
     }
 
-    if (isPastReservation(reservation.startTime)) {
+    // 使用新的结束判断逻辑
+    if (isReservationEnded(reservation)) {
       stats.past++
     } else {
       stats.upcoming++
@@ -187,10 +188,24 @@ function getDuration(startTime: string | Date, endTime: string | Date): string {
   return `${minutes}分钟`
 }
 
-// 检查是否为过期预约
-function isPastReservation(startTime: string | Date): boolean {
+// 检查是否为过期预约（基于预约的结束时间）
+function isPastReservation(startTime: string | Date, endTime?: string | Date): boolean {
   const start = typeof startTime === 'string' ? new Date(startTime) : startTime
-  return isBefore(start, new Date())
+  const end = endTime ? (typeof endTime === 'string' ? new Date(endTime) : endTime) : start
+
+  // 如果预约已经结束（结束时间已过），则认为是过期预约
+  return isBefore(end, new Date())
+}
+
+// 检查是否为已结束预约的更准确版本（考虑状态和时间）
+function isReservationEnded(reservation: any): boolean {
+  // 如果状态是已完成或已取消，直接返回true
+  if (reservation.status === 'COMPLETED' || reservation.status === 'CANCELLED') {
+    return true
+  }
+
+  // 否则检查结束时间
+  return isPastReservation(reservation.startTime, reservation.endTime)
 }
 
 // 检查是否为进行中的预约
@@ -214,7 +229,12 @@ async function loadMyReservations() {
 
 // 查看预约详情
 function viewReservationDetail(reservationId: string) {
-  navigateTo(`/reservations/${reservationId}`)
+  navigateTo(`/reservations/detailed#${reservationId}`)
+}
+
+// 编辑预约
+function editReservation(reservationId: string) {
+  navigateTo(`/reservations/detailed?edit=${reservationId}`)
 }
 
 // 取消预约
@@ -403,7 +423,7 @@ onMounted(async () => {
                   ]">
                     {{ getStatusText(reservation.status) }}
                   </span>
-                  <span v-if="isPastReservation(reservation.startTime)"
+                  <span v-if="isReservationEnded(reservation)"
                         class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                     已结束
                   </span>
@@ -456,16 +476,19 @@ onMounted(async () => {
                   查看详情
                 </button>
                 <button
-                  v-if="!isPastReservation(reservation.startTime) && reservation.status !== 'CANCELLED'"
+                  v-if="!isReservationEnded(reservation)"
+                  @click="editReservation(reservation.id)"
                   class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                  title="编辑预约"
                 >
                   <i class="pi pi-pencil mr-1"></i>
                   编辑
                 </button>
                 <button
-                  v-if="!isPastReservation(reservation.startTime) && reservation.status !== 'CANCELLED'"
+                  v-if="!isReservationEnded(reservation)"
                   @click="cancelReservation(reservation.id)"
                   class="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                  title="取消预约"
                 >
                   <i class="pi pi-trash mr-1"></i>
                   取消

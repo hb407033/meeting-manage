@@ -37,10 +37,18 @@ export default defineNuxtConfig({
     redisUrl: process.env.REDIS_URL,
     jwtSecret: process.env.JWT_SECRET,
 
+    // 开发环境自动登录配置
+    devAutoLoginEnabled: process.env.DEV_AUTO_LOGIN_ENABLED === 'true',
+    devUserEmail: process.env.DEV_USER_EMAIL || 'dev@meeting-manage.local',
+    devUserName: process.env.DEV_USER_NAME || '开发测试用户',
+    devUserRole: process.env.DEV_USER_ROLE || 'ADMIN',
+
     // 公共配置 - 客户端和服务端都可用
     public: {
       apiBase: process.env.API_BASE_URL || '/api',
       appName: '智能会议室管理系统',
+      isDevelopment: process.env.NODE_ENV === 'development',
+      devAutoLoginEnabled: process.env.DEV_AUTO_LOGIN_ENABLED === 'true',
     },
   },
 
@@ -49,4 +57,5 @@ export default defineNuxtConfig({
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
   },
-})
+
+  })

@@ -72,6 +72,18 @@ export interface Reservation {
   attendeeCount: number
   attendees?: ReservationAttendee[]
   description?: string
+  // 详细配置字段
+  importanceLevel?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
+  equipment?: any[]
+  services?: any[]
+  attendeeList?: any[]
+  meetingMaterials?: any[]
+  budgetAmount?: number
+  specialRequirements?: string
+  isRecurring?: boolean
+  recurringPattern?: any
+  isException?: boolean
+  recurringReservation?: any
   createdAt: string
   updatedAt: string
   canceledAt?: string
@@ -90,6 +102,47 @@ export interface CreateReservationData {
 
 export interface UpdateReservationData extends Partial<CreateReservationData> {
   status?: Reservation['status']
+}
+
+// 详细预约数据接口
+export interface DetailedReservationData {
+  title: string
+  description?: string
+  importanceLevel: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
+  attendeeCount: number
+  roomId: string
+  startTime: Date | string
+  endTime: Date | string
+  budgetAmount?: number | null
+  equipment?: EquipmentSelection[]
+  services?: ServiceSelection[]
+  attendeeList?: any[]
+  meetingMaterials?: any[]
+  isRecurring?: boolean
+  recurringPattern?: any
+  specialRequirements?: string
+}
+
+export interface EquipmentSelection {
+  id: string
+  name: string
+  type: string
+  quantity: number
+  cost: number
+  totalCost: number
+  config?: any
+  discount?: number
+}
+
+export interface ServiceSelection {
+  id: string
+  name: string
+  type: string
+  quantity: number
+  cost: number
+  totalCost: number
+  config?: any
+  discount?: number
 }
 
 export interface AvailabilityQuery {
@@ -211,8 +264,8 @@ export const useReservationStore = defineStore('reservations', {
       return state.reservations.filter(r => {
         const startTime = new Date(r.startTime)
         return r.status === 'CONFIRMED' &&
-               startTime > now &&
-               startTime <= twoHoursLater
+          startTime > now &&
+          startTime <= twoHoursLater
       })
     },
 
@@ -223,8 +276,8 @@ export const useReservationStore = defineStore('reservations', {
         const startTime = new Date(r.startTime)
         const endTime = new Date(r.endTime)
         return r.status === 'CONFIRMED' &&
-               startTime <= now &&
-               endTime > now
+          startTime <= now &&
+          endTime > now
       })
     },
 
@@ -278,7 +331,7 @@ export const useReservationStore = defineStore('reservations', {
     hasActiveFilters: (state) => {
       const { filters } = state
       return !!(filters.roomId || filters.status || filters.dateFrom ||
-               filters.dateTo || filters.search)
+        filters.dateTo || filters.search)
     }
   },
 
@@ -470,9 +523,20 @@ export const useReservationStore = defineStore('reservations', {
 
       try {
         const apiFetch = getApiFetch()
-        const response = await apiFetch<Reservation>(`/api/v1/reservations/${id}`)
-        this.currentReservation = response
-        return response
+        const response = await apiFetch<any>(`/api/v1/reservations/${id}`)
+
+        let reservationData = response
+        // 处理可能的响应包装
+        if (response && typeof response === 'object') {
+          if ('data' in response) {
+            reservationData = response.data
+          } else if ('reservation' in response) {
+            reservationData = response.reservation
+          }
+        }
+
+        this.currentReservation = reservationData
+        return reservationData
 
       } catch (error: any) {
         this.setError(error.message || '获取预约详情失败')
@@ -508,6 +572,60 @@ export const useReservationStore = defineStore('reservations', {
       } catch (error: any) {
         this.setError(error.message || '创建预约失败')
         console.error('创建预约失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 创建详细预约
+    async createDetailedReservation(detailedData: DetailedReservationData) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        // 准备提交数据，转换为API需要的格式
+        const submitData = {
+          title: detailedData.title,
+          description: detailedData.description,
+          importanceLevel: detailedData.importanceLevel,
+          attendeeCount: detailedData.attendeeCount,
+          roomId: detailedData.roomId,
+          startTime: typeof detailedData.startTime === 'string'
+            ? detailedData.startTime
+            : detailedData.startTime.toISOString(),
+          endTime: typeof detailedData.endTime === 'string'
+            ? detailedData.endTime
+            : detailedData.endTime.toISOString(),
+          budgetAmount: detailedData.budgetAmount,
+          equipment: detailedData.equipment || [],
+          services: detailedData.services || [],
+          attendeeList: detailedData.attendeeList || [],
+          meetingMaterials: detailedData.meetingMaterials || [],
+          isRecurring: detailedData.isRecurring || false,
+          recurringPattern: detailedData.recurringPattern,
+          specialRequirements: detailedData.specialRequirements
+        }
+
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<Reservation>('/api/v1/reservations/detailed', {
+          method: 'POST',
+          body: submitData
+        })
+
+        // 添加到本地状态
+        this.reservations.unshift(response)
+
+        // 清除相关房间的可用性缓存
+        if (detailedData.roomId && this.availability[detailedData.roomId]) {
+          delete this.availability[detailedData.roomId]
+        }
+
+        return response
+
+      } catch (error: any) {
+        this.setError(error.message || '创建详细预约失败')
+        console.error('创建详细预约失败:', error)
         throw error
       } finally {
         this.setLoading(false)

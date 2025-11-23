@@ -149,7 +149,7 @@ const route = useRoute()
 // 表单数据
 const form = reactive({
   email: 'houbin@123.com',
-  password: '179577Hb@'
+  password: '123456'
 })
 
 // 表单状态

@@ -14,6 +14,11 @@ body {
   padding: 1rem;
 }
 
+.p-card-body {
+  padding: 5px !important;
+  /* 覆盖 PrimeVue 默认的 padding（默认约 1rem） */
+}
+
 @media (max-width: 768px) {
   .room-management {
     padding: 0.5rem;
@@ -48,6 +53,11 @@ body {
 
   .card {
     @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
+  }
+
+  .p-card-body {
+    padding: 5px !important;
+    /* 覆盖 PrimeVue 默认的 padding（默认约 1rem） */
   }
 
   .input-field {

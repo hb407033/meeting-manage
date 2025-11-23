@@ -10,6 +10,20 @@
 
     <!-- 已认证用户 -->
     <div v-else-if="isAuthenticated" class="min-h-screen">
+      <!-- 开发环境指示器 -->
+      <DevModeIndicator
+        position="top-right"
+        variant="badge"
+        :animated="true"
+        :closable="false"
+        :show-user="true"
+        :show-environment="true"
+        :show-actions="true"
+        :allow-switch="true"
+        @switch-user="handleUserSwitch"
+        @close="handleIndicatorClose"
+      />
+
       <!-- 通用头部导航组件 -->
       <UniversalHeader />
 
@@ -48,6 +62,17 @@ const router = useRouter()
 
 // 组件状态
 const authLoading = ref(process.server ? true : false)
+
+// 事件处理方法
+const handleUserSwitch = () => {
+  // 打开用户切换对话框或导航到用户切换页面
+  router.push('/dev/user-switch')
+}
+
+const handleIndicatorClose = () => {
+  // 开发环境指示器关闭事件（通常不允许关闭）
+  console.log('开发环境指示器关闭事件')
+}
 
 // 初始化认证状态
 // 在客户端初始化认证状态

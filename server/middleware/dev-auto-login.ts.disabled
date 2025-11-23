@@ -1,0 +1,132 @@
+/**
+ * 开发环境自动登录中间件
+ * 仅在开发环境下启用，为开发者提供自动登录功能
+ */
+
+import { isDevAutoLoginEnabled, isDevAutoLoginSafe, getDevUserConfig } from '~~/server/utils/environment'
+import { generateTokenPair } from '~~/server/utils/jwt'
+import { ensureDevUserExists, validateDevUserPermissions } from '~~/server/services/dev-user-service'
+
+export default defineEventHandler(async (event) => {
+  // 只处理API请求
+  if (!event.node.req.url?.startsWith('/api/')) {
+    return
+  }
+
+  // 检查是否是认证相关API，跳过自动登录逻辑避免无限循环
+  const authUrls = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/logout']
+  if (authUrls.some(url => event.node.req.url?.includes(url))) {
+    return
+  }
+
+  // 安全检查：确保仅在开发环境下启用
+  if (!isDevAutoLoginEnabled() || !isDevAutoLoginSafe()) {
+    return
+  }
+
+  // 检查用户是否已经登录
+  const existingToken = getCookie(event, 'auth_token')
+  if (existingToken) {
+    try {
+      // 验证现有token
+      const jwt = await import('jsonwebtoken')
+      jwt.verify(existingToken, process.env.JWT_SECRET!)
+      return // Token有效，无需自动登录
+    } catch {
+      // Token无效，继续自动登录流程
+    }
+  }
+
+  try {
+    // 获取开发用户配置
+    const devUserConfig = getDevUserConfig()
+
+    // 确保开发用户存在
+    const devUser = await ensureDevUserExists()
+    if (!devUser) {
+      console.error('开发用户创建失败，跳过自动登录')
+      return
+    }
+
+    // 验证开发用户权限
+    const hasPermissions = await validateDevUserPermissions(devUser)
+    if (!hasPermissions) {
+      console.error('开发用户权限验证失败，跳过自动登录')
+      return
+    }
+
+    // 获取完整的用户信息（包含权限）
+    const user = await prisma.user.findUnique({
+      where: { id: devUser.id },
+      include: {
+        userRoles: {
+          include: {
+            role: {
+              include: {
+                rolePermissions: {
+                  include: {
+                    permission: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!user) {
+      console.error('无法找到开发用户信息，跳过自动登录')
+      return
+    }
+
+    // 提取权限列表
+    const permissions = user.userRoles.flatMap(ur =>
+      ur.role.rolePermissions.map(rp => rp.permission.code)
+    )
+
+    // 生成JWT token
+    const tokens = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      roles: user.userRoles.map(ur => ur.role.name),
+      permissions
+    })
+
+    // 设置cookie
+    setCookie(event, 'auth_token', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 // 1小时
+    })
+
+    setCookie(event, 'refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 // 7天
+    })
+
+    // 更新用户最后登录信息
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIP: getClientIP(event) || 'unknown'
+      }
+    })
+
+    // 在开发环境下输出日志
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔧 Dev Auto Login: 自动登录用户 ${devUserConfig.email}`)
+      console.log(`📋 角色: ${user.userRoles.map(ur => ur.role.name).join(', ')}`)
+      console.log(`🔑 权限数量: ${permissions.length}`)
+    }
+
+  } catch (error) {
+    console.error('开发环境自动登录失败:', error)
+    // 自动登录失败不应该影响系统正常运行，静默处理
+  }
+})
+

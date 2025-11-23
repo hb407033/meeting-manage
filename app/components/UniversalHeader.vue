@@ -27,13 +27,15 @@ const currentPageTitle = computed(() => {
   // 预约相关页面
   if (path.startsWith('/reservations')) {
     if (path.includes('/create'))
-      return '创建预约'
+      return '快速预约'
     if (path.includes('/detailed'))
       return '详细预约'
     if (path.includes('/my'))
       return '我的预约'
     if (path.includes('/calendar'))
       return '预约日历'
+    if (path === '/reservations')
+      return '预约列表'
     return '预约管理'
   }
 
@@ -62,7 +64,7 @@ const currentPageTitle = computed(() => {
   // 默认标题
   switch (path) {
     case '/dashboard':
-      return '智能会议室管理系统'
+      return '预约仪表盘'
     case '/profile':
       return '个人资料'
     case '/settings':
@@ -174,14 +176,14 @@ onKeyStroke('Escape', () => {
                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400': isRouteActive('/reservations/create') }"
                 >
-                  创建预约
+                  快速预约
                 </NuxtLink>
                 <NuxtLink
                   to="/reservations"
                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400': isRouteActive('/reservations') }"
                 >
-                  快速预约
+                  预约列表
                 </NuxtLink>
                 <NuxtLink
                   to="/reservations/detailed"
@@ -197,14 +199,7 @@ onKeyStroke('Escape', () => {
                 >
                   我的预约
                 </NuxtLink>
-                <NuxtLink
-                  to="/reservations/calendar"
-                  class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400': isRouteActive('/reservations/calendar') }"
-                >
-                  预约日历
-                </NuxtLink>
-              </div>
+                </div>
             </Transition>
           </div>
 
@@ -436,7 +431,7 @@ onKeyStroke('Escape', () => {
                 :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600': isRouteActive('/reservations/create') }"
                 @click="showMobileMenu = false"
               >
-                创建预约
+                快速预约
               </NuxtLink>
               <NuxtLink
                 to="/reservations"
@@ -444,7 +439,7 @@ onKeyStroke('Escape', () => {
                 :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600': isRouteActive('/reservations') }"
                 @click="showMobileMenu = false"
               >
-                快速预约
+                预约列表
               </NuxtLink>
               <NuxtLink
                 to="/reservations/detailed"
@@ -462,15 +457,7 @@ onKeyStroke('Escape', () => {
               >
                 我的预约
               </NuxtLink>
-              <NuxtLink
-                to="/reservations/calendar"
-                class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-700"
-                :class="{ 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600': isRouteActive('/reservations/calendar') }"
-                @click="showMobileMenu = false"
-              >
-                预约日历
-              </NuxtLink>
-            </div>
+              </div>
 
             <!-- 会议室管理模块 -->
             <div v-if="canAccess('room', 'read')">
