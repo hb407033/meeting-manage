@@ -99,12 +99,12 @@
                 </div>
 
                 <!-- 费用信息 -->
-                <div v-if="equipment.cost" class="cost-info mt-2">
+                <!-- <div v-if="equipment.cost" class="cost-info mt-2">
                   <div class="text-sm text-gray-500">
                     费用: ¥{{ equipment.cost.toFixed(2) }}
                     <span v-if="equipment.costType">{{ getCostTypeText(equipment.costType) }}</span>
                   </div>
-                </div>
+                </div> -->
               </div>
 
               <!-- 状态覆盖层 -->
@@ -124,7 +124,7 @@
     </div>
 
     <!-- 选中设备汇总 -->
-    <div v-if="selectedEquipment.length > 0" class="selection-summary">
+    <!-- <div v-if="selectedEquipment.length > 0" class="selection-summary">
       <Card>
         <template #title>
           <div class="flex items-center justify-between">
@@ -163,7 +163,7 @@
           </div>
         </template>
       </Card>
-    </div>
+    </div> -->
 
     <!-- 冲突提示 -->
     <div v-if="conflicts.length > 0" class="conflicts-alert mt-4">
@@ -379,33 +379,6 @@ const equipmentCategories = ref<EquipmentCategory[]>([
       }
     ]
   },
-  {
-    id: 'comfort',
-    name: '舒适设备',
-    icon: 'pi pi-heart',
-    items: [
-      {
-        id: 'air-conditioner',
-        name: '空调',
-        description: '中央空调控制',
-        icon: 'pi pi-sun',
-        color: '#0ea5e9',
-        available: true,
-        cost: 0,
-        category: 'comfort'
-      },
-      {
-        id: 'lighting',
-        name: '智能照明',
-        description: '可调节亮度LED照明',
-        icon: 'pi pi-lightbulb',
-        color: '#fbbf24',
-        available: true,
-        cost: 0,
-        category: 'comfort'
-      }
-    ]
-  }
 ])
 
 // 计算属性

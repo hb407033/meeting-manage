@@ -27,6 +27,9 @@ model User {
   loginAttempts        Int                 @default(0)
   passwordResetExpires DateTime?
   passwordResetToken   String?             @unique
+  // 开发环境专用字段
+  isDevUser            Boolean             @default(false)
+  devUserNote          String?             // 开发用户备注，用于标识开发用途
   organization         Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   userRoles            UserRole[]
   reservations         Reservation[]
@@ -36,6 +39,13 @@ model User {
   roomHistory          RoomHistory[]
   recurringReservations RecurringReservation[] @relation("RecurringReservationOrganizer")
   meetingMaterials     MeetingMaterial[]
+  reservationConflicts ReservationConflict[] @relation("ConflictResolver")
+  initiatedNegotiations ReservationNegotiation[] @relation("NegotiationInitiator")
+  targetNegotiations   ReservationNegotiation[] @relation("NegotiationTarget")
+  resolvedNegotiations ReservationNegotiation[] @relation("NegotiationResolver")
+  notifications         Notification[]
+  notificationPreference UserNotificationPreference?
+  reminderSetting       ReminderSetting?
 
   @@map("users")
 }
@@ -187,6 +197,9 @@ model Reservation {
   room                    MeetingRoom         @relation(fields: [roomId], references: [id])
   recurringReservation    RecurringReservation? @relation("RecurringReservationInstances", fields: [recurringReservationId], references: [id])
   meetingMaterials        MeetingMaterial[]   // 关联的会议材料
+  reservationConflicts    ReservationConflict[] // 冲突记录
+  negotiations            ReservationNegotiation[] // 协商记录
+  notifications           Notification[]
 
   @@map("reservations")
 }
@@ -315,6 +328,7 @@ model RecurringReservation {
   room                 MeetingRoom                  @relation("RecurringReservationRoom", fields: [roomId], references: [id])
   reservations         Reservation[]                @relation("RecurringReservationInstances")
   exceptions           RecurringException[]
+  notifications        Notification[]
 
   @@map("recurring_reservations")
 }
@@ -414,4 +428,294 @@ enum HolidayType {
   NATIONAL   // 国家法定节假日
   REGIONAL   // 地方性节假日
   CUSTOM     // 自定义节假日
+}
+
+// 预约冲突记录表
+model ReservationConflict {
+  id              String              @id @default(cuid())
+  reservationId   String              // 预约ID
+  conflictType    ConflictType        // 冲突类型
+  severity        ConflictSeverity    @default(MEDIUM) // 冲突严重程度
+  conflictWithId  String?             // 冲突的预约ID
+  description     String              // 冲突描述
+  resolution      String?             // 建议的解决方案
+  isResolved      Boolean             @default(false) // 是否已解决
+  resolvedAt      DateTime?           // 解决时间
+  resolvedBy      String?             // 解决者用户ID
+  metadata        Json?               // 冲突详细信息(JSON格式)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // 关联关系
+  reservation     Reservation         @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  resolver        User?               @relation("ConflictResolver", fields: [resolvedBy], references: [id])
+
+  @@index([reservationId])
+  @@index([conflictType])
+  @@index([severity])
+  @@index([isResolved])
+  @@index([createdAt])
+  @@map("reservation_conflicts")
+}
+
+// 预约协商表
+model ReservationNegotiation {
+  id                String                  @id @default(cuid())
+  reservationId     String                  // 预约ID
+  initiatorId       String                  // 发起者用户ID
+  targetUserId      String                  // 目标用户ID
+  negotiationType   NegotiationType         // 协商类型
+  status            NegotiationStatus       @default(PENDING) // 协商状态
+  title             String                  // 协商标题
+  message           String                  // 协商消息
+  proposedChanges   Json?                   // 建议的变更(JSON格式)
+  responseMessage   String?                 // 响应消息
+  responseChanges   Json?                   // 响应变更(JSON格式)
+  deadline          DateTime?               // 协商截止时间
+  resolvedAt        DateTime?               // 解决时间
+  resolvedBy        String?                 // 解决者用户ID
+  resolution        NegotiationResolution?  // 协商结果
+  metadata          Json?                   // 其他元信息
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  // 关联关系
+  reservation       Reservation             @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  initiator         User                    @relation("NegotiationInitiator", fields: [initiatorId], references: [id])
+  targetUser        User                    @relation("NegotiationTarget", fields: [targetUserId], references: [id])
+  resolver          User?                   @relation("NegotiationResolver", fields: [resolvedBy], references: [id])
+
+  @@index([reservationId])
+  @@index([initiatorId])
+  @@index([targetUserId])
+  @@index([status])
+  @@index([negotiationType])
+  @@index([deadline])
+  @@index([createdAt])
+  @@map("reservation_negotiations")
+}
+
+// 冲突类型枚举
+enum ConflictType {
+  TIME_CONFLICT        // 时间冲突
+  CAPACITY_CONFLICT    // 容量冲突
+  EQUIPMENT_CONFLICT   // 设备冲突
+  MAINTENANCE_CONFLICT // 维护冲突
+  RULE_CONFLICT        // 规则冲突
+  ROOM_UNAVAILABLE     // 会议室不可用
+}
+
+// 冲突严重程度枚举
+enum ConflictSeverity {
+  LOW      // 低严重程度
+  MEDIUM   // 中等严重程度
+  HIGH     // 高严重程度
+  CRITICAL // 严重冲突
+}
+
+// 协商类型枚举
+enum NegotiationType {
+  TIME_ADJUSTMENT     // 时间调整
+  ROOM_CHANGE         // 会议室更换
+  EQUIPMENT_ADDITION  // 设备添加
+  ATTENDEE_MODIFY     // 参会人员修改
+  CANCELLATION_REQUEST // 取消请求
+  CUSTOM              // 自定义协商
+}
+
+// 协商状态枚举
+enum NegotiationStatus {
+  PENDING    // 待响应
+  ACCEPTED   // 已接受
+  REJECTED   // 已拒绝
+  CANCELLED  // 已取消
+  EXPIRED    // 已过期
+  RESOLVED   // 已解决
+}
+
+// 协商结果枚举
+enum NegotiationResolution {
+  ACCEPTED   // 接受协商
+  REJECTED   // 拒绝协商
+  COMPROMISED // 达成妥协
+  ARBITRATED // 仲裁解决
+}
+
+// 通知模板表
+model NotificationTemplate {
+  id              String                  @id @default(cuid())
+  name            String                  @unique
+  title           String                  // 通知标题模板
+  content         String                  // 通知内容模板
+  type            NotificationType        // 通知类型
+  channel         NotificationChannel     // 通知渠道
+  variables       Json?                   // 模板变量定义
+  isActive        Boolean                 @default(true)
+  language        String                  @default("zh-CN")
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  // 关联关系
+  notifications   Notification[]
+
+  @@map("notification_templates")
+}
+
+// 用户通知偏好设置表
+model UserNotificationPreference {
+  id                    String                        @id @default(cuid())
+  userId                String                        @unique
+  emailEnabled          Boolean                       @default(true)
+  systemEnabled         Boolean                       @default(true)
+  reminderMinutes       Int                           @default(15) // 提前提醒分钟数
+  quietHoursEnabled     Boolean                       @default(false)
+  quietHoursStart       String                        @default("22:00") // 免打扰开始时间
+  quietHoursEnd         String                        @default("08:00") // 免打扰结束时间
+  timezone              String                        @default("Asia/Shanghai")
+  preferredChannels     Json?                         // 偏好的通知渠道配置
+  categoryPreferences   Json?                         // 按类别的通知偏好
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+
+  // 关联关系
+  user                  User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_preferences")
+}
+
+// 通知记录表
+model Notification {
+  id                  String              @id @default(cuid())
+  userId              String              // 接收者用户ID
+  type                NotificationType    // 通知类型
+  channel             NotificationChannel // 通知渠道
+  title               String              // 通知标题
+  content             String              // 通知内容
+  data                Json?               // 附加数据
+  status              NotificationStatus  @default(PENDING)
+  priority            NotificationPriority @default(NORMAL)
+  scheduledAt         DateTime?           // 定时发送时间
+  sentAt              DateTime?           // 实际发送时间
+  readAt              DateTime?           // 阅读时间
+  retryCount          Int                 @default(0)
+  maxRetries          Int                 @default(3)
+  errorMessage        String?             // 错误信息
+  metadata            Json?               // 元数据
+  reservationId       String?             // 关联预约ID
+  recurringReservationId String?          // 关联周期性预约ID
+  templateId          String?             // 使用的模板ID
+  createdBy           String?             // 创建者
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // 关联关系
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template            NotificationTemplate? @relation(fields: [templateId], references: [id])
+  reservation         Reservation?        @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  recurringReservation RecurringReservation? @relation(fields: [recurringReservationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([channel])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([sentAt])
+  @@index([reservationId])
+  @@index([recurringReservationId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// 提醒设置表
+model ReminderSetting {
+  id                          String                    @id @default(cuid())
+  userId                      String                    @unique
+  defaultReminderMinutes      Int                       @default(15) // 默认提前提醒分钟数
+  enabledTypes                Json?                     // 启用的提醒类型
+  customReminders             Json?                     // 自定义提醒配置
+  workingDaysOnly             Boolean                   @default(false) // 仅工作日提醒
+  skipWeekends                Boolean                   @default(false) // 跳过周末提醒
+  holidayHandling             HolidayHandling           @default(SKIP) // 节假日处理方式
+  maxRemindersPerDay          Int                       @default(10) // 每日最大提醒数
+  batchReminders              Boolean                   @default(true) // 批量提醒
+  batchDelayMinutes           Int                       @default(5) // 批量延迟分钟数
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+
+  // 关联关系
+  user                        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reminder_settings")
+}
+
+// 通知统计表
+model NotificationStats {
+  id              String            @id @default(cuid())
+  userId          String?           // 用户ID，为null表示系统级统计
+  date            DateTime          @db.Date
+  type            NotificationType  // 通知类型
+  channel         NotificationChannel // 通知渠道
+  totalSent       Int               @default(0) // 总发送数
+  totalDelivered  Int               @default(0) // 总送达数
+  totalRead       Int               @default(0) // 总阅读数
+  totalFailed     Int               @default(0) // 总失败数
+  avgDeliveryTime Float?            // 平均送达时间（秒）
+  metadata        Json?             // 统计元数据
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([userId, date, type, channel])
+  @@index([date])
+  @@index([type])
+  @@index([channel])
+  @@map("notification_stats")
+}
+
+// 通知类型枚举
+enum NotificationType {
+  RESERVATION_REMINDER       // 预约提醒
+  RESERVATION_CONFIRMED      // 预约确认
+  RESERVATION_CANCELLED      // 预约取消
+  RESERVATION_MODIFIED       // 预约修改
+  RECURRING_REMINDER        // 周期性预约提醒
+  SYSTEM_ANNOUNCEMENT       // 系统公告
+  MAINTENANCE_NOTICE        // 维护通知
+  SECURITY_ALERT            // 安全告警
+  REMINDER_PREVIEW          // 提醒预览
+}
+
+// 通知渠道枚举
+enum NotificationChannel {
+  EMAIL         // 邮件
+  SYSTEM        // 系统内消息
+  WEBSOCKET     // 实时推送
+  SMS           // 短信
+  PUSH          // 移动推送
+}
+
+// 通知状态枚举
+enum NotificationStatus {
+  PENDING       // 待发送
+  SENDING       // 发送中
+  SENT          // 已发送
+  DELIVERED     // 已送达
+  READ          // 已阅读
+  FAILED        // 发送失败
+  CANCELLED     // 已取消
+}
+
+// 通知优先级枚举
+enum NotificationPriority {
+  LOW           // 低优先级
+  NORMAL        // 普通优先级
+  HIGH          // 高优先级
+  URGENT        // 紧急
+}
+
+// 节假日处理方式枚举
+enum HolidayHandling {
+  SKIP          // 跳过节假日提醒
+  BEFORE        // 节假日前提醒
+  AFTER         // 节假日后提醒
+  NORMAL        // 正常提醒
 }

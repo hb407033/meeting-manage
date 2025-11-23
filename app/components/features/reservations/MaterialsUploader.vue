@@ -1,16 +1,9 @@
 <template>
-  <div class="meeting-materials-uploader">
-    <div class="space-y-4">
+  <div class="meeting-materials-uploader" :class="{ 'compact-mode': compact }">
+    <div :class="compact ? 'space-y-2' : 'space-y-4'">
       <!-- 文件上传区域 -->
       <div class="upload-section">
-        <Card>
-          <template #title>
-            <div class="flex items-center gap-2">
-              <i class="pi pi-file-import"></i>
-              <span>会议材料上传</span>
-            </div>
-          </template>
-          <template #content>
+    
             <!-- 拖拽上传区域 -->
             <div
               class="upload-dropzone"
@@ -90,8 +83,6 @@
                 <li v-for="success in uploadSuccess" :key="success">{{ success }}</li>
               </ul>
             </Message>
-          </template>
-        </Card>
       </div>
 
       <!-- 已上传文件列表 -->
@@ -296,6 +287,7 @@ interface Props {
   materials?: MaterialFile[]
   isLoading?: boolean
   uploadOptions?: UploadOptions
+  compact?: boolean
 }
 
 interface Emits {
@@ -309,6 +301,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   materials: () => [],
   isLoading: false,
+  compact: false,
   uploadOptions: () => ({
     maxFileSize: 10 * 1024 * 1024, // 10MB
     allowedTypes: [
@@ -619,9 +612,17 @@ const isText = (material: MaterialFile): boolean => {
   @apply space-y-4;
 }
 
+.meeting-materials-uploader.compact-mode {
+  @apply space-y-2;
+}
+
 .upload-dropzone {
   @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer transition-all duration-200;
   @apply hover:border-blue-400 hover:bg-blue-50;
+}
+
+.meeting-materials-uploader.compact-mode .upload-dropzone {
+  @apply p-4;
 }
 
 .upload-dropzone.drag-over {
@@ -640,16 +641,32 @@ const isText = (material: MaterialFile): boolean => {
   @apply flex flex-col items-center justify-center min-h-[200px];
 }
 
+.meeting-materials-uploader.compact-mode .upload-content {
+  @apply min-h-[120px];
+}
+
 .upload-prompt h3 {
   @apply text-lg font-semibold text-gray-900 mb-2;
+}
+
+.meeting-materials-uploader.compact-mode .upload-prompt h3 {
+  @apply text-base font-medium mb-1;
 }
 
 .upload-prompt p {
   @apply text-gray-600;
 }
 
+.meeting-materials-uploader.compact-mode .upload-prompt p {
+  @apply text-sm;
+}
+
 .file-icon {
   @apply flex-shrink-0;
+}
+
+.meeting-materials-uploader.compact-mode .file-icon i {
+  @apply text-xl;
 }
 
 .file-info {
@@ -660,8 +677,25 @@ const isText = (material: MaterialFile): boolean => {
   @apply max-h-[80vh] overflow-auto;
 }
 
+.meeting-materials-uploader.compact-mode .preview-container {
+  @apply max-h-[60vh];
+}
+
 .no-preview {
   @apply flex items-center justify-center min-h-[200px];
+}
+
+.meeting-materials-uploader.compact-mode .no-preview {
+  @apply min-h-[120px];
+}
+
+/* 紧凑模式下 DataTable 的样式 */
+.meeting-materials-uploader.compact-mode :deep(.p-datatable .p-datatable-tbody > tr > td) {
+  @apply py-2;
+}
+
+.meeting-materials-uploader.compact-mode :deep(.p-datatable .p-datatable-thead > tr > th) {
+  @apply py-2;
 }
 
 /* 响应式设计 */
@@ -672,6 +706,14 @@ const isText = (material: MaterialFile): boolean => {
 
   .upload-content {
     @apply min-h-[150px];
+  }
+
+  .meeting-materials-uploader.compact-mode .upload-dropzone {
+    @apply p-3;
+  }
+
+  .meeting-materials-uploader.compact-mode .upload-content {
+    @apply min-h-[100px];
   }
 }
 </style>

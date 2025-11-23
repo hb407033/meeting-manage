@@ -9,6 +9,7 @@ import RecurringReservationEngine from './recurring-reservation-engine'
 import { RecurrencePattern, RecurrenceRuleEngine } from '../types/recurrence'
 import { conflictDetectionEngine } from './conflict-detection'
 import { cacheService } from './redis'
+import { notificationService } from './notification-service'
 
 export interface CreateRecurringReservationRequest {
   title: string
@@ -203,6 +204,14 @@ export class RecurringReservationService {
     // 生成预约实例（如果需要）
     if (generateInstances) {
       await this.generateReservationInstances(recurringReservation.id)
+    }
+
+    // 初始化用户通知偏好设置（如果不存在）
+    try {
+      await this.initializeUserNotificationPreferences(organizerId)
+    } catch (error) {
+      console.error('Failed to initialize user notification preferences:', error)
+      // 不阻止预约创建，只记录错误
     }
 
     // 清除缓存
@@ -484,6 +493,17 @@ export class RecurringReservationService {
       }
     }
 
+    // 创建周期性预约提醒
+    try {
+      await notificationService.createRecurringReminders(
+        recurringReservationId,
+        reservations
+      )
+    } catch (error) {
+      console.error('Failed to create recurring reminders:', error)
+      // 不阻止预约实例的创建，只记录错误
+    }
+
     return reservations
   }
 
@@ -636,6 +656,60 @@ export class RecurringReservationService {
       startDate: now,
       endDate: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000) // 未来90天
     })
+  }
+
+  /**
+   * 初始化用户通知偏好设置
+   */
+  private static async initializeUserNotificationPreferences(userId: string): Promise<void> {
+    try {
+      // 检查是否已经存在通知偏好设置
+      const existingPreference = await prisma.userNotificationPreference.findUnique({
+        where: { userId }
+      })
+
+      if (!existingPreference) {
+        // 创建默认通知偏好设置
+        await prisma.userNotificationPreference.create({
+          data: {
+            userId,
+            emailEnabled: true,
+            systemEnabled: true,
+            reminderMinutes: 15,
+            quietHoursEnabled: false,
+            quietHoursStart: '22:00',
+            quietHoursEnd: '08:00',
+            timezone: 'Asia/Shanghai'
+          }
+        })
+      }
+
+      // 检查是否已经存在提醒设置
+      const existingReminderSettings = await prisma.reminderSetting.findUnique({
+        where: { userId }
+      })
+
+      if (!existingReminderSettings) {
+        // 创建默认提醒设置
+        await prisma.reminderSetting.create({
+          data: {
+            userId,
+            defaultReminderMinutes: 15,
+            enabledTypes: ['RECURRING_REMINDER', 'RESERVATION_REMINDER'],
+            customReminders: [],
+            workingDaysOnly: false,
+            skipWeekends: false,
+            holidayHandling: 'SKIP',
+            maxRemindersPerDay: 10,
+            batchReminders: true,
+            batchDelayMinutes: 5
+          }
+        })
+      }
+    } catch (error) {
+      console.error('Failed to initialize user notification preferences:', error)
+      throw error
+    }
   }
 
   /**

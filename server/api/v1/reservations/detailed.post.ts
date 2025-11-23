@@ -13,6 +13,7 @@ import {
 import { auditLogger } from '~~/server/utils/audit'
 import { RecurringReservationEngine } from '~~/server/services/recurring-reservation-engine'
 import type { CreateRecurringReservationRequest } from '~~/server/types/recurring-reservation'
+import { requirePermission } from '~~/server/middleware/permission'
 
 // 请求体验证schema
 const DetailedReservationSchema = {

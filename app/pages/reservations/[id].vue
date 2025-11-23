@@ -36,6 +36,21 @@ const currentReservation = computed(() => {
   return reservationStore.currentReservation
 })
 
+// 判断是否为详细预约
+const isDetailedReservation = computed(() => {
+  if (!currentReservation.value) return false
+
+  return !!(
+    currentReservation.value.equipment ||
+    currentReservation.value.services ||
+    currentReservation.value.attendeeList ||
+    currentReservation.value.specialRequirements ||
+    currentReservation.value.budgetAmount ||
+    (currentReservation.value.importanceLevel && currentReservation.value.importanceLevel !== 'NORMAL') ||
+    (currentReservation.value.meetingMaterials && currentReservation.value.meetingMaterials.length > 0)
+  )
+})
+
 // 加载状态
 const loading = computed(() => reservationStore.loading)
 
@@ -93,6 +108,17 @@ function getDuration(startTime: string | Date, endTime: string | Date): string {
   return `${minutes}分钟`
 }
 
+// 获取重要性级别文本
+function getImportanceLevelText(level: string): string {
+  switch (level) {
+    case 'LOW': return '低'
+    case 'NORMAL': return '普通'
+    case 'HIGH': return '高'
+    case 'URGENT': return '紧急'
+    default: return '普通'
+  }
+}
+
 // 检查是否可以编辑
 const canEdit = computed(() => {
   if (!currentReservation.value || !authStore.user) return false
@@ -101,11 +127,33 @@ const canEdit = computed(() => {
   const isOrganizer = currentReservation.value.organizerId === authStore.user.id ||
                      currentReservation.value.organizer?.email === authStore.user.email
 
-  // 只有未开始且未取消的预约可以编辑
-  const isUpcoming = new Date(currentReservation.value.startTime) > new Date()
-  const isNotCancelled = currentReservation.value.status !== 'CANCELLED'
+  // 检查预约状态：只有未结束且未取消的预约可以编辑
+  const now = new Date()
+  const startTime = new Date(currentReservation.value.startTime)
+  const endTime = new Date(currentReservation.value.endTime)
 
-  return isOrganizer && isUpcoming && isNotCancelled
+  // 预约已经结束（结束时间已过）
+  const isEnded = endTime <= now
+
+  // 预约还未开始
+  const isUpcoming = startTime > now
+
+  // 预约正在进行中
+  const isOngoing = startTime <= now && endTime > now
+
+  // 可编辑条件：组织者 + (未开始或正在进行中) + 未取消 + 未完成
+  const canEditByStatus = !isEnded &&
+                          currentReservation.value.status !== 'CANCELLED' &&
+                          currentReservation.value.status !== 'COMPLETED'
+
+  const statusReason = isEnded ? '预约已结束' :
+                      (currentReservation.value.status === 'CANCELLED' ? '预约已取消' :
+                       currentReservation.value.status === 'COMPLETED' ? '预约已完成' : '')
+
+  return {
+    canEdit: isOrganizer && canEditByStatus,
+    reason: statusReason
+  }
 })
 
 // 检查是否可以取消
@@ -116,16 +164,72 @@ const canCancel = computed(() => {
   const isOrganizer = currentReservation.value.organizerId === authStore.user.id ||
                      currentReservation.value.organizer?.email === authStore.user.email
 
-  // 只有未开始且未取消的预约可以取消
-  const isUpcoming = new Date(currentReservation.value.startTime) > new Date()
-  const isNotCancelled = currentReservation.value.status !== 'CANCELLED'
+  // 检查预约状态：只有未开始且未结束的预约可以取消
+  const now = new Date()
+  const startTime = new Date(currentReservation.value.startTime)
+  const endTime = new Date(currentReservation.value.endTime)
 
-  return isOrganizer && isUpcoming && isNotCancelled
+  // 预约已经结束（结束时间已过）
+  const isEnded = endTime <= now
+
+  // 预约还未开始
+  const isUpcoming = startTime > now
+
+  // 可取消条件：组织者 + 未开始 + 未取消 + 未完成
+  const canCancelByStatus = isUpcoming &&
+                           currentReservation.value.status !== 'CANCELLED' &&
+                           currentReservation.value.status !== 'COMPLETED'
+
+  const statusReason = !isUpcoming ? '预约已开始或已结束' :
+                      (currentReservation.value.status === 'CANCELLED' ? '预约已取消' :
+                       currentReservation.value.status === 'COMPLETED' ? '预约已完成' : '')
+
+  return {
+    canCancel: isOrganizer && canCancelByStatus,
+    reason: statusReason
+  }
+})
+
+// 检查预约是否已结束
+const isReservationEnded = computed(() => {
+  if (!currentReservation.value) return false
+
+  const now = new Date()
+  const endTime = new Date(currentReservation.value.endTime)
+  return endTime <= now
+})
+
+// 获取操作限制提示信息
+const getOperationRestrictionMessage = computed(() => {
+  if (!currentReservation.value) return ''
+
+  const status = currentReservation.value.status
+  const isEnded = isReservationEnded.value
+
+  if (status === 'COMPLETED') {
+    return '✅ 此预约已完成，只能查看详情'
+  }
+
+  if (status === 'CANCELLED') {
+    return '❌ 此预约已取消，只能查看详情'
+  }
+
+  if (isEnded) {
+    return '⏰ 此预约已结束，只能查看详情'
+  }
+
+  return ''
 })
 
 // 编辑预约
 function editReservation() {
-  if (!currentReservation.value) return
+  if (!currentReservation.value || !canEdit.value.canEdit) {
+    // 显示不能编辑的原因
+    if (canEdit.value.reason) {
+      window.alert(`无法编辑预约：${canEdit.value.reason}`)
+    }
+    return
+  }
 
   // 导航到编辑页面，或者使用编辑模式
   router.push(`/reservations/create?edit=${currentReservation.value.id}`)
@@ -133,7 +237,13 @@ function editReservation() {
 
 // 取消预约
 async function cancelReservation() {
-  if (!currentReservation.value || !canCancel.value) return
+  if (!currentReservation.value || !canCancel.value.canCancel) {
+    // 显示不能取消的原因
+    if (canCancel.value.reason) {
+      window.alert(`无法取消预约：${canCancel.value.reason}`)
+    }
+    return
+  }
 
   // TODO: 替换为更好的用户确认对话框组件
   if (!window.confirm('确定要取消这个预约吗？此操作不可撤销。')) {
@@ -141,8 +251,8 @@ async function cancelReservation() {
   }
 
   try {
-    // 使用 store 的 deleteReservation 方法
-    const success = await reservationStore.deleteReservation(currentReservation.value.id)
+    // 使用 store 的 cancelReservation 方法
+    const success = await reservationStore.cancelReservation(currentReservation.value.id)
 
     if (success) {
       // TODO: 替换为更好的通知组件
@@ -217,22 +327,35 @@ onMounted(async () => {
         </div>
 
         <div class="flex gap-2" v-if="currentReservation">
+          <!-- 编辑按钮 -->
           <button
-            v-if="canEdit"
+            v-if="canEdit.canEdit"
             @click="editReservation"
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            title="编辑预约"
           >
             <i class="pi pi-pencil"></i>
             编辑
           </button>
+
+          <!-- 取消按钮 -->
           <button
-            v-if="canCancel"
+            v-if="canCancel.canCancel"
             @click="cancelReservation"
             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            title="取消预约"
           >
             <i class="pi pi-times"></i>
             取消预约
           </button>
+        </div>
+      </div>
+
+      <!-- 操作限制提示 -->
+      <div v-if="currentReservation && getOperationRestrictionMessage" class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div class="flex items-center">
+          <i class="pi pi-info-circle text-amber-600 mr-3 text-xl"></i>
+          <p class="text-sm text-amber-800">{{ getOperationRestrictionMessage }}</p>
         </div>
       </div>
 
@@ -341,6 +464,108 @@ onMounted(async () => {
                 <div v-if="currentReservation.canceledAt" class="flex items-start">
                   <span class="text-sm font-medium text-gray-500 w-24">取消时间:</span>
                   <span class="text-sm text-gray-900">{{ formatDateTime(currentReservation.canceledAt) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 详细配置信息 -->
+          <div v-if="isDetailedReservation" class="mt-6 pt-6 border-t border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">详细配置</h3>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- 设备信息 -->
+              <div v-if="currentReservation.equipment && currentReservation.equipment.length > 0">
+                <h4 class="text-md font-medium text-gray-800 mb-3 flex items-center gap-2">
+                  <i class="pi pi-cog text-blue-600"></i>
+                  设备配置
+                </h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="(item, index) in currentReservation.equipment"
+                    :key="index"
+                    class="flex items-center p-3 bg-blue-50 rounded-lg"
+                  >
+                    <i class="pi pi-check-circle text-blue-600 mr-3"></i>
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">{{ item.name || item }}</div>
+                      <div v-if="item.specification" class="text-xs text-gray-500">{{ item.specification }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 服务配置 -->
+              <div v-if="currentReservation.services && currentReservation.services.length > 0">
+                <h4 class="text-md font-medium text-gray-800 mb-3 flex items-center gap-2">
+                  <i class="pi pi-star text-yellow-600"></i>
+                  服务预订
+                </h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="(service, index) in currentReservation.services"
+                    :key="index"
+                    class="flex items-center p-3 bg-yellow-50 rounded-lg"
+                  >
+                    <i class="pi pi-check-circle text-yellow-600 mr-3"></i>
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">{{ service.name || service }}</div>
+                      <div v-if="service.quantity" class="text-xs text-gray-500">数量: {{ service.quantity }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 会议材料 -->
+              <div v-if="currentReservation.meetingMaterials && currentReservation.meetingMaterials.length > 0">
+                <h4 class="text-md font-medium text-gray-800 mb-3 flex items-center gap-2">
+                  <i class="pi pi-file text-green-600"></i>
+                  会议材料
+                </h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="(material, index) in currentReservation.meetingMaterials"
+                    :key="index"
+                    class="flex items-center p-3 bg-green-50 rounded-lg"
+                  >
+                    <i class="pi pi-file-pdf text-green-600 mr-3"></i>
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-gray-900">{{ material.name || material.fileName }}</div>
+                      <div v-if="material.type" class="text-xs text-gray-500">类型: {{ material.type }}</div>
+                      <div v-if="material.size" class="text-xs text-gray-500">大小: {{ material.size }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 其他详细信息 -->
+              <div class="space-y-4">
+                <!-- 重要性级别 -->
+                <div v-if="currentReservation.importanceLevel && currentReservation.importanceLevel !== 'NORMAL'">
+                  <h4 class="text-md font-medium text-gray-800 mb-2">重要性级别</h4>
+                  <div class="flex items-center p-3 bg-purple-50 rounded-lg">
+                    <i class="pi pi-exclamation-triangle text-purple-600 mr-3"></i>
+                    <span class="text-sm font-medium text-purple-800">
+                      {{ getImportanceLevelText(currentReservation.importanceLevel) }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 预算金额 -->
+                <div v-if="currentReservation.budgetAmount">
+                  <h4 class="text-md font-medium text-gray-800 mb-2">预算金额</h4>
+                  <div class="flex items-center p-3 bg-indigo-50 rounded-lg">
+                    <i class="pi pi-money-bill text-indigo-600 mr-3"></i>
+                    <span class="text-sm font-medium text-indigo-800">¥{{ currentReservation.budgetAmount }}</span>
+                  </div>
+                </div>
+
+                <!-- 特殊要求 -->
+                <div v-if="currentReservation.specialRequirements">
+                  <h4 class="text-md font-medium text-gray-800 mb-2">特殊要求</h4>
+                  <div class="p-3 bg-orange-50 rounded-lg">
+                    <p class="text-sm text-orange-800">{{ currentReservation.specialRequirements }}</p>
+                  </div>
                 </div>
               </div>
             </div>

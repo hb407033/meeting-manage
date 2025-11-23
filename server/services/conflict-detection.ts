@@ -56,9 +56,34 @@ interface ConflictDetectionParams {
 
 export class ConflictDetectionEngine {
   /**
-   * 检测预约冲突
+   * 检测预约冲突（带缓存优化）
    */
   async detectConflicts(params: ConflictDetectionParams): Promise<ConflictResult> {
+    const { reservation, roomInfo } = params
+
+    // 尝试从缓存获取结果
+    const cacheKey = {
+      roomId: reservation.roomId,
+      startTime: reservation.startTime,
+      endTime: reservation.endTime
+    }
+
+    const cachedResult = await conflictDetectionCache.getCachedConflictResult(
+      cacheKey.roomId,
+      cacheKey.startTime,
+      cacheKey.endTime
+    )
+
+    if (cachedResult) {
+      console.log('使用缓存的冲突检测结果')
+      return {
+        hasConflict: cachedResult.hasConflict,
+        conflicts: cachedResult.conflicts,
+        suggestions: cachedResult.suggestions
+      }
+    }
+
+    // 缓存未命中，执行冲突检测
     const conflicts: Conflict[] = []
 
     // 1. 时间重叠冲突检测
@@ -103,11 +128,26 @@ export class ConflictDetectionEngine {
       ? this.generateAlternativeTimeSlots(params, conflicts)
       : []
 
-    return {
+    const result = {
       hasConflict: conflicts.length > 0,
       conflicts,
       suggestions
     }
+
+    // 缓存结果
+    await conflictDetectionCache.cacheConflictResult(
+      cacheKey.roomId,
+      cacheKey.startTime,
+      cacheKey.endTime,
+      {
+        hasConflict: result.hasConflict,
+        conflicts: result.conflicts,
+        suggestions: result.suggestions,
+        cachedAt: Date.now()
+      }
+    )
+
+    return result
   }
 
   /**
@@ -496,6 +536,7 @@ export class ConflictDetectionEngine {
 
 import { MeetingRoom, RecurringReservation } from "@prisma/client"
 import RecurringReservationEngine from "./recurring-reservation-engine"
+import { conflictDetectionCache } from "./conflict-detection-cache"
 
 /**
  * 周期性预约冲突检测扩展
