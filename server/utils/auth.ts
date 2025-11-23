@@ -177,7 +177,6 @@ export async function hasRole(event: any, role: string): Promise<boolean> {
  * @returns 是否有任一权限
  */
 export async function hasAnyPermission(event: any, permissions: string[]): Promise<boolean> {
-  debugger
   const user = await getCurrentUser(event)
   if (!user || permissions.length === 0) return false
 

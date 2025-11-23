@@ -202,9 +202,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
+import { useReservationStore } from '~/stores/reservations'
 import type { Reservation } from '~/stores/reservations'
 
 // 组件属性
@@ -228,19 +229,23 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
-// 响应式数据
+// Store 和响应式数据
 const router = useRouter()
 const { canAccess } = useAuth()
+const reservationStore = useReservationStore()
 
-const reservations = ref<Reservation[]>([])
-const loading = ref(false)
-const error = ref<Error | null>(null)
 const selectedStatus = ref('')
 const currentPage = ref(1)
-const totalCount = ref(0)
 const activeActionsMenu = ref<string | null>(null)
 
 let refreshTimer: NodeJS.Timeout | null = null
+
+// 使用 store 的状态
+const reservations = computed(() => reservationStore.reservations)
+const loading = computed(() => reservationStore.loading)
+const error = computed(() => reservationStore.error ? new Error(reservationStore.error) : null)
+const totalCount = computed(() => reservationStore.pagination.total)
+const totalPages = computed(() => reservationStore.pagination.totalPages)
 
 // 计算属性
 const filteredReservations = computed(() => {
@@ -253,31 +258,16 @@ const filteredReservations = computed(() => {
   return filtered
 })
 
-const totalPages = computed(() => {
-  return Math.ceil(totalCount.value / props.pageSize)
-})
-
 // 方法
 const fetchReservations = async () => {
   try {
-    loading.value = true
-    error.value = null
-
-    const response = await $fetch('/api/v1/reservations/my', {
-      query: {
-        page: currentPage.value,
-        limit: props.pageSize,
-        status: selectedStatus.value || undefined
-      }
+    await reservationStore.fetchMyReservations({
+      page: currentPage.value,
+      limit: props.pageSize,
+      status: selectedStatus.value || undefined
     })
-
-    reservations.value = response.data || []
-    totalCount.value = response.total || 0
   } catch (err) {
-    error.value = err as Error
     console.error('获取预约列表失败:', err)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -320,12 +310,8 @@ const cancelReservation = async (reservation: Reservation) => {
   if (!confirm('确定要取消这个预约吗？')) return
 
   try {
-    await $fetch(`/api/v1/reservations/${reservation.id}`, {
-      method: 'DELETE'
-    })
-
+    await reservationStore.deleteReservation(reservation.id)
     emit('reservationCancelled', reservation.id)
-    await fetchReservations()
   } catch (err) {
     console.error('取消预约失败:', err)
     alert('取消预约失败，请稍后重试')

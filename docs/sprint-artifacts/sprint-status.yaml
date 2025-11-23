@@ -49,7 +49,7 @@ development_status:
   1-7-technical-documentation-migration: done
   1-8-ui-theme-optimization: done
   1-9-dev-auto-login-optimization: review
-  1-9-1-login-state-fix: review
+  1-9-1-login-state-fix: done
   epic-1-retrospective: optional
 
   # Epic 2: 会议室核心管理

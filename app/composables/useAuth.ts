@@ -32,7 +32,7 @@ export const useAuth = () => {
 
       // 登录成功后重定向到预约列表，提供快速操作
       const redirect = route.query.redirect as string
-      await router.push(redirect || '/reservations')
+      await router.push(redirect || '/dashboard')
 
       return true
     } catch (error) {
@@ -153,7 +153,7 @@ export const useAuth = () => {
     return {}
   }
 
-  // 创建带认证的请求
+  // 创建带认证的请求 - 使用统一的认证处理
   const authenticatedFetch = async (url: string, options: any = {}) => {
     const headers = {
       ...getAuthHeaders(),

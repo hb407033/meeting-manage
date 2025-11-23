@@ -691,19 +691,14 @@ const updateUserRoleAssignment = async () => {
 
   updating.value = true
   try {
-    const response = await $fetch(`/api/v1/admin/user-roles/${editingUserRole.value.id}`, {
-      method: 'PUT',
-      body: {
-        expiresAt: editingUserRole.value.expiresAt?.toISOString(),
-        reason: editingUserRole.value.reason
-      }
+    await adminStore.updateUserRoleAssignment(editingUserRole.value.id, {
+      expiresAt: editingUserRole.value.expiresAt?.toISOString(),
+      reason: editingUserRole.value.reason
     })
 
-    if (response.code === 200) {
-      useToast().success('角色分配更新成功')
-      showEditDialog.value = false
-      await loadUserRoles(selectedUser.value!.id)
-    }
+    useToast().success('角色分配更新成功')
+    showEditDialog.value = false
+    await loadUserRoles(selectedUser.value!.id)
   } catch (error) {
     console.error('更新角色分配失败:', error)
     useToast().error('更新角色分配失败')
@@ -720,9 +715,7 @@ const removeUserRole = async (userRole: UserRole) => {
 
   if (confirmed) {
     try {
-      await $fetch(`/api/v1/admin/user-roles/${userRole.id}`, {
-        method: 'DELETE'
-      })
+      await adminStore.removeUserRoleAssignment(userRole.id)
 
       useToast().success('角色移除成功')
       await loadUserRoles(selectedUser.value!.id)

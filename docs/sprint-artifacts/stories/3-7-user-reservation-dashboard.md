@@ -123,6 +123,20 @@ so that 能够高效管理我的会议安排并快速了解会议室资源状况
   - [x] Subtask 8.4: 测试不同移动设备上的兼容性和性能
   - [x] Subtask 8.5: 添加移动端专用的交互反馈和加载动画
 
+- [x] Task 8.5: Dashboard快速操作按钮优化 (用户体验改进)
+  - [x] Subtask 8.5.1: 创建 QuickActions.vue 快捷操作按钮组件
+  - [x] Subtask 8.5.2: 实现一键预约功能（30分钟/1小时）
+  - [x] Subtask 8.5.3: 添加会议延长和取消快捷操作
+  - [x] Subtask 8.5.4: 创建相应的composable和API支持
+  - [x] Subtask 8.5.5: 优化dashboard右侧布局和交互体验
+
+- [x] Task 8.6: Dashboard布局重构 (界面优化)
+  - [x] Subtask 8.6.1: 创建 UsageTrendChart.vue 使用率趋势图表组件
+  - [x] Subtask 8.6.2: 创建 PopularRooms.vue 热门会议室分析组件
+  - [x] Subtask 8.6.3: 重新设计dashboard三层布局结构
+  - [x] Subtask 8.6.4: 实现快捷操作和预约列表等高布局
+  - [x] Subtask 8.6.5: 优化响应式设计和移动端体验
+
 - [ ] Task 9: 测试与性能优化
   - [ ] Subtask 9.1: 编写组件单元测试，覆盖核心功能和交互逻辑
   - [ ] Subtask 9.2: 进行端到端测试，验证完整的用户操作流程
@@ -238,6 +252,61 @@ glm-4.6
 
 ✅ **用户预约仪表盘功能完整实现**
 
+✅ **Dashboard右侧快捷操作按钮优化（新增）**
+
+✅ **Dashboard布局重构与等高设计（新增）**
+
+根据用户需求"将dashboard中使用率趋势和热门会议室摆放在最下面，中间放快捷操作和我的预约列表，并让这两个等高"，成功完成了dashboard布局的全面重构：
+
+**🏗️ 新的三层布局结构:**
+- **顶层**: 基础统计卡片（总会议室数、今日预约、当前可用、使用率）
+- **中层**: 快捷操作按钮 + 我的预约列表（等高布局）
+- **底层**: 使用率趋势图表 + 热门会议室分析
+
+**🔧 组件分离与独立化:**
+- 创建独立的 `UsageTrendChart.vue` 组件，提供详细的使用率趋势分析
+- 创建独立的 `PopularRooms.vue` 组件，展示热门会议室排名和智能建议
+- 从原有的 `SystemStatistics.vue` 中分离趋势和热门会议室功能
+- 简化统计卡片为纯数据展示，提高页面加载性能
+
+**📱 等高布局实现:**
+- 使用CSS Flexbox布局实现快捷操作和预约列表的等高效果
+- 中间区域采用 `flex-1` 让两个组件自动适应相同高度
+- 响应式设计确保在不同屏幕尺寸下的良好体验
+- 移动端自动调整为垂直布局，保持内容可读性
+
+**📊 增强的数据分析功能:**
+- **使用率趋势**: 支持7天、30天、90天的多时间段查看
+- **热门会议室**: 提供排名、时段分析、设备偏好统计
+- **智能建议**: 基于数据提供会议室选择和使用建议
+- **实时更新**: 支持自动刷新和手动刷新功能
+
+根据用户需求"通过快捷按钮即可，不用在页面直接操作"，成功实现了dashboard右侧的快捷操作按钮界面，显著提升了用户体验：
+
+**🎯 快捷操作功能:**
+- **一键预约**: 提供30分钟和1小时的快速预约按钮，无需复杂表单
+- **智能会议室分配**: 自动查找可用会议室，避免用户手动选择
+- **会议延长**: 一键延长当前进行中的会议30分钟
+- **快速取消**: 取消即将开始的预约
+- **实时状态**: 显示用户当前预约状态（会议进行中/有即将开始的预约/空闲）
+- **会议室查询**: 快速查找当前可用的会议室
+
+**🔧 技术创新:**
+- 创建了 `QuickActions.vue` 组件，采用简洁的按钮网格布局
+- 实现了 `useReservations.ts` composable，提供完整的预约操作API
+- 新增4个关键API端点，支持用户状态查询、预约延长、会议室查找等功能
+- 采用响应式设计，按钮支持加载状态和禁用状态
+- 集成消息提示机制，为每个操作提供即时反馈
+
+**💡 用户体验改进:**
+- **简化操作流程**: 从复杂的多步表单操作简化为单键点击
+- **智能提示**: 根据用户当前状态动态显示相关操作按钮
+- **视觉优化**: 使用图标和颜色区分不同类型的操作
+- **即时反馈**: 每个操作都有清晰的成功/失败提示
+- **状态感知**: 界面实时反映用户的当前预约状态
+
+✅ **用户预约仪表盘功能完整实现**
+
 已成功实现了用户预约仪表盘的所有核心功能，包括：
 
 **🎯 核心功能实现:**
@@ -266,12 +335,20 @@ glm-4.6
 7. ✅ 权限控制 - 用户只能查看自己预约，管理员可查看全局统计
 
 **🏗️ 文件清单:**
-- `app/pages/dashboard.vue` - 主仪表盘页面
-- `app/components/features/reservations/SystemStatistics.vue` - 统计信息组件
+- `app/pages/dashboard.vue` - 主仪表盘页面（完全重构，三层布局结构）
+- `app/components/features/reservations/QuickActions.vue` - 快捷操作按钮组件（新增）
+- `app/components/features/reservations/UsageTrendChart.vue` - 使用率趋势图表组件（新增）
+- `app/components/features/reservations/PopularRooms.vue` - 热门会议室分析组件（新增）
+- `app/components/features/reservations/SystemStatistics.vue` - 统计信息组件（已简化）
 - `app/components/features/reservations/MyReservationsList.vue` - 预约列表组件
 - `app/components/features/reservations/QuickReservationDialog.vue` - 快捷预约组件
 - `app/components/features/reservations/RoomAvailabilityQuickView.vue` - 可用性查看组件
 - `app/components/features/reservations/RealTimeStatusIndicator.vue` - 实时状态指示器
+- `app/composables/useReservations.ts` - 预约功能composable（新增）
+- `server/api/v1/reservations/user/current.get.ts` - 用户当前预约API（新增）
+- `server/api/v1/reservations/[id]/extend.post.ts` - 延长预约API（新增）
+- `server/api/v1/rooms/available.get.ts` - 可用会议室查询API（新增）
+- `server/api/v1/reservations/check-conflict.post.ts` - 时间冲突检查API（新增）
 - `server/api/v1/statistics/system.get.ts` - 系统统计API
 - `server/api/v1/reservations/quick.post.ts` - 快捷预约API
 - `server/api/v1/rooms/availability.get.ts` - 会议室可用性API

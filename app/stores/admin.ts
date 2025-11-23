@@ -677,7 +677,7 @@ export const useAdminStore = defineStore('admin', {
 
       try {
         const apiFetch = getApiFetch()
-        const response = await apiFetch(`/api/v1/admin/permissions/${permissionId}`, {
+        const response = await (apiFetch as any)(`/api/v1/admin/permissions/${permissionId}`, {
           method: 'DELETE'
         })
 
@@ -748,7 +748,7 @@ export const useAdminStore = defineStore('admin', {
 
       try {
         const apiFetch = getApiFetch()
-        const response = await apiFetch(`/api/v1/admin/roles/${roleId}`, {
+        const response = await (apiFetch as any)(`/api/v1/admin/roles/${roleId}`, {
           method: 'DELETE'
         })
 
@@ -961,6 +961,304 @@ export const useAdminStore = defineStore('admin', {
       } catch (error: any) {
         this.setError(error.message || '批量分配用户角色失败')
         console.error('批量分配用户角色失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 更新用户角色分配
+    async updateUserRoleAssignment(userRoleId: string, updates: {
+      expiresAt?: string
+      reason?: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{
+          code: number
+          message: string
+          data: any
+        }>(`/api/v1/admin/user-roles/${userRoleId}`, {
+          method: 'PUT',
+          body: updates
+        })
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '更新用户角色分配失败')
+        console.error('更新用户角色分配失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 移除用户角色分配
+    async removeUserRoleAssignment(userRoleId: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await apiFetch<{
+          code: number
+          message: string
+        }>(`/api/v1/admin/user-roles/${userRoleId}`, {
+          method: 'DELETE'
+        })
+
+        return response
+      } catch (error: any) {
+        this.setError(error.message || '移除用户角色分配失败')
+        console.error('移除用户角色分配失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // ========== 警报管理 ==========
+
+    // 获取警报列表
+    async getAlertList(params: {
+      page?: number
+      pageSize?: number
+      type?: string
+      severity?: string
+      status?: string
+      search?: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const queryString = new URLSearchParams()
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            queryString.append(key, value.toString())
+          }
+        })
+
+        const response = await (apiFetch as any)(`/api/v1/admin/alerts?${queryString}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取警报列表失败')
+        console.error('获取警报列表失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 确认警报
+    async acknowledgeAlert(alertId: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/admin/alerts/${alertId}/acknowledge`, {
+          method: 'POST'
+        })
+
+        return response
+      } catch (error: any) {
+        this.setError(error.message || '确认警报失败')
+        console.error('确认警报失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 解决警报
+    async resolveSystemAlert(alertId: string, resolution: string) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/admin/alerts/${alertId}/resolve`, {
+          method: 'POST',
+          body: { resolution }
+        })
+
+        return response
+      } catch (error: any) {
+        this.setError(error.message || '解决警报失败')
+        console.error('解决警报失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 批量确认警报
+    async batchAcknowledgeAlerts(alertIds: string[]) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const promises = alertIds.map(alertId =>
+          (apiFetch as any)(`/api/v1/admin/alerts/${alertId}/acknowledge`, {
+            method: 'POST'
+          })
+        )
+
+        const results = await Promise.all(promises)
+        return results
+      } catch (error: any) {
+        this.setError(error.message || '批量确认警报失败')
+        console.error('批量确认警报失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 批量解决警报
+    async batchResolveSystemAlerts(alertIds: string[], resolution: string = '批量解决') {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const promises = alertIds.map(alertId =>
+          (apiFetch as any)(`/api/v1/admin/alerts/${alertId}/resolve`, {
+            method: 'POST',
+            body: { resolution }
+          })
+        )
+
+        const results = await Promise.all(promises)
+        return results
+      } catch (error: any) {
+        this.setError(error.message || '批量解决警报失败')
+        console.error('批量解决警报失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // ========== 审计日志管理 ==========
+
+    // 获取审计日志列表
+    async getAuditLogList(params: {
+      page?: number
+      pageSize?: number
+      userId?: string
+      action?: string
+      resource?: string
+      startDate?: string
+      endDate?: string
+      search?: string
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const queryString = new URLSearchParams()
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            queryString.append(key, value.toString())
+          }
+        })
+
+        const response = await (apiFetch as any)(`/api/v1/admin/audit-logs?${queryString}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取审计日志列表失败')
+        console.error('获取审计日志列表失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 获取审计日志统计
+    async getAuditLogStats(days: number = 30) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)(`/api/v1/admin/audit-logs/stats?days=${days}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取审计日志统计失败')
+        console.error('获取审计日志统计失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // 导出审计日志
+    async exportAuditLogs(payload: {
+      format: 'csv' | 'excel'
+      filters: any
+      fields: string[]
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const response = await (apiFetch as any)('/api/v1/admin/audit-logs/export', {
+          method: 'POST',
+          body: payload
+        })
+
+        return response
+      } catch (error: any) {
+        this.setError(error.message || '导出审计日志失败')
+        console.error('导出审计日志失败:', error)
+        throw error
+      } finally {
+        this.setLoading(false)
+      }
+    },
+
+    // ========== 异常检测 ==========
+
+    // 获取异常检测结果
+    async getAnomalyDetection(params: {
+      timeRange?: string
+      severity?: string
+      type?: string
+      limit?: number
+    }) {
+      this.setLoading(true)
+      this.setError(null)
+
+      try {
+        const apiFetch = getApiFetch()
+        const queryString = new URLSearchParams()
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            queryString.append(key, value.toString())
+          }
+        })
+
+        const response = await (apiFetch as any)(`/api/v1/admin/audit-logs/anomalies?${queryString}`)
+
+        return response.data
+      } catch (error: any) {
+        this.setError(error.message || '获取异常检测结果失败')
+        console.error('获取异常检测结果失败:', error)
         throw error
       } finally {
         this.setLoading(false)

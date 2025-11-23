@@ -81,21 +81,6 @@ export interface RecurringReservationFilters {
   limit?: number
 }
 
-export interface ApiResponse<T = any> {
-  success: boolean
-  data?: T
-  code: string
-  message: string
-  meta?: {
-    pagination?: {
-      page: number
-      limit: number
-      total: number
-    }
-    timestamp: string
-    traceId?: string
-  }
-}
 
 export const useRecurringReservations = () => {
   // 状态管理

@@ -95,7 +95,11 @@ export default defineEventHandler(async (event) => {
     console.log(`✅ 找到 ${total} 个预约记录，当前页返回 ${formattedReservations.length} 个`)
 
     return createSuccessResponse({
-      reservations: formattedReservations,
+      data: formattedReservations,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
       pagination: {
         page,
         limit,

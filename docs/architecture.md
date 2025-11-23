@@ -417,9 +417,9 @@ model MeetingRoom {
 
 ### 4. 状态管理模式
 
-前端页面调用API 都采用组合式函数封装，状态管理采用 Pinia，不直接在组件中调用 Server 中的 API。
+**🔒 强制要求：** 前端页面调用API 都采用组合式函数封装，状态管理采用 Pinia，**严禁直接在组件中调用 Server 中的 API**。所有 API 请求必须通过 store 方法进行，并使用 `getApiFetch()` 工具函数确保统一的认证头处理。
 
-**组合式 Store：**
+**组合式 Store 模式：**
 ```typescript
 export const useRoomsStore = defineStore('rooms', {
   state: () => ({
@@ -432,7 +432,8 @@ export const useRoomsStore = defineStore('rooms', {
     async fetchRooms() {
       this.loading = true
       try {
-        const response = await $fetch('/api/v1/rooms')
+        const apiFetch = getApiFetch() // 🔴 强制要求：使用 getApiFetch
+        const response = await apiFetch('/api/v1/rooms')
         this.rooms = response.data
       }
       catch (error) {
@@ -445,6 +446,63 @@ export const useRoomsStore = defineStore('rooms', {
   }
 })
 ```
+
+**❌ 禁止的代码模式：**
+```typescript
+// 错误示例 - 严禁直接在组件中使用 $fetch
+const response = await $fetch('/api/v1/reservations/availability', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+    // ❌ 缺少统一的认证头处理
+  },
+  body: { ... }
+})
+```
+
+**✅ 正确的代码模式：**
+```typescript
+// 正确示例 - 通过 store 方法调用
+const response = await reservationStore.checkRoomAvailability(roomIds, startTime, endTime)
+```
+
+### 4.1 统一 API 请求管理架构
+
+**核心原则：** 所有 API 请求必须通过统一的 `getApiFetch()` 工具函数进行，确保：
+- 自动添加 Authorization headers
+- 统一的错误处理
+- Token 自动刷新机制
+- 请求/响应拦截器支持
+
+**getApiFetch 实现模式：**
+```typescript
+// 在每个 store 中实现
+function getApiFetch() {
+  return async (url: string, options: RequestInit = {}) => {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+
+    // 自动添加认证头
+    const token = getAuthToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    return await $fetch(url, {
+      ...options,
+      headers
+    })
+  }
+}
+```
+
+**Store 方法规范：**
+1. 所有 API 调用必须使用 `getApiFetch()`
+2. 每个业务模块有对应的 store
+3. Composables 作为 store 方法的代理，不直接调用 API
+4. 组件通过 composables 访问数据和方法
 
 ### 5. 缓存策略模式
 

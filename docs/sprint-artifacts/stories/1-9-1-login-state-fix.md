@@ -1,6 +1,6 @@
 # Story 1.9.1: 登录状态意外退出问题修复
 
-Status: review
+Status: done
 
 ## Story
 
@@ -201,6 +201,8 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 - `app/plugins/api.client.ts` - 统一使用AuthStateManager作为token源，修复多套存储系统冲突
 - `app/middleware/auth.ts` - 修复路由中间件的认证状态恢复时机问题，改为异步等待初始化完成
 - `app/utils/auth-state-manager.ts` - 增强日志记录，便于调试状态恢复过程
+- `app/stores/rooms.ts` - 修复localStorage直接访问，统一使用AuthStateManager获取token
+- `app/stores/reservations.ts` - 修复localStorage直接访问，统一使用AuthStateManager获取token
 - `docs/sprint-artifacts/sprint-status.yaml` - 故事状态更新
 
 **2025-11-23 深度修复** - localStorage token缓存问题的根本解决
@@ -214,6 +216,12 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 - 修复 `process.client` 弃用警告，改用 `import.meta.client`
 - 修复插件hook名称兼容性问题
 - 移除未使用的import，清理警告
+
+**2025-11-23 最终修复** - 统一认证状态管理
+- ✅ **修复stores中的localStorage直接访问问题**：更新 `rooms.ts` 和 `reservations.ts`，移除直接localStorage.getItem('auth_access_token')调用
+- ✅ **统一使用AuthStateManager**：所有stores现在通过 `authStateManager.getState().accessToken` 获取token，确保状态管理一致性
+- ✅ **解决跨标签页状态同步问题**：通过统一使用AuthStateManager，确保所有组件的认证状态同步
+- ✅ **验证无回归问题**：通过类型检查和构建测试，确保修复不影响现有功能
 
 #### 新增文件
 - `app/utils/token-refresh-manager.ts` - 令牌刷新管理器，支持并发控制和重试机制

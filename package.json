@@ -27,7 +27,8 @@
     "lint:check": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
     "format:check": "prettier --check .",
     "lint:staged": "lint-staged",
-    "commitlint": "commitlint --edit"
+    "commitlint": "commitlint --edit",
+    "check-api-calls": "node scripts/check-api-calls.cjs"
   },
   "dependencies": {
     "@formkit/nuxt": "^1.6.9",

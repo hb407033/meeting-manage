@@ -421,6 +421,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useAdminStore } from '~/stores/admin'
+
+const adminStore = useAdminStore()
 
 interface AuditLog {
   id: string
@@ -533,10 +536,10 @@ const loadLogs = async () => {
       }
     })
 
-    const response = await $fetch(`/api/v1/admin/audit-logs?${params}`)
+    const response = await adminStore.getAuditLogList(filters)
 
-    logs.value = response.data.logs
-    totalLogs.value = response.data.pagination.total
+    logs.value = response.logs
+    totalLogs.value = response.pagination.total
   } catch (error) {
     console.error('Failed to load audit logs:', error)
     toast.add({
@@ -552,8 +555,7 @@ const loadLogs = async () => {
 
 const loadStats = async () => {
   try {
-    const response = await $fetch('/api/v1/admin/audit-logs/stats')
-    const data = response.data
+    const data = await adminStore.getAuditLogStats()
 
     stats.value = {
       totalLogs: data.summary.totalLogs,
@@ -614,17 +616,14 @@ const exportSingleLog = (log: AuditLog) => {
 
 const handleExport = async (format: string) => {
   try {
-    const response = await $fetch('/api/v1/admin/audit-logs/export', {
-      method: 'POST',
-      body: {
-        format,
-        filters: exportFilters.value,
-        fields: [
-          'id', 'timestamp', 'userName', 'userEmail', 'action',
-          'resourceType', 'resourceId', 'result', 'riskLevel',
-          'ipAddress', 'details'
-        ]
-      }
+    const response = await adminStore.exportAuditLogs({
+      format: format as 'csv' | 'excel',
+      filters: exportFilters.value,
+      fields: [
+        'id', 'timestamp', 'userName', 'userEmail', 'action',
+        'resourceType', 'resourceId', 'result', 'riskLevel',
+        'ipAddress', 'details'
+      ]
     })
 
     // 创建下载链接

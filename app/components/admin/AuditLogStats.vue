@@ -301,6 +301,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useAdminStore } from '~/stores/admin'
+
+const adminStore = useAdminStore()
 
 interface StatsData {
   summary: {
@@ -356,8 +359,7 @@ const emit = defineEmits<{
 const loadStats = async () => {
   loading.value = true
   try {
-    const response = await $fetch('/api/v1/admin/audit-logs/stats?days=30')
-    statsData.value = response.data
+    statsData.value = await adminStore.getAuditLogStats(30)
   } catch (error) {
     console.error('Failed to load stats:', error)
   } finally {

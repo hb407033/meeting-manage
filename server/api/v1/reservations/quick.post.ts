@@ -4,14 +4,15 @@
  *
  * 提供简化的会议室预约创建接口
  */
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import prisma from '~~/server/services/database'
+import { getCurrentUser, hasPermission } from '~~/server/utils/auth'
+import { getHeader } from 'h3'
+import { getClientIP } from '~~/server/utils/response'
 
 export default defineEventHandler(async (event) => {
   try {
     // 获取认证用户信息
-    const user = await getUserFromEvent(event)
+    const user = await getCurrentUser(event)
     if (!user) {
       throw createError({
         statusCode: 401,
@@ -20,8 +21,8 @@ export default defineEventHandler(async (event) => {
     }
 
     // 检查预约权限
-    const hasPermission = await checkUserPermission(user, 'reservation', 'create')
-    if (!hasPermission) {
+    const hasReservationPermission = await hasPermission(event, 'reservation:create')
+    if (!hasReservationPermission) {
       throw createError({
         statusCode: 403,
         statusMessage: '权限不足，无法创建预约'
@@ -31,8 +32,8 @@ export default defineEventHandler(async (event) => {
     // 获取请求数据
     const body = await readBody(event)
 
-    // 验证必需字段
-    const requiredFields = ['title', 'startTime', 'endTime', 'roomId', 'attendeeCount']
+    // 验证必需字段 (roomId可以在没有指定时自动分配)
+    const requiredFields = ['title', 'startTime', 'endTime', 'attendeeCount']
     for (const field of requiredFields) {
       if (!body[field]) {
         throw createError({
@@ -42,8 +43,24 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 自动分配会议室 (如果没有指定)
+    let roomId = body.roomId
+    if (!roomId) {
+      const availableRoom = await findAvailableRoom(body.startTime, body.endTime, body.attendeeCount)
+      if (!availableRoom) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: '没有找到可用的会议室'
+        })
+      }
+      roomId = availableRoom.id
+    }
+
     // 数据验证
-    const validationResult = validateReservationData(body)
+    const validationResult = validateReservationData({
+      ...body,
+      roomId
+    })
     if (!validationResult.isValid) {
       throw createError({
         statusCode: 400,
@@ -53,7 +70,7 @@ export default defineEventHandler(async (event) => {
 
     // 检查会议室可用性
     const availabilityCheck = await checkRoomAvailability(
-      body.roomId,
+      roomId,
       body.startTime,
       body.endTime
     )
@@ -68,26 +85,49 @@ export default defineEventHandler(async (event) => {
     // 创建预约
     const reservation = await createReservation({
       ...body,
+      roomId,
       organizerId: user.id,
       type: 'QUICK',
       status: 'CONFIRMED' // 快捷预约直接确认为已确认状态
-    })
+    }, event)
 
-    // 记录审计日志
-    await logAuditEvent({
-      userId: user.id,
-      action: 'CREATE_QUICK_RESERVATION',
-      resourceId: reservation.id,
-      details: {
-        title: body.title,
-        roomId: body.roomId,
-        startTime: body.startTime,
-        endTime: body.endTime
-      }
-    })
+    // 记录审计日志（简化版）
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'CREATE_QUICK_RESERVATION',
+          resourceId: reservation.id,
+          resourceType: 'RESERVATION',
+          details: JSON.stringify({
+            title: body.title,
+            roomId: reservation.roomId,
+            startTime: body.startTime,
+            endTime: body.endTime
+          }),
+          ipAddress: getClientIP(event),
+          userAgent: getHeader(event, 'user-agent'),
+          timestamp: new Date(),
+          result: 'SUCCESS'
+        }
+      })
+    } catch (logError) {
+      console.error('记录审计日志失败:', logError)
+      // 审计日志失败不影响主流程
+    }
 
-    // 发送通知
-    await sendReservationNotification(reservation, user)
+    // 发送通知（简化版）
+    try {
+      console.log(`发送预约通知给用户: ${user.email}`, {
+        reservationId: reservation.id,
+        title: reservation.title,
+        startTime: reservation.startTime,
+        roomName: reservation.room?.name
+      })
+    } catch (notifyError) {
+      console.error('发送预约通知失败:', notifyError)
+      // 通知失败不影响主流程
+    }
 
     return {
       success: true,
@@ -136,8 +176,10 @@ function validateReservationData(data: any) {
     return { isValid: false, error: '结束时间必须晚于开始时间' }
   }
 
-  if (start <= now) {
-    return { isValid: false, error: '开始时间不能早于当前时间' }
+  // 快捷预约允许当前时间或稍晚开始（提前2分钟以内）
+  const twoMinutesFromNow = new Date(now.getTime() - 2 * 60 * 1000)
+  if (start < twoMinutesFromNow) {
+    return { isValid: false, error: '开始时间过早，请稍后再试' }
   }
 
   // 检查预约时长（快捷预约限制在2小时内）
@@ -151,8 +193,8 @@ function validateReservationData(data: any) {
     return { isValid: false, error: '参会人数必须是大于0的整数' }
   }
 
-  // 会议室ID验证
-  if (!roomId || typeof roomId !== 'string') {
+  // 会议室ID验证 (如果提供了roomId则需要验证)
+  if (roomId && typeof roomId !== 'string') {
     return { isValid: false, error: '会议室ID无效' }
   }
 
@@ -165,14 +207,13 @@ function validateReservationData(data: any) {
 async function checkRoomAvailability(roomId: string, startTime: string, endTime: string) {
   try {
     // 检查会议室是否存在且可用
-    const room = await prisma.room.findUnique({
+    const room = await prisma.meetingRoom.findUnique({
       where: { id: roomId },
       select: {
         id: true,
         name: true,
         status: true,
         capacity: true,
-        currentStatus: true
       }
     })
 
@@ -183,14 +224,14 @@ async function checkRoomAvailability(roomId: string, startTime: string, endTime:
       }
     }
 
-    if (room.status !== 'ACTIVE') {
+    if (room.status !== 'AVAILABLE') {
       return {
         isAvailable: false,
         reason: '会议室当前不可用'
       }
     }
 
-    if (room.currentStatus === 'MAINTENANCE') {
+    if (room.status === 'MAINTENANCE') {
       return {
         isAvailable: false,
         reason: '会议室正在维护中'
@@ -202,7 +243,7 @@ async function checkRoomAvailability(roomId: string, startTime: string, endTime:
       where: {
         roomId,
         status: {
-          in: ['CONFIRMED', 'IN_PROGRESS']
+          in: ['CONFIRMED']
         },
         OR: [
           {
@@ -236,7 +277,7 @@ async function checkRoomAvailability(roomId: string, startTime: string, endTime:
 /**
  * 创建预约记录
  */
-async function createReservation(data: any) {
+async function createReservation(data: any, event: any) {
   const reservation = await prisma.reservation.create({
     data: {
       title: data.title,
@@ -247,15 +288,7 @@ async function createReservation(data: any) {
       organizerId: data.organizerId,
       attendeeCount: data.attendeeCount,
       status: data.status,
-      type: data.type,
-      attendees: JSON.stringify([]), // 快捷预约默认没有参会者列表
-      materials: JSON.stringify([]), // 快捷预约默认没有材料
-      recurrenceRule: null, // 快捷预约不支持重复
-      metadata: JSON.stringify({
-        source: 'quick_reservation',
-        userAgent: getHeader(event, 'user-agent'),
-        ipAddress: getClientIP(event)
-      })
+      specialRequirements: `快速预约 - ${getClientIP(event)}`
     },
     include: {
       room: {
@@ -301,76 +334,51 @@ async function createReservation(data: any) {
   }
 }
 
+
+
 /**
- * 记录审计日志
+ * 查找可用会议室
  */
-async function logAuditEvent(logData: any) {
+async function findAvailableRoom(startTime: string, endTime: string, attendeeCount: number) {
   try {
-    await prisma.auditLog.create({
-      data: {
-        userId: logData.userId,
-        action: logData.action,
-        resourceId: logData.resourceId,
-        resourceType: 'RESERVATION',
-        details: logData.details,
-        ipAddress: getClientIP(event),
-        userAgent: getHeader(event, 'user-agent'),
-        timestamp: new Date()
+    // 查询所有可用的会议室
+    const availableRooms = await prisma.meetingRoom.findMany({
+      where: {
+        status: 'AVAILABLE',
+        capacity: {
+          gte: attendeeCount
+        }
+      },
+      orderBy: {
+        capacity: 'asc' // 优先选择容量合适的会议室
+      },
+      take: 1 // 只取第一个最合适的
+    })
+
+    // 查询时间段内有预约的会议室
+    const bookedRooms = await prisma.reservation.findMany({
+      where: {
+        status: {
+          in: ['CONFIRMED', 'COMPLETED']
+        },
+        startTime: { lt: new Date(endTime) },
+        endTime: { gt: new Date(startTime) }
+      },
+      select: {
+        roomId: true
       }
     })
+
+    // 获取被占用的会议室ID集合
+    const bookedRoomIds = new Set(bookedRooms.map(r => r.roomId))
+
+    // 过滤出可用的会议室
+    const freeRooms = availableRooms.filter(room => !bookedRoomIds.has(room.id))
+
+    return freeRooms[0] || null
   } catch (error) {
-    console.error('记录审计日志失败:', error)
-    // 审计日志失败不影响主流程
-  }
-}
-
-/**
- * 发送预约通知
- */
-async function sendReservationNotification(reservation: any, user: any) {
-  try {
-    // 这里可以集成邮件、短信或WebSocket通知
-    console.log(`发送预约通知给用户: ${user.email}`, {
-      reservationId: reservation.id,
-      title: reservation.title,
-      startTime: reservation.startTime,
-      roomName: reservation.room?.name
-    })
-
-    // 发送WebSocket通知
-    // await sendWebSocketNotification(user.id, {
-    //   type: 'reservation_created',
-    //   data: reservation
-    // })
-
-  } catch (error) {
-    console.error('发送预约通知失败:', error)
-    // 通知失败不影响主流程
-  }
-}
-
-/**
- * 从事件中获取用户信息
- */
-async function getUserFromEvent(event: any) {
-  try {
-    // 这里需要根据实际的认证机制来实现
-    // 暂时返回模拟用户
-    return {
-      id: '1',
-      email: 'user@example.com',
-      role: 'USER'
-    }
-  } catch (error) {
+    console.error('查找可用会议室失败:', error)
     return null
   }
 }
 
-/**
- * 检查用户权限
- */
-async function checkUserPermission(user: any, resource: string, action: string) {
-  // 这里需要根据实际的权限系统来检查
-  // 暂时返回true，表示允许所有操作
-  return true
-}

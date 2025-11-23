@@ -133,6 +133,7 @@ So that 为智能会议室管理系统奠定坚实的技术基础.
 - **环境配置**: 建立 .env.local, .env.production 环境变量体系
 - **Docker支持**: 配置开发和生产环境的 Docker 容器化部署
 - **API结构**: 建立 server/api/v1/ 统一API响应格式
+- **🔒 API调用规范**: 强制要求所有前端API调用通过store方法进行，使用getApiFetch()确保统一的认证头处理
 
 **UX Components:**
 - 配置 PrimeVue Aura 主题，应用企业品牌色彩

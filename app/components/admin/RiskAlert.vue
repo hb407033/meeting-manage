@@ -402,6 +402,9 @@ import { ref, reactive, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useAdminStore } from '~/stores/admin'
+
+const adminStore = useAdminStore()
 
 interface Alert {
   id: string
@@ -509,11 +512,11 @@ const loadAlerts = async () => {
       }
     })
 
-    const response = await $fetch(`/api/v1/admin/alerts?${params}`)
+    const response = await adminStore.getAlertList(filters)
 
-    alerts.value = response.data.alerts
-    totalAlerts.value = response.data.pagination.total
-    alertStats.value = response.data.stats
+    alerts.value = response.alerts
+    totalAlerts.value = response.pagination.total
+    alertStats.value = response.stats
   } catch (error) {
     console.error('Failed to load alerts:', error)
     toast.add({
@@ -547,9 +550,7 @@ const viewAlertDetails = (alert: Alert) => {
 
 const acknowledgeAlert = async (alert: Alert) => {
   try {
-    await $fetch(`/api/v1/admin/alerts/${alert.id}/acknowledge`, {
-      method: 'POST'
-    })
+    await adminStore.acknowledgeAlert(alert.id)
 
     toast.add({
       severity: 'success',
@@ -581,12 +582,7 @@ const resolveAlert = async () => {
 
   resolving.value = true
   try {
-    await $fetch(`/api/v1/admin/alerts/${selectedAlert.value.id}/resolve`, {
-      method: 'POST',
-      body: {
-        resolution: resolveReason.value
-      }
-    })
+    await adminStore.resolveSystemAlert(selectedAlert.value.id, resolveReason.value)
 
     toast.add({
       severity: 'success',
@@ -614,11 +610,8 @@ const batchAcknowledge = async () => {
   if (selectedAlerts.value.length === 0) return
 
   try {
-    const promises = selectedAlerts.value.map(alert =>
-      $fetch(`/api/v1/admin/alerts/${alert.id}/acknowledge`, { method: 'POST' })
-    )
-
-    await Promise.all(promises)
+    const alertIds = selectedAlerts.value.map(alert => alert.id)
+    await adminStore.batchAcknowledgeAlerts(alertIds)
 
     toast.add({
       severity: 'success',
@@ -644,14 +637,8 @@ const batchResolve = async () => {
   if (selectedAlerts.value.length === 0) return
 
   try {
-    const promises = selectedAlerts.value.map(alert =>
-      $fetch(`/api/v1/admin/alerts/${alert.id}/resolve`, {
-        method: 'POST',
-        body: { resolution: '批量解决' }
-      })
-    )
-
-    await Promise.all(promises)
+    const alertIds = selectedAlerts.value.map(alert => alert.id)
+    await adminStore.batchResolveSystemAlerts(alertIds, '批量解决')
 
     toast.add({
       severity: 'success',

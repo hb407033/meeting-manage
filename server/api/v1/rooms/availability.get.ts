@@ -4,9 +4,7 @@
  *
  * 查询会议室的可用性状态和今日预约情况
  */
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import prisma from '~~/server/services/database'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -42,7 +40,7 @@ export default defineEventHandler(async (event) => {
 
     // 构建会议室查询条件
     const roomWhere: any = {
-      status: 'ACTIVE'
+      status: 'AVAILABLE'
     }
 
     if (location) {
@@ -56,7 +54,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 获取会议室列表
-    const rooms = await prisma.room.findMany({
+    const rooms = await prisma.meetingRoom.findMany({
       where: roomWhere,
       select: {
         id: true,
@@ -64,8 +62,7 @@ export default defineEventHandler(async (event) => {
         location: true,
         capacity: true,
         equipment: true,
-        status: true,
-        currentStatus: true
+        status: true
       },
       orderBy: [
         { location: 'asc' },
@@ -88,7 +85,7 @@ export default defineEventHandler(async (event) => {
                   lt: dayEnd
                 },
                 status: {
-                  in: ['CONFIRMED', 'IN_PROGRESS']
+                  in: ['CONFIRMED']
                 }
               },
               select: {
@@ -115,8 +112,8 @@ export default defineEventHandler(async (event) => {
 
         return {
           ...room,
-          currentStatus: room.currentStatus || 'AVAILABLE',
-          statusText: getStatusText(room.currentStatus || 'AVAILABLE'),
+          currentStatus: room.status,
+          statusText: getStatusText(room.status),
           todayBookings: todayBookings.map(booking => ({
             ...booking,
             formattedTime: {
@@ -158,9 +155,9 @@ export default defineEventHandler(async (event) => {
 
       stats[room.location].totalRooms++
 
-      if (room.currentStatus === 'AVAILABLE') {
+      if (room.status === 'AVAILABLE') {
         stats[room.location].availableRooms++
-      } else if (room.currentStatus === 'OCCUPIED') {
+      } else if (room.status === 'OCCUPIED') {
         stats[room.location].occupiedRooms++
       }
 
@@ -181,8 +178,8 @@ export default defineEventHandler(async (event) => {
       data: roomsWithAvailability,
       summary: {
         totalRooms: roomsWithAvailability.length,
-        availableRooms: roomsWithAvailability.filter(r => r.currentStatus === 'AVAILABLE').length,
-        occupiedRooms: roomsWithAvailability.filter(r => r.currentStatus === 'OCCUPIED').length,
+        availableRooms: roomsWithAvailability.filter(r => r.status === 'AVAILABLE').length,
+        occupiedRooms: roomsWithAvailability.filter(r => r.status === 'OCCUPIED').length,
         averageUtilizationRate: Math.round(
           roomsWithAvailability.reduce((sum, r) => sum + (r.utilizationRate || 0), 0) / roomsWithAvailability.length
         ),

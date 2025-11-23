@@ -402,6 +402,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAdminStore } from '~/stores/admin'
+
+const adminStore = useAdminStore()
 
 interface AnomalyData {
   frequentFailures: Array<{
@@ -539,8 +542,12 @@ const runAnalysis = async () => {
       severity: selectedSeverity.value
     })
 
-    const response = await $fetch(`/api/v1/admin/audit-logs/anomalies?${params}`)
-    const data = response.data
+    const data = await adminStore.getAnomalyDetection({
+      timeRange: selectedTimeRange.value,
+      severity: selectedSeverity.value,
+      type: selectedType.value,
+      limit: 100
+    })
 
     anomalies.value = data.anomalies
     riskScore.value = data.riskScore
