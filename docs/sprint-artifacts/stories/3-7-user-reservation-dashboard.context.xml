@@ -1,0 +1,171 @@
+<story-context id="meeting-manage/story-context" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>7</storyId>
+    <title>用户预约仪表盘</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-01-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/3-7-user-reservation-dashboard.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>普通用户</asA>
+    <iWant>在统一的仪表盘查看我所有未结束的预约并进行快捷操作，并且查看系统会议室使用统计</iWant>
+    <soThat>能够高效管理我的会议安排并快速了解会议室资源状况</soThat>
+    <tasks>Task 1: 仪表盘主界面开发 (AC: 1, 4, 6, 7)
+- [ ] Subtask 1.1: 创建 UserDashboard.vue 主仪表盘组件
+- [ ] Subtask 1.2: 集成 UniversalHeader.vue 组件保持界面一致性
+- [ ] Subtask 1.3: 实现响应式布局，适配桌面端和移动端显示
+- [ ] Subtask 1.4: 添加权限控制，确保用户只能访问授权数据
+
+Task 2: 个人预约信息展示 (AC: 1)
+- [ ] Subtask 2.1: 创建 MyReservationsList.vue 组件展示用户预约列表
+- [ ] Subtask 2.2: 实现预约状态过滤（待确认、已确认、进行中）
+- [ ] Subtask 2.3: 添加预约详情预览功能，支持快速查看会议详情
+- [ ] Subtask 2.4: 实现预约操作（查看详情、取消预约、修改预约）
+- [ ] Subtask 2.5: 添加预约状态颜色编码和图标显示
+
+Task 3: 快捷预约功能 (AC: 2)
+- [ ] Subtask 3.1: 创建 QuickReservationDialog.vue 快速预约对话框
+- [ ] Subtask 3.2: 实现简化预约表单（主题、时间、人数、会议室）
+- [ ] Subtask 3.3: 集成实时可用性检查和冲突检测
+- [ ] Subtask 3.4: 添加预约成功确认和通知功能
+- [ ] Subtask 3.5: 复用详细预约表单的验证逻辑，确保数据完整性
+
+Task 4: 会议室可用性查看 (AC: 3)
+- [ ] Subtask 4.1: 创建 RoomAvailabilityQuickView.vue 快速查看组件
+- [ ] Subtask 4.2: 实现会议室可用时间的日历视图和列表视图切换
+- [ ] Subtask 4.3: 添加会议室筛选功能（位置、容量、设备）
+- [ ] Subtask 4.4: 集成实时状态更新，显示会议室当前占用情况
+- [ ] Subtask 4.5: 添加快速预约功能，从可用性界面直接创建预约
+
+Task 5: 系统统计信息展示 (AC: 4)
+- [ ] Subtask 5.1: 创建 SystemStatistics.vue 统计信息组件
+- [ ] Subtask 5.2: 实现关键指标展示：总会议室数、今日开放预约数、当前可预约数
+- [ ] Subtask 5.3: 添加预约成功率、使用率等高级统计指标
+- [ ] Subtask 5.4: 使用图表组件（PrimeVue Chart）实现数据可视化
+- [ ] Subtask 5.5: 添加统计数据的实时更新机制
+
+Task 6: 后端API开发与数据集成 (AC: 1, 4, 7)
+- [ ] Subtask 6.1: 扩展 GET /api/v1/reservations/ API 支持用户预约查询
+- [ ] Subtask 6.2: 创建 GET /api/v1/statistics/system 系统统计信息 API
+- [ ] Subtask 6.3: 实现数据缓存机制，提升统计查询性能（Redis 10分钟TTL）
+- [ ] Subtask 6.4: 添加权限验证，确保数据访问安全性
+- [ ] Subtask 6.5: 集成现有认证中间件和RBAC权限体系
+
+Task 7: 实时状态更新系统 (AC: 5)
+- [ ] Subtask 7.1: 扩展现有WebSocket连接支持仪表盘实时更新
+- [ ] Subtask 7.2: 实现预约状态变更的实时推送机制
+- [ ] Subtask 7.3: 添加统计数据更新事件和缓存失效机制
+- [ ] Subtask 7.4: 创建实时状态指示器组件，显示连接状态
+- [ ] Subtask 7.5: 实现断线重连和数据同步机制
+
+Task 8: 移动端适配与优化 (AC: 6)
+- [ ] Subtask 8.1: 优化移动端布局，使用折叠面板和滑动操作
+- [ ] Subtask 8.2: 实现移动端专用的快捷操作按钮和手势操作
+- [ ] Subtask 8.3: 优化图表和统计信息在小屏幕上的显示效果
+- [ ] Subtask 8.4: 测试不同移动设备上的兼容性和性能
+- [ ] Subtask 8.5: 添加移动端专用的交互反馈和加载动画
+
+Task 9: 测试与性能优化
+- [ ] Subtask 9.1: 编写组件单元测试，覆盖核心功能和交互逻辑
+- [ ] Subtask 9.2: 进行端到端测试，验证完整的用户操作流程
+- [ ] Subtask 9.3: 性能测试，确保页面加载时间<2秒，交互响应<500ms
+- [ ] Subtask 9.4: 测试WebSocket连接的稳定性和数据一致性
+- [ ] Subtask 9.5: 集成测试验证与其他预约功能的兼容性</tasks>
+  </story>
+
+  <acceptanceCriteria>1. **个人预约信息展示**: 显示用户所有未结束的预约（待确认、已确认、进行中状态），包含会议主题、时间、会议室、状态等关键信息
+2. **快捷预约操作**: 提供快速预约会议室的入口，支持简化表单进行快速预约创建
+3. **会议室可用性查看**: 提供快速查看会议室可用时间的功能，支持日历视图和列表视图
+4. **系统统计信息展示**: 显示当前系统整体使用情况，包括总会议室数量、今日开放预约数、当前可预约会议室数量、预约成功率等
+5. **实时状态更新**: 预约状态和统计数据能够实时更新，支持WebSocket推送
+6. **响应式设计**: 界面适配桌面端和移动端，提供一致的用户体验
+7. **权限控制**: 用户只能查看自己的预约信息，管理员可查看全局统计</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="产品需求文档" section="功能需求FR11-FR16" snippet="用户需要统一的仪表盘界面管理预约，查看会议室使用统计，系统应提供直观的数据展示和快捷操作功能" />
+      <doc path="docs/sprint-artifacts/tech-spec-epic-3.md" title="Epic 3技术规范" section="数据模型和API设计" snippet="预约系统核心功能包括用户预约管理、实时状态更新、统计数据分析，需要实现高性能的缓存策略和实时通知机制" />
+      <doc path="docs/architecture.md" title="架构文档" section="项目结构和设计模式" snippet="采用Nuxt 4全栈架构，使用PrimeVue组件库，集成RBAC权限控制，支持WebSocket实时通信和Redis缓存" />
+      <doc path="docs/epics.md" title="史诗故事文档" section="Epic 3: 预约系统核心" snippet="实现完整的会议室预约生命周期管理，满足用户预约、管理、跟踪会议室的核心业务需求" />
+      <doc path="docs/ux-design-specification.md" title="UX设计规范" section="核心体验和响应式设计" snippet="采用企业级商务蓝主题，支持移动优先的响应式设计，提供一致的用户体验和交互反馈" />
+    </docs>
+    <code>
+      <artifact path="app/components/UniversalHeader.vue" kind="component" symbol="UniversalHeader" lines="1-150" reason="统一头部组件，已实现导航和权限控制，仪表盘需要集成使用" />
+      <artifact path="app/components/features/reservations/DetailedReservationForm.vue" kind="component" symbol="DetailedReservationForm" lines="1-200" reason="详细预约表单，可简化为快捷预约表单复用" />
+      <artifact path="app/components/features/reservations/ConflictDetector.vue" kind="component" symbol="ConflictDetector" lines="1-100" reason="冲突检测组件，快捷预约时复用验证逻辑" />
+      <artifact path="app/components/features/reservations/TimeSlotSelector.vue" kind="component" symbol="TimeSlotSelector" lines="1-120" reason="时间段选择器，用于会议室可用性查看" />
+      <artifact path="app/components/features/reservations/CalendarView.vue" kind="component" symbol="CalendarView" lines="1-180" reason="日历视图组件，集成到可用性查看功能" />
+      <artifact path="app/stores/reservations.ts" kind="store" symbol="useReservationStore" lines="1-200" reason="预约状态管理，包含所有必要的getter和action，仪表盘需要扩展" />
+      <artifact path="app/stores/auth.ts" kind="store" symbol="useAuthStore" lines="1-150" reason="认证状态管理，支持权限检查，仪表盘权限控制依赖" />
+      <artifact path="app/composables/useAuth.ts" kind="composable" symbol="useAuth" lines="1-100" reason="认证composable，提供权限检查方法，仪表盘需要" />
+      <artifact path="server/api/v1/reservations/my.get.ts" kind="api" symbol="getUserReservations" lines="1-80" reason="获取用户预约列表API，已实现用户数据隔离，仪表盘直接使用" />
+      <artifact path="server/api/v1/reservations/availability.post.ts" kind="api" symbol="checkAvailability" lines="1-100" reason="会议室可用性检查API，快捷预约功能需要" />
+      <artifact path="server/api/v1/reservations/conflict-check.post.ts" kind="api" symbol="conflictCheck" lines="1-90" reason="冲突检查API，快捷预约时复用" />
+      <artifact path="server/services/notification-service.ts" kind="service" symbol="NotificationService" lines="1-200" reason="通知服务，支持实时推送，仪表盘状态更新需要" />
+      <artifact path="server/services/redis.ts" kind="service" symbol="CacheService" lines="1-150" reason="Redis缓存服务，统计数据缓存需要" />
+      <artifact path="prisma/schema.prisma" kind="model" symbol="Reservation" lines="100-150" reason="预约数据模型，包含所有必要字段，仪表盘展示依赖" />
+      <artifact path="prisma/schema.prisma" kind="model" symbol="Notification" lines="200-250" reason="通知数据模型，支持实时通知，仪表盘集成需要" />
+      <artifact path="server/plugins/socket.io.ts.disabled" kind="plugin" symbol="SocketIOPlugin" lines="1-100" reason="WebSocket插件，需要启用实现实时更新" />
+    </code>
+    <dependencies>
+      <dependency ecosystem="node" name="nuxt" version="^4.2.1" />
+      <dependency ecosystem="node" name="primevue" version="^4.4.1" />
+      <dependency ecosystem="node" name="@primevue/themes" version="^4.4.1" />
+      <dependency ecosystem="node" name="@prisma/client" version="^6.19.0" />
+      <dependency ecosystem="node" name="pinia" version="^3.0.4" />
+      <dependency ecosystem="node" name="@pinia/nuxt" version="^0.11.3" />
+      <dependency ecosystem="node" name="socket.io" version="^4.8.1" />
+      <dependency ecosystem="node" name="socket.io-client" version="^4.8.1" />
+      <dependency ecosystem="node" name="ioredis" version="^5.8.2" />
+      <dependency ecosystem="node" name="@vueuse/core" version="^14.0.0" />
+      <dependency ecosystem="node" name="vitest" version="^4.0.9" />
+      <dependency ecosystem="node" name="@vue/test-utils" version="^2.4.6" />
+      <dependency ecosystem="node" name="@nuxtjs/tailwindcss" version="^6.14.0" />
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint name="架构模式" value="必须遵循现有Nuxt 4全栈架构模式，使用Composition API开发Vue 3组件" />
+    <constraint name="UI组件库" value="必须使用PrimeVue 4.4.1组件库，保持企业级商务蓝主题(#1e40af)的一致性" />
+    <constraint name="类型安全" value="支持TypeScript严格模式，所有组件必须有完整的类型定义" />
+    <constraint name="权限体系" value="集成现有认证中间件和RBAC权限体系，用户只能查看自己的预约信息" />
+    <constraint name="状态管理" value="使用Pinia进行状态管理，复用现有reservations store和auth store" />
+    <constraint name="数据持久化" value="使用MySQL + Prisma进行数据持久化，复用现有Reservation表" />
+    <constraint name="缓存策略" value="集成现有缓存策略优化性能，统计数据使用Redis缓存10分钟" />
+    <constraint name="API规范" value="使用统一API响应格式和错误处理机制，集成现有缓存策略" />
+    <constraint name="响应式设计" value="适配桌面端和移动端，使用Tailwind CSS和PrimeVue响应式组件" />
+    <constraint name="性能要求" value="仪表盘页面加载时间<2秒，预约查询响应<500ms，统计数据查询<1秒" />
+    <constraint name="实时通信" value="集成现有WebSocket基础设施，支持预约状态和统计数据实时更新" />
+    <constraint name="测试覆盖" value="编写单元测试和集成测试，覆盖核心功能和交互逻辑" />
+  </constraints>
+
+  <interfaces>
+    <interface name="用户预约列表API" kind="REST endpoint" signature="GET /api/v1/reservations/my?page=1&limit=20&status=PENDING,CONFIRMED,ONGOING" path="server/api/v1/reservations/my.get.ts" />
+    <interface name="会议室可用性API" kind="REST endpoint" signature="POST /api/v1/reservations/availability { roomIds, startTime, endTime }" path="server/api/v1/reservations/availability.post.ts" />
+    <interface name="冲突检查API" kind="REST endpoint" signature="POST /api/v1/reservations/conflict-check { reservationData }" path="server/api/v1/reservations/conflict-check.post.ts" />
+    <interface name="系统统计信息API" kind="REST endpoint" signature="GET /api/v1/statistics/system" path="server/api/v1/statistics/system.get.ts" />
+    <interface name="快速预约API" kind="REST endpoint" signature="POST /api/v1/reservations/quick { simplifiedReservationData }" path="server/api/v1/reservations/quick.post.ts" />
+    <interface name="预约状态Store" kind="Pinia Store" signature="useReservationStore() { reservations, loading, fetchReservations, createReservation }" path="app/stores/reservations.ts" />
+    <interface name="认证状态Store" kind="Pinia Store" signature="useAuthStore() { user, isAuthenticated, hasPermission, canAccess }" path="app/stores/auth.ts" />
+    <interface name="权限检查Composable" kind="Composable" signature="useAuth() { hasRole, hasPermission, canAccess, requireAuth }" path="app/composables/useAuth.ts" />
+    <interface name="缓存服务" kind="Service" signature="CacheService { set, get, del, exists, rateLimit }" path="server/services/redis.ts" />
+    <interface name="通知服务" kind="Service" signature="NotificationService { sendNotification, sendBulkNotifications, markAsRead }" path="server/services/notification-service.ts" />
+  </interfaces>
+
+  <tests>
+    <standards>使用Vitest测试框架，Vue Test Utils进行组件测试，覆盖率目标70%。单元测试覆盖组件逻辑，集成测试验证API端点，端到端测试验证完整用户流程。性能测试确保页面加载<2秒，交互响应<500ms。测试文件放在tests/目录下，使用.test.ts/.spec.ts命名。</standards>
+    <locations>tests/unit/ - 单元测试，tests/integration/ - 集成测试，tests/components/ - 组件测试，tests/api/ - API测试，tests/performance/ - 性能测试</locations>
+    <ideas>
+      <idea criteria="1">测试个人预约列表展示功能，验证不同状态预约的显示和过滤</idea>
+      <idea criteria="2">测试快捷预约功能，验证简化表单提交和冲突检测</idea>
+      <idea criteria="3">测试会议室可用性查看，验证日历视图和列表视图切换</idea>
+      <idea criteria="4">测试系统统计信息展示，验证数据准确性和实时更新</idea>
+      <idea criteria="5">测试WebSocket实时状态更新，验证断线重连机制</idea>
+      <idea criteria="6">测试响应式设计，验证移动端和桌面端显示效果</idea>
+      <idea criteria="7">测试权限控制，验证用户数据隔离和权限检查</idea>
+    </ideas>
+  </tests>
+</story-context>

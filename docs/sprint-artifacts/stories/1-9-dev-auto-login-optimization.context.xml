@@ -1,0 +1,158 @@
+<story-context id="1-9-dev-auto-login-optimization-context" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>9</storyId>
+    <title>开发环境自动登录优化</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/1-9-dev-auto-login-optimization.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>开发人员</asA>
+    <iWant>系统在开发环境下自动登录默认用户</iWant>
+    <soThat>加快本地开发和测试效率，避免重复登录操作</soThat>
+    <tasks>Task 1: 开发环境检测机制 (AC: 1)
+Task 2: 开发用户数据模型与种子 (AC: 2, 5)
+Task 3: 自动登录流程实现 (AC: 3, 4)
+Task 4: 开发界面提示组件 (AC: 6)
+Task 5: 用户切换功能 (AC: 7)
+Task 6: 配置文件和文档 (AC: 1, 4)
+Task 7: 集成测试与验证 (AC: 1, 2, 3, 4, 5, 6, 7)
+Task 8: 性能和监控优化 (AC: 3)</tasks>
+  </story>
+
+  <acceptanceCriteria>1. 开发环境检测：系统能够自动识别当前运行环境为开发环境
+2. 自动用户创建：系统启动时自动创建或使用预配置的开发测试用户
+3. 自动登录流程：在开发环境下跳过登录页面，直接完成用户认证
+4. 环境安全控制：自动登录功能仅在开发环境生效，生产环境完全禁用
+5. 用户角色配置：自动登录的用户具备适合开发的权限角色（管理员权限）
+6. 开发提示显示：界面显示当前为开发环境自动登录状态，便于开发者识别
+7. 手动切换支持：开发者仍可切换到其他用户进行测试</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>系统架构文档</title>
+        <section>Authentication System</section>
+        <snippet>JWT + bcrypt 认证系统已实现，包含完整的RBAC权限管理和用户认证中间件</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>产品需求文档</title>
+        <section>Project Classification</section>
+        <snippet>全栈Web应用，企业智能办公领域，Level 3复杂系统，要求高安全性、高可用性、可扩展性</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic分解文档</title>
+        <section>Epic 1: 基础设施与用户认证</section>
+        <snippet>建立系统基础架构和企业级身份认证基础，包含JWT认证、RBAC权限、审计日志、组织架构</snippet>
+      </doc>
+      <doc>
+        <path>nuxt.config.ts</path>
+        <title>Nuxt配置文件</title>
+        <section>runtime config</section>
+        <snippet>已配置JWT_SECRET、databaseUrl等环境变量，为开发环境自动登录提供配置基础</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>server/utils/auth.ts</path>
+        <kind>authentication utility</kind>
+        <symbol>getCurrentUser, isAuthenticated, hasRole, hasPermission</symbol>
+        <lines>1-231</lines>
+        <reason>提供完整的用户认证检查功能，可用于自动登录流程中的用户状态验证</reason>
+      </artifact>
+      <artifact>
+        <path>server/utils/jwt.ts</path>
+        <kind>JWT utility</kind>
+        <symbol>generateAccessToken, generateTokenPair, verifyAccessToken, JWTPayload</symbol>
+        <lines>1-202</lines>
+        <reason>JWT token生成和验证功能，是自动登录实现的核心组件</reason>
+      </artifact>
+      <artifact>
+        <path>server/middleware/auth.ts</path>
+        <kind>authentication middleware</kind>
+        <symbol>authentication middleware</symbol>
+        <lines>1-20</lines>
+        <reason>现有认证中间件模式，可扩展添加开发环境检测逻辑</reason>
+      </artifact>
+      <artifact>
+        <path>app/stores/auth.ts</path>
+        <kind>auth state management</kind>
+        <symbol>auth store</symbol>
+        <lines>1-100</lines>
+        <reason>前端认证状态管理，需要扩展支持开发环境自动登录状态</reason>
+      </artifact>
+      <artifact>
+        <path>prisma/schema.prisma</path>
+        <kind>database schema</kind>
+        <symbol>User, Role, Permission</symbol>
+        <lines>1-200</lines>
+        <reason>用户和权限数据模型，需要扩展添加开发用户标识字段</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="Node.js/Nuxt">
+        <package name="nuxt" version="^4.2.1" />
+        <package name="jsonwebtoken" version="^9.0.2" />
+        <package name="bcryptjs" version="^3.0.3" />
+        <package name="@prisma/client" version="^6.19.0" />
+        <package name="pinia" version="^3.0.4" />
+      </ecosystem>
+      <ecosystem name="Development">
+        <package name="vitest" version="^2.0.0" />
+        <package name="@vue/test-utils" version="^2.4.6" />
+        <package name="typescript" version="^5.0.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint name="Environment Security">自动登录功能严格限制在开发环境，生产环境必须完全禁用，通过多层安全检查确保环境隔离</constraint>
+    <constraint name="Permission Model">自动登录用户必须具备完整的开发管理员权限，支持所有功能的开发和测试</constraint>
+    <constraint name="State Management">保持与现有JWT认证系统的完全兼容性，自动登录状态需与正常登录状态统一管理</constraint>
+    <constraint name="Configuration Driven">通过环境变量和配置文件控制功能启用和参数，支持灵活的开关控制</constraint>
+    <constraint name="User Experience">提供清晰的视觉反馈，让开发者明确当前处于开发环境自动登录状态</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="JWT Authentication" kind="JWT Token">
+      <signature>interface JWTPayload { userId: string; email: string; roles: string[]; permissions: string[] }</signature>
+      <path>server/utils/jwt.ts</path>
+    </interface>
+    <interface name="Auth Middleware" kind="Nuxt Middleware">
+      <signature>export default defineNuxtRouteMiddleware((to, from) => { auth check logic })</signature>
+      <path>server/middleware/auth.ts</path>
+    </interface>
+    <interface name="User Service" kind="Service API">
+      <signature>GET /api/v1/auth/me - 获取当前用户信息</signature>
+      <path>server/api/v1/auth/me.get.ts</path>
+    </interface>
+    <interface name="Environment Detection" kind="Utility Function">
+      <signature>function isDevelopmentEnvironment(): boolean</signature>
+      <path>server/utils/environment.ts (需要创建)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>使用Vitest进行单元测试，@vue/test-utils进行组件测试。测试覆盖率要求 > 80%。所有自动登录功能必须包含环境隔离的安全测试，确保生产环境不会意外启用。测试遵循AAA模式（Arrange-Act-Assert），使用describe/it结构组织测试用例。</standards>
+    <locations>
+      <location pattern="tests/**/*.test.ts" />
+      <location pattern="tests/**/*.spec.ts" />
+      <location pattern="app/components/**/*.test.vue" />
+      <location pattern="server/**/*.test.ts" />
+    </locations>
+    <ideas>
+      <test idea="环境检测测试" ac="1">验证isDevelopmentEnvironment()函数在不同环境变量下的正确性</test>
+      <test idea="自动登录流程测试" ac="3">测试开发环境下自动跳过登录页面的完整流程</test>
+      <test idea="生产环境安全测试" ac="4">验证生产环境下自动登录功能被完全禁用</test>
+      <test idea="用户权限测试" ac="5">确认自动登录用户具备完整的管理员权限</test>
+      <test idea="UI组件测试" ac="6">测试DevModeIndicator组件的显示和样式</test>
+      <test idea="用户切换测试" ac="7">验证用户切换组件的功能和权限验证</test>
+    </ideas>
+  </tests>
+</story-context>
