@@ -291,11 +291,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <UniversalHeader/>
-
+  <div class="min-h-screen bg-gray-50 py-6">
     <!-- 页面标题和统计 -->
-    <div class="container mx-auto px-4 py-6">
+    <div>
       <div class="bg-white rounded-lg shadow-sm border p-6">
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">

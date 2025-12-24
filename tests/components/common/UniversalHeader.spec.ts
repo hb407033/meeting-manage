@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import { ref, computed, watch, onMounted, onUnmounted, onUpdated, nextTick } from 'vue'
-import UniversalHeader from '../../../app/components/UniversalHeader.vue'
+import UniversalHeader from '../../../app/components/layout/UniversalHeader.vue'
 import { useAuth } from '../../../app/composables/useAuth'
 
 // Stub Vue globals for auto-import support

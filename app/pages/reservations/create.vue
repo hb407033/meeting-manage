@@ -489,11 +489,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <UniversalHeader />
-
+  <div class="min-h-screen bg-gray-50 py-6">
     <!-- 状态消息 -->
-    <div v-if="message" class="container mx-auto my-0 px-4 py-3">
+    <div v-if="message" class="mb-4">
       <div :class="[
         'rounded-lg p-4 flex items-center gap-3',
         message.includes('成功') ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'
@@ -504,7 +502,7 @@ onMounted(async () => {
     </div>
 
     <!-- 预约类型选择 -->
-    <div class="container mx-auto px-4 py-6">
+    <div>
       <!-- <div class="mb-6">
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div class="flex items-center justify-between">

@@ -1,7 +1,5 @@
 <template>
-  <div class="audit-management">
-    <UniversalHeader />
-
+  <div class="audit-management py-6">
     <!-- Tab导航 -->
     <div class="bg-white rounded-lg shadow mb-6">
       <TabView v-model:activeIndex="activeTab">
@@ -307,7 +305,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 
 // 导入自定义组件
-import UniversalHeader from '~/components/UniversalHeader.vue'
 import AuditLogViewer from '~/components/admin/AuditLogViewer.vue'
 import AuditLogStats from '~/components/admin/AuditLogStats.vue'
 import AnomalyDetection from '~/components/admin/AnomalyDetection.vue'

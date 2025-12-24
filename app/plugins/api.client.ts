@@ -1,5 +1,6 @@
 // API 插件 - 提供带认证的 API 调用功能
 import { authStateManager } from '~/utils/auth-state-manager'
+import { tokenRefreshManager } from '~/utils/token-refresh-manager'
 
 export default defineNuxtPlugin((nuxtApp) => {
   // 创建增强版的API调用函数
@@ -11,13 +12,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         let token = null
 
         if (import.meta.client) {
-          // 延迟获取，确保AuthStateManager已初始化
-          setTimeout(() => {
-            const state = authStateManager.getState()
-            token = state.accessToken
-          }, 0)
-
-          // 立即尝试获取当前状态
+          // 立即获取当前状态
           const state = authStateManager.getState()
           token = state.accessToken
         }
@@ -39,7 +34,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     },
 
     onResponseError({ request, response, options }) {
-      // 处理401错误
+      // 处理401错误 - 使用TokenRefreshManager统一处理刷新
       if (response.status === 401) {
         console.warn('API请求认证失败，尝试刷新token:', request)
 
@@ -51,38 +46,24 @@ export default defineNuxtPlugin((nuxtApp) => {
         }
 
         if (refreshToken) {
-          return $fetch('/api/auth/refresh', {
-            method: 'POST',
-            body: { refreshToken }
-          }).then((refreshResponse: any) => {
-            if (refreshResponse.success && refreshResponse.data) {
-              const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.tokens
-
-              // 通过AuthStateManager更新状态，确保统一管理
-              if (import.meta.client) {
-                const currentState = authStateManager.getState()
-                if (currentState.user) {
-                  // 创建新的tokens对象，保持原有的expiresIn
-                  const tokens = {
-                    accessToken,
-                    refreshToken: newRefreshToken,
-                    expiresIn: 3600 // 默认1小时，实际应该从响应中获取
-                  }
-                  authStateManager.updateAuthState(currentState.user, tokens)
-                }
+          // 使用TokenRefreshManager处理并发刷新
+          return tokenRefreshManager.refreshTokens(refreshToken).then((tokens) => {
+            // 通过AuthStateManager更新状态，确保统一管理
+            if (import.meta.client) {
+              const currentState = authStateManager.getState()
+              if (currentState.user) {
+                authStateManager.updateAuthState(currentState.user, tokens)
               }
-
-              // 重试原请求
-              if (!options.headers) {
-                options.headers = {}
-              }
-              ;(options.headers as any)['authorization'] = `Bearer ${accessToken}`
-
-              // 使用当前的 $apiFetch 实例重试请求，而不是递归调用
-              return $fetch(request, options as any)
-            } else {
-              throw new Error('Token刷新失败')
             }
+
+            // 重试原请求
+            if (!options.headers) {
+              options.headers = {}
+            }
+            ;(options.headers as any)['authorization'] = `Bearer ${tokens.accessToken}`
+
+            // 使用当前的 $apiFetch 实例重试请求
+            return $fetch(request, options as any)
           }).catch((error) => {
             console.error('Token刷新失败，需要重新登录:', error)
             // 统一清除AuthStateManager的状态
@@ -90,13 +71,13 @@ export default defineNuxtPlugin((nuxtApp) => {
               authStateManager.clearAuthState()
             }
             // 跳转到登录页
-            navigateTo('/login')
+            navigateTo('/auth/login')
             throw error
           })
         } else {
           // 没有refresh token，直接跳转登录
           if (import.meta.client) {
-            navigateTo('/login')
+            navigateTo('/auth/login')
           }
           throw new Error('未找到刷新令牌')
         }

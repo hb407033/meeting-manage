@@ -1,33 +1,41 @@
 /**
  * 认证中间件
  * 用于保护需要登录才能访问的页面
+ * 注意：此中间件仅在客户端运行，服务端渲染时跳过认证检查
  */
 export default defineNuxtRouteMiddleware(async (to) => {
+  // 仅在客户端进行认证检查
+  if (import.meta.server) {
+    console.log('[Auth Middleware] 服务端渲染，跳过认证检查')
+    return
+  }
+
   const authStore = useAuthStore()
 
-  // 在客户端，确保认证状态已初始化
-  if (import.meta.client) {
-    // 总是尝试初始化认证状态，让内部逻辑判断是否需要恢复
-    // 移除条件判断，因为页面刷新后 store 状态都是初始值
-    await authStore.initAuth()
+  console.log('[Auth Middleware] 客户端执行认证检查', {
+    path: to.fullPath,
+    isAuthenticatedBefore: authStore.isAuthenticated
+  })
 
-    // 检查认证状态
-    if (!authStore.isAuthenticated) {
-      // 保存目标路径，登录后可以重定向回来
-      const redirect = to.fullPath
-      return navigateTo({
-        path: '/auth/login',
-        query: { redirect }
-      })
-    }
-  } else {
-    // 服务端渲染时，直接重定向到登录页
-    if (!authStore.isAuthenticated) {
-      const redirect = to.fullPath
-      return navigateTo({
-        path: '/auth/login',
-        query: { redirect }
-      })
-    }
+  // 确保认证状态已初始化
+  await authStore.initAuth()
+
+  console.log('[Auth Middleware] initAuth后状态', {
+    isAuthenticated: authStore.isAuthenticated,
+    hasUser: !!authStore.user,
+    hasAccessToken: !!authStore.accessToken
+  })
+
+  // 检查认证状态
+  if (!authStore.isAuthenticated) {
+    // 保存目标路径，登录后可以重定向回来
+    const redirect = to.fullPath
+    console.log('[Auth Middleware] 未认证，重定向到登录页')
+    return navigateTo({
+      path: '/auth/login',
+      query: { redirect }
+    })
   }
+
+  console.log('[Auth Middleware] 认证通过')
 })

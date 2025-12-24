@@ -411,10 +411,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <UniversalHeader/>
+  <div class="min-h-screen bg-gray-50 py-6">
     <!-- 筛选条件 -->
-    <div class="container mx-auto px-4 py-6">
+    <div>
       <div class="bg-white rounded-lg shadow-sm border p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <i class="pi pi-filter text-blue-600"></i>

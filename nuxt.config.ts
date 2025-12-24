@@ -52,10 +52,12 @@ export default defineNuxtConfig({
     },
   },
 
-  
+
   // 应用配置
+  // 注意：移除了 pageTransition 配置，因为缺少对应的 CSS transition 样式
+  // 这会导致页面内容叠加问题。如果需要页面切换动画，需要在 main.css 中添加对应的样式
   app: {
-    pageTransition: { name: 'page', mode: 'out-in' },
+    // pageTransition: { name: 'page', mode: 'out-in' },  // 已禁用
   },
 
   })

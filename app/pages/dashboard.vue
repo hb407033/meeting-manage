@@ -1,10 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- 统一头部组件 -->
-    <UniversalHeader />
-
-    <!-- 主要内容区域 -->
-    <main class="container mx-auto px-2 py-4 max-w-7xl">
+  <!-- 主要内容区域 -->
+  <div class="py-6">
       <!-- 统计卡片区域（仅基础统计，不含趋势和热门会议室） -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-lg shadow p-6">
@@ -85,7 +81,6 @@
           <PopularRooms />
         </div>
       </div>
-    </main>
 
     <!-- 实时状态指示器 -->
     <RealTimeStatusIndicator />
@@ -104,20 +99,8 @@ import { useAuth } from '~/composables/useAuth'
 definePageMeta({
   title: '预约仪表盘',
   description: '管理会议室预约，查看系统统计',
-  requiresAuth: true,
   middleware: ['auth']
 })
-
-// 权限检查 - 所有登录用户都可以访问dashboard
-const { user, isAuthenticated } = useAuth()
-
-// 确保用户已登录
-if (!isAuthenticated.value) {
-  throw createError({
-    statusCode: 401,
-    statusMessage: '请先登录'
-  })
-}
 
 // 页面初始化
 onMounted(() => {

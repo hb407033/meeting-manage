@@ -365,22 +365,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <UniversalHeader />
-
-    <!-- 状态消息 -->
-    <!-- <div v-if="message" class="container mx-auto px-4 py-3">
-      <div :class="[
-        'rounded-lg p-4 flex items-center gap-3',
-        message.includes('成功') ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'
-      ]">
-        <i :class="message.includes('成功') ? 'pi pi-check-circle text-green-600' : 'pi pi-info-circle text-blue-600'"></i>
-        <span :class="message.includes('成功') ? 'text-green-800' : 'text-blue-800'">{{ message }}</span>
-      </div>
-    </div> -->
-
+  <div class="min-h-screen bg-gray-50 py-6">
     <!-- 主要内容区域 -->
-    <div class="container mx-auto px-4 py-6">
+    <div>
       <!-- 页面标题 -->
       <div class="mb-6">
         <div class="flex items-center justify-between">

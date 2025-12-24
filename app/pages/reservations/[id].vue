@@ -307,10 +307,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <UniversalHeader/>
-
-    <div class="container mx-auto px-4 py-6">
+  <div class="min-h-screen bg-gray-50 py-6">
+    <div>
       <!-- 页面标题和操作 -->
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center">

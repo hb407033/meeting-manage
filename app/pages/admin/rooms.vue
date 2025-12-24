@@ -1,14 +1,12 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <UniversalHeader />
     <RoomManagement />
   </div>
 </template>
 
 <script setup lang="ts">
-// 页面设置
+// 页面设置 - 使用默认布局
 definePageMeta({
-  layout: 'admin',
   middleware: 'auth'
 })
 

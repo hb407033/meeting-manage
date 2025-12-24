@@ -1,0 +1,208 @@
+<story-context id="{bmad_folder}/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>10</storyId>
+    <title>Permission-Driven Layout Refactor</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-24</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/1-10-permission-driven-layout-refactor.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>系统架构师</asA>
+    <iWant>重构权限设计和布局架构，实现基于权限的动态菜单加载</iWant>
+    <soThat>简化布局架构，提高系统性能和用户体验，增强权限控制的灵活性</soThat>
+    <tasks>Task 1: 架构设计和规划 (AC: #1, #2)
+  - [ ] Subtask 1.1: 分析现有布局结构和权限系统
+  - [ ] Subtask 1.2: 设计新的双布局架构方案
+  - [ ] Subtask 1.3: 制定权限驱动的菜单加载策略
+  - [ ] Subtask 1.4: 设计权限缓存和更新机制
+
+- [ ] Task 2: 布局重构实施 (AC: #3)
+  - [ ] Subtask 2.1: 创建新的UniversalHeader.vue组件
+  - [ ] Subtask 2.2: 重构default.vue布局，简化为上下结构
+  - [ ] Subtask 2.3: 移除AdminLayout.vue等其他专用布局
+  - [ ] Subtask 2.4: 更新所有页面使用新的布局结构
+
+- [ ] Task 3: 权限菜单系统开发 (AC: #2, #4)
+  - [ ] Subtask 3.1: 实现权限菜单配置数据结构
+  - [ ] Subtask 3.2: 开发动态菜单加载逻辑
+  - [ ] Subtask 3.3: 实现权限缓存机制
+  - [ ] Subtask 3.4: 添加权限变更监听和菜单更新功能
+
+- [ ] Task 4: 性能优化和测试 (AC: #4, #5)
+  - [ ] Subtask 4.1: 优化权限验证性能，实现&lt;100ms响应时间
+  - [ ] Subtask 4.2: 测试权限实时更新功能
+  - [ ] Subtask 4.3: 验证向后兼容性
+  - [ ] Subtask 4.4: 进行完整的功能测试和性能测试</tasks>
+  </story>
+
+  <acceptanceCriteria>1. **Given** 用户已登录系统
+   **When** 用户访问任何需要认证的页面
+   **Then** 系统使用统一的登录后布局，包含上部UniversalHeader和下部路由内容
+
+2. **And** UniversalHeader组件根据用户权限动态加载菜单项
+   **And** 未授权的菜单项不显示，而不是显示后禁用
+   **And** 菜单加载逻辑基于用户权限缓存，避免重复权限检查
+
+3. **And** 系统仅保留两个布局：login.vue和default.vue
+   **And** 移除AdminLayout.vue等其他专用布局
+   **And** 所有权限控制集中在UniversalHeader的菜单逻辑中
+
+4. **And** 权限验证性能优化，菜单渲染时间&lt;100ms
+   **And** 权限变更时菜单实时更新，无需刷新页面
+   **And** 支持权限预加载和缓存机制
+
+5. **And** 保持现有功能完整性，所有现有页面正常工作
+   **And** 向后兼容现有权限配置
+   **And** API权限验证保持不变，仅前端布局重构</acceptanceCriteria>
+
+  <artifacts>
+    <docs>  <doc>
+      <path>docs/architecture.md</path>
+      <title>系统架构决策文档</title>
+      <section>技术架构和设计模式</section>
+      <snippet>技术栈选择：Nuxt 4 + PrimeVue + FormKit，采用统一API响应格式，强制使用Pinia store进行状态管理</snippet>
+    </doc>
+    <doc>
+      <path>docs/ux-design-specification.md</path>
+      <title>UX设计规范</title>
+      <section>设计系统和组件库</section>
+      <snippet>使用PrimeVue + Aura主题，支持桌面端和移动端的响应式菜单设计</snippet>
+    </doc>
+    <doc>
+      <path>docs/epics.md</path>
+      <title>史诗分解</title>
+      <section>Epic 1 - 基础设施与用户认证</section>
+      <snippet>权限系统架构：基于RBAC的细粒度权限控制，支持权限继承和组织数据隔离</snippet>
+    </doc>
+    <doc>
+      <path>docs/sprint-artifacts/tech-spec-epic-1.md</path>
+      <title>Epic 1技术规范</title>
+      <section>权限系统要求</section>
+      <snippet>权限缓存要求：Redis缓存用户权限，30分钟TTL，权限变更时实时失效，支持细粒度权限检查</snippet>
+    </doc></docs>
+    <code>  <codefile>
+      <path>app/layouts/default.vue</path>
+      <kind>layout</kind>
+      <symbol>default.vue</symbol>
+      <lines>28-33</lines>
+      <reason>已包含UniversalHeader集成的标准布局，是重构的目标布局</reason>
+    </codefile>
+    <codefile>
+      <path>app/components/UniversalHeader.vue</path>
+      <kind>component</kind>
+      <symbol>UniversalHeader.vue</symbol>
+      <lines>207-245</lines>
+      <reason>包含权限检查逻辑的会议室管理菜单实现，使用canAccess('room', 'read')进行权限控制</reason>
+    </codefile>
+    <codefile>
+      <path>app/components/UniversalHeader.vue</path>
+      <kind>component</kind>
+      <symbol>UniversalHeader.vue</symbol>
+      <lines>247-307</lines>
+      <reason>系统管理菜单实现，使用isAdmin计算属性进行权限控制，是需要重构的关键代码</reason>
+    </codefile>
+    <codefile>
+      <path>app/stores/auth.ts</path>
+      <kind>store</kind>
+      <symbol>useAuthStore</symbol>
+      <lines>507-522</lines>
+      <reason>canAccess方法实现，基于RBAC的权限检查逻辑，是菜单权限控制的核心依赖</reason>
+    </codefile>
+    <codefile>
+      <path>app/composables/useAuth.ts</path>
+      <kind>composable</kind>
+      <symbol>useAuth</symbol>
+      <lines>20-22</lines>
+      <reason>权限检查方法接口，提供hasRole、hasPermission、canAccess等权限检查功能</reason>
+    </codefile>
+    <codefile>
+      <path>app/layouts/admin.vue</path>
+      <kind>layout</kind>
+      <symbol>admin.vue</symbol>
+      <lines>1-16</lines>
+      <reason>简化的admin布局，重构后需要移除的冗余布局文件</reason>
+    </codefile>
+    <codefile>
+      <path>app/layouts/public.vue</path>
+      <kind>layout</kind>
+      <symbol>public.vue</symbol>
+      <lines>1-5</lines>
+      <reason>最简单的公共布局，重构后需要移除的冗余布局文件</reason>
+    </codefile></code>
+    <dependencies>  <ecosystem name="Node.js">
+      <package name="nuxt" version="^4.2.1">Nuxt 4框架，提供布局系统和路由功能</package>
+      <package name="primevue" version="^4.4.1">UI组件库，提供菜单和导航组件</package>
+      <package name="@primevue/themes" version="^4.4.1">PrimeVue主题系统</package>
+      <package name="@pinia/nuxt" version="^0.11.3">Pinia状态管理集成</package>
+      <package name="pinia" version="^3.0.4">状态管理库，用于权限状态管理</package>
+      <package name="@vueuse/core" version="^14.0.0">Vue组合式函数工具库</package>
+    </ecosystem>
+  <ecosystem name="Database & Cache">
+      <package name="@prisma/client" version="^6.19.0">数据库ORM，权限数据模型</package>
+      <package name="ioredis" version="^5.8.2">Redis客户端，权限缓存</package>
+    </ecosystem></dependencies>
+  </artifacts>
+
+  <constraints>  <constraint name="架构模式">
+    <description>必须使用Nuxt 4 + PrimeVue + FormKit技术栈，遵循现有项目架构模式</description>
+  </constraint>
+  <constraint name="状态管理">
+    <description>强制使用Pinia store，所有API调用通过getApiFetch()工具函数进行</description>
+  </constraint>
+  <constraint name="权限系统">
+    <description>保持现有RBAC权限模型不变，API权限验证保持不变，仅前端布局重构</description>
+  </constraint>
+  <constraint name="布局简化">
+    <description>仅保留auth.vue和default.vue两个布局，所有权限控制集中在UniversalHeader</description>
+  </constraint>
+  <constraint name="性能要求">
+    <description>菜单渲染时间必须小于100ms，实现权限缓存和实时更新机制</description>
+  </constraint>
+  <constraint name="向后兼容">
+    <description>保持现有功能完整性，向后兼容现有权限配置，不破坏现有API</description>
+  </constraint>
+  <constraint name="开发规范">
+    <description>遵循项目的TypeScript、ESLint和Prettier代码规范要求</description>
+  </constraint></constraints>
+
+  <interfaces>  <interface name="useAuth" kind="composable">
+    <signature>const { user, canAccess, hasPermission, isAdmin } = useAuth()</signature>
+    <path>app/composables/useAuth.ts</path>
+    <description>提供用户认证状态和权限检查功能</description>
+  </interface>
+  <interface name="canAccess" kind="method">
+    <signature>canAccess(resource: string, action?: string): boolean</signature>
+    <path>app/stores/auth.ts:507</path>
+    <description>基于RBAC的权限检查方法，用于菜单权限控制</description>
+  </interface>
+  <interface name="MenuItem" kind="interface">
+    <signature>interface MenuItem { key: string; label: string; icon?: string; permissions?: string[]; children?: MenuItem[]; route?: string }</signature>
+    <path>docs/sprint-artifacts/1-10-permission-driven-layout-refactor.md:88</path>
+    <description>权限菜单数据结构，支持基于权限的菜单配置</description>
+  </interface></interfaces>
+
+  <tests>
+    <standards>项目使用Vitest作为测试框架，Vue Test Utils作为组件测试库。测试文件位于tests/目录，包含unit、integration和端到端测试。权限相关测试应覆盖用户角色、权限检查和菜单显示逻辑。</standards>
+    <locations>tests/unit/ - 单元测试，主要用于权限逻辑测试
+tests/integration/ - 集成测试，用于组件和API集成测试
+test*.test.ts - 带有test后缀的文件，用于组件功能测试</locations>
+    <ideas>  <testidea acId="1">
+      <description>测试default.vue布局是否正确显示UniversalHeader和路由内容</description>
+    </testidea>
+    <testidea acId="2">
+      <description>测试UniversalHeader基于权限的菜单显示逻辑，确保未授权菜单不显示</description>
+    </testidea>
+    <testidea acId="3">
+      <description>测试布局简化后，所有页面是否正常工作，无功能缺失</description>
+    </testidea>
+    <testidea acId="4">
+      <description>性能测试：菜单渲染时间&lt;100ms，权限缓存机制正常工作</description>
+    </testidea>
+    <testidea acId="5">
+      <description>权限实时更新测试：权限变更后菜单无需刷新即可更新</description>
+    </testidea></ideas>
+  </tests>
+</story-context>
