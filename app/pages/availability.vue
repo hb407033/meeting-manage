@@ -13,7 +13,7 @@ const roomStore = useRoomStore()
 
 // 页面设置
 definePageMeta({
-  layout: 'admin',
+  layout: 'default',
   middleware: 'auth'
 })
 

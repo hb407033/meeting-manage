@@ -4,11 +4,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
-  // Nuxt 4 App目录模式 - 移除pages配置让Nuxt自动检测app/pages
-  dir: {
-    layouts: 'app/layouts',  // 布局文件位于 app/layouts/
-    // 注意：不配置pages，让Nuxt自动发现app/pages目录
-  },
+  // Nuxt 4 App目录模式 - layouts 和 pages 自动在 app/ 目录下扫描
+  // dir: {
+  //   layouts: 'app/layouts',  // App 模式下 layouts 自动扫描
+  // },
 
   
   // CSS配置
